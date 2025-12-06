@@ -1,0 +1,234 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #ffffff;
+  color: #333333;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 0;
+  overflow: hidden;
+}
+
+.title-bar {
+  width: 100%;
+  height: 70px;
+  background-color: #00bbfe;
+  -webkit-app-region: drag;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.title-text {
+  color: white;
+  margin-top: 25px;
+  font-size: 24px;
+  font-weight: 600;
+  -webkit-app-region: no-drag;
+  display: flex;
+  gap: 5px;
+}
+
+.letter {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.letter-r {
+  transform: rotate(-20deg) translateY(-5px);
+}
+
+.letter-o {
+  transform: translateY(-10px);
+}
+
+.letter-s {
+  transform: rotate(20deg) translateY(-5px);
+}
+
+.container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 850px;
+  background: transparent;
+  padding: 2px 40px 15px 40px;
+  margin: 0 auto;
+  -webkit-app-region: no-drag;
+}
+
+.logo {
+  display: block;
+  margin: -18px auto 0px auto;
+  width: 100px;
+  height: auto;
+  -webkit-app-region: no-drag;
+
+}
+
+
+
+.progress-container {
+  position: relative;
+  width: 100%;
+  margin-bottom: 20px;
+  padding-top: 40px;
+  -webkit-app-region: no-drag;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: visible;
+  position: relative;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: #00bbfe;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-bubble {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translateX(-50%);
+  background: #00bbfe;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+  white-space: nowrap;
+  transition: left 0.3s ease;
+}
+
+.progress-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px 6px 0;
+  border-style: solid;
+  border-color: #00bbfe transparent transparent transparent;
+}
+
+.status-text-centered {
+  text-align: center;
+  font-size: 18px;
+  color: #333333;
+  font-weight: 300;
+  margin-bottom: 30px;
+  font-family: sans-serif;
+  -webkit-app-region: no-drag;
+}
+
+.error-section {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgba(248, 81, 73, 0.1);
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  border-radius: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.error-section h3 {
+  color: #d32f2f;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.error-message {
+  color: #d32f2f;
+  font-size: 14px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.hidden {
+  display: none;
+}
+
+.retry-button {
+  width: 100%;
+  padding: 14px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  -webkit-app-region: no-drag;
+}
+
+.retry-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.retry-button:active {
+  transform: translateY(0);
+}
+
+.cancel-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #00bbfe;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  -webkit-app-region: no-drag;
+}
+
+.cancel-button:hover {
+  background-color: #0099d6;
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #333;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.success-icon {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  vertical-align: middle;
+}

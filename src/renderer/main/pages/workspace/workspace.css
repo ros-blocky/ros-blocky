@@ -1,0 +1,86 @@
+/* Workspace Container */
+.workspace-container {
+    display: flex;
+    width: 100%;
+    height: calc(100vh - 40px - 22px);
+    /* Full height minus top bar and bottom bar */
+    background: #f5f5f5;
+    overflow: hidden;
+}
+
+/* Blocks Panel (Left) */
+.blocks-panel {
+    flex: 1;
+    min-width: 300px;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Resize Handle */
+.workspace-resize-handle {
+    width: 5px;
+    background: #ddd;
+    cursor: ew-resize;
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+
+.workspace-resize-handle:hover {
+    background: #00bcd4;
+}
+
+/* Packages Panel (Right) */
+.packages-panel {
+    width: 300px;
+    min-width: 200px;
+    max-width: 500px;
+    background: #f8f8f8;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-left: 1px solid #e0e0e0;
+}
+
+#blocks-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
+}
+
+#packages-panel-container {
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Workspace Bottom Bar (Full Width) */
+.workspace-bottom-bar {
+    height: 22px;
+    background: #00BCD4;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px;
+    color: white;
+    font-size: 11px;
+    font-weight: 500;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+}
+
+.workspace-bottom-bar .bottom-bar-left,
+.workspace-bottom-bar .bottom-bar-right {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.workspace-bottom-bar .status-text {
+    font-weight: 500;
+}

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .title-bar {
+            background: #00bbfe;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            -webkit-app-region: drag;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #00bbfe;
+        }
+
+        .buttons {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        button {
+            padding: 8px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        .btn-create {
+            background: #00bbfe;
+            color: white;
+        }
+
+        .btn-create:hover {
+            background: #0099d6;
+        }
+
+        .btn-cancel {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-cancel:hover {
+            background: #d0d0d0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="title-bar">New Project</div>
+    <div class="content">
+        <label for="projectName">Project Name:</label>
+        <input type="text" id="projectName" placeholder="my_robot_project" autofocus>
+        <div class="buttons">
+            <button class="btn-cancel" onclick="cancel()">Cancel</button>
+            <button class="btn-create" onclick="create()">Create</button>
+        </div>
+    </div>
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        function create() {
+            const name = document.getElementById('projectName').value.trim();
+            if (name) {
+                ipcRenderer.send('project-name-result', name);
+            } else {
+                document.getElementById('projectName').focus();
+            }
+        }
+
+        function cancel() {
+            ipcRenderer.send('project-name-result', null);
+        }
+
+        document.getElementById('projectName').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') create();
+        });
+    </script>
+</body>
+
+</html>

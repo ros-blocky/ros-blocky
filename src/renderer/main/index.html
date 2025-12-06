@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+  <link href="./index.css" rel="stylesheet">
+  <link href="./pages/welcome/welcome.css" rel="stylesheet">
+  <link href="./pages/loading/loading.css" rel="stylesheet">
+  <link href="./pages/workspace/workspace.css" rel="stylesheet">
+  <link href="./pages/workspace/components/blocks/blocks.css" rel="stylesheet">
+  <link href="./pages/workspace/components/packages-panel/packages-panel.css" rel="stylesheet">
+  <title>ROS Block Code</title>
+</head>
+
+<body>
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <img src="../../../assets/logo.png" alt="Logo" class="top-bar-logo">
+    </div>
+    <div class="top-bar-center">
+      <span id="project-name">ROS Block Code</span>
+    </div>
+    <div class="top-bar-right">
+      <button class="window-btn minimize-btn" id="minimize-btn">−</button>
+      <button class="window-btn maximize-btn" id="maximize-btn">□</button>
+      <button class="window-btn close-btn" id="close-btn">✕</button>
+    </div>
+  </div>
+
+  <!-- Welcome Screen (shown when no project is open) -->
+  <div class="welcome-screen">
+    <div id="welcome-container"></div>
+  </div>
+
+  <!-- Loading Screen (shown during project creation/opening) -->
+  <div class="loading-screen hidden">
+    <div id="loading-container"></div>
+  </div>
+
+  <!-- Main Workspace (shown when project is loaded) -->
+  <div class="workspace hidden">
+    <div id="workspace-container"></div>
+  </div>
+
+  <script type="module" src="pages/welcome/welcome.js"></script>
+  <script type="module" src="pages/loading/loading.js"></script>
+  <script type="module" src="pages/workspace/workspace.js"></script>
+  <script src="./index.js"></script>
+</body>
+
+</html>

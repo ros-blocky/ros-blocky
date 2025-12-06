@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+  <title>First-Time Setup - ROS Blocky</title>
+  <link rel="stylesheet" href="setup.css">
+</head>
+
+<body>
+  <div class="title-bar">
+    <div class="title-text">
+      <span class="letter letter-r">R</span>
+      <span class="letter letter-o">O</span>
+      <span class="letter letter-s">S</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <img src="../../../assets/logo.png" alt="Logo" class="logo">
+    <div class="progress-container">
+      <div class="progress-bubble" id="progress-bubble">0%</div>
+      <div class="progress-bar">
+        <div class="progress-bar-fill" id="progress-bar-fill"></div>
+      </div>
+    </div>
+
+    <div class="status-text-centered" id="status">
+      Installing required components…
+    </div>
+
+    <div class="error-section hidden" id="error-section">
+      <h3>⚠️ Installation Failed</h3>
+      <div class="error-message" id="error-message"></div>
+    </div>
+
+    <button class="retry-button hidden" id="retry-button">
+      🔄 Retry Installation
+    </button>
+
+    <button class="cancel-button" id="cancel-button">
+      Cancel
+    </button>
+  </div>
+
+  <script src="./setup.js"></script>
+</body>
+
+</html>

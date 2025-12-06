@@ -1,0 +1,209 @@
+/* Blocks Container */
+.blocks-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    background: #ffffff;
+}
+
+/* Top Content Area */
+.blocks-top-content {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+/* Cyan Icon Sidebar (Far Left) */
+.blocks-icon-sidebar {
+    width: 50px;
+    background: #00BCD4;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    flex-shrink: 0;
+    height: 100%;
+}
+
+.icon-sidebar-top,
+.icon-sidebar-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.sidebar-icon-btn {
+    width: 35px;
+    height: 35px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.sidebar-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+.sidebar-icon-btn.active {
+    background: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.sidebar-icon-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Main Blocks Area */
+.blocks-main {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+}
+
+/* Blocks Sidebar */
+.blocks-sidebar {
+    width: 200px;
+    background: #f5f5f5;
+    border-right: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    gap: 5px;
+    flex-shrink: 0;
+    overflow-y: auto;
+}
+
+.blocks-sidebar-header {
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+    padding: 8px 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.blocks-category {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: white;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.blocks-category:hover {
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.blocks-category-icon {
+    font-size: 18px;
+}
+
+.blocks-category-label {
+    flex: 1;
+}
+
+/* Category Colors (matching screenshot) */
+.blocks-category.motion {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.blocks-category.motors {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.blocks-category.sensors {
+    background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+}
+
+.blocks-category.control {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.blocks-category.operators {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.blocks-category.variables {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+/* Editor Area */
+.blocks-editor-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Tabs Area */
+.blocks-tabs {
+    display: flex;
+    background: #e8e8e8;
+    border-bottom: 2px solid #d0d0d0;
+    flex-shrink: 0;
+}
+
+.blocks-tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #666;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.blocks-tab:hover {
+    background: #f0f0f0;
+}
+
+.blocks-tab.active {
+    color: #00bcd4;
+    border-bottom-color: #00bcd4;
+    background: white;
+}
+
+/* Editor */
+.blocks-editor {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fafafa;
+    overflow: auto;
+}
+
+.blocks-placeholder {
+    text-align: center;
+    color: #999;
+}
+
+.blocks-placeholder h2 {
+    font-size: 24px;
+    font-weight: 300;
+    margin: 0 0 10px 0;
+    color: #00bcd4;
+}
+
+.blocks-placeholder p {
+    font-size: 14px;
+    margin: 0;
+}

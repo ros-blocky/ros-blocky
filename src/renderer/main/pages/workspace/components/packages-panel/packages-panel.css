@@ -1,0 +1,356 @@
+/* Project Structure Panel */
+.project-structure-panel {
+    width: 100%;
+    height: 100%;
+    background: #f8f8f8;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Panel Header */
+.panel-header {
+    background: #e8e8e8;
+    padding: 10px 15px;
+    border-bottom: 1px solid #d0d0d0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.panel-title {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+    letter-spacing: 0.5px;
+}
+
+.header-add-btn {
+    background: #00bcd4;
+    color: white;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.header-add-btn:hover {
+    background: #00acc1;
+}
+
+/* Panel Content */
+.panel-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px;
+}
+
+/* Empty State */
+#empty-state-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.empty-state {
+    color: #999;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.create-package-btn {
+    background: #00bcd4;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.create-package-btn:hover {
+    background: #00acc1;
+}
+
+/* Packages List */
+.packages-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* Package Item */
+.package-item {
+    background: white;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #e0e0e0;
+}
+
+.package-header {
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+}
+
+.package-header:hover {
+    background: #f0f0f0;
+}
+
+.collapse-arrow {
+    font-size: 12px;
+    color: #666;
+    width: 12px;
+    transition: transform 0.2s;
+}
+
+.package-icon {
+    font-size: 16px;
+}
+
+.package-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    flex: 1;
+}
+
+.package-content {
+    padding-left: 20px;
+    border-top: 1px solid #f0f0f0;
+}
+
+/* Nodes Section */
+.nodes-section {
+    padding: 5px 0;
+}
+
+.nodes-header {
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+}
+
+.nodes-header:hover {
+    background: #f5f5f5;
+}
+
+.collapse-arrow-small {
+    font-size: 10px;
+    color: #666;
+    width: 10px;
+    transition: transform 0.2s;
+}
+
+.nodes-icon {
+    font-size: 14px;
+}
+
+.nodes-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+    flex: 1;
+}
+
+.nodes-list {
+    padding-left: 15px;
+}
+
+.node-item {
+    padding: 5px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.node-item:hover {
+    background: #f5f5f5;
+}
+
+.node-icon {
+    font-size: 12px;
+    color: #00bcd4;
+}
+
+.node-name {
+    font-size: 13px;
+    color: #444;
+}
+
+/* File Sections (MESHES, URDF, CONFIG, LAUNCH) */
+.file-section {
+    padding: 5px 0;
+}
+
+.file-header {
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+    position: relative;
+}
+
+.file-header:hover {
+    background: #f5f5f5;
+}
+
+.folder-icon {
+    font-size: 14px;
+}
+
+.folder-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+    flex: 1;
+}
+
+.section-add-btn {
+    background: #00bcd4;
+    color: white;
+    border: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.2s;
+}
+
+.file-header:hover .section-add-btn,
+.nodes-header:hover .section-add-btn {
+    opacity: 1;
+}
+
+.section-add-btn:hover {
+    background: #00acc1;
+}
+
+.file-list {
+    padding-left: 15px;
+}
+
+.file-item {
+    padding: 5px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.file-item:hover {
+    background: #f5f5f5;
+}
+
+.file-icon {
+    font-size: 12px;
+    color: #ff9800;
+}
+
+.file-name {
+    font-size: 13px;
+    color: #444;
+}
+
+.no-files {
+    padding: 5px 12px;
+    font-size: 12px;
+    color: #999;
+    font-style: italic;
+}
+
+/* Context Menu */
+.context-menu {
+    position: absolute;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    min-width: 180px;
+    padding: 5px 0;
+}
+
+.context-menu-item {
+    padding: 8px 15px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s;
+}
+
+.context-menu-item:hover {
+    background: #f0f0f0;
+}
+
+.context-menu-item.danger {
+    color: #f44336;
+}
+
+.context-menu-item.danger:hover {
+    background: #ffebee;
+}
+
+.context-menu-divider {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 5px 0;
+}
+
+/* Resize Handle */
+.resize-handle {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 5px;
+    cursor: ew-resize;
+    background: transparent;
+}
+
+.resize-handle:hover {
+    background: rgba(0, 188, 212, 0.3);
+}
+
+/* Hidden Class */
+.hidden {
+    display: none !important;
+}
