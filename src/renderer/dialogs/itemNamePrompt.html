@@ -20,6 +20,7 @@
 
         .container {
             padding: 25px;
+            -webkit-app-region: no-drag;
         }
 
         h2 {
@@ -49,6 +50,12 @@
             font-size: 14px;
             color: #333;
             font-weight: 500;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 12px;
         }
 
         input {
@@ -112,16 +119,18 @@
 
 <body>
     <div class="container">
-        <h2>Create New Node</h2>
+        <h2 id="dialog-title">Create New Item</h2>
 
         <div class="package-display">
             Package: <span class="package-name" id="package-name"></span>
         </div>
 
-        <label for="nodeInput">Node Name:</label>
-        <input type="text" id="nodeInput" placeholder="e.g., simple_publisher" autofocus>
-        <div class="error" id="error-msg">Node name must start with a letter and contain only lowercase letters,
-            numbers, and underscores</div>
+        <label for="itemInput" id="input-label">Item Name:</label>
+        <div class="hint" id="hint-text">Lowercase letters, numbers, and underscores only. Must start with a letter.
+        </div>
+        <input type="text" id="itemInput" placeholder="e.g., my_item" autofocus>
+        <div class="error" id="error-msg">Name must start with a letter and contain only lowercase letters, numbers, and
+            underscores</div>
 
         <div class="buttons">
             <button class="btn-cancel" id="cancel-btn">Cancel</button>
@@ -129,7 +138,7 @@
         </div>
     </div>
 
-    <script src="./scripts/nodeNamePrompt.js"></script>
+    <script src="./scripts/itemNamePrompt.js"></script>
 </body>
 
 </html>

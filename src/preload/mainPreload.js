@@ -29,5 +29,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Node management
   promptNodeName: (packageName) => ipcRenderer.invoke('prompt-node-name', packageName),
   createNode: (packageName, nodeName) => ipcRenderer.invoke('create-node', packageName, nodeName),
-  listPackageNodes: (packageName) => ipcRenderer.invoke('list-package-nodes', packageName)
+  listPackageNodes: (packageName) => ipcRenderer.invoke('list-package-nodes', packageName),
+
+  // URDF management
+  promptUrdfName: (packageName) => ipcRenderer.invoke('prompt-urdf-name', packageName),
+  createUrdf: (packageName, urdfName) => ipcRenderer.invoke('create-urdf', packageName, urdfName),
+  listPackageUrdfs: (packageName) => ipcRenderer.invoke('list-package-urdfs', packageName),
+
+  // Config management
+  promptConfigName: (packageName) => ipcRenderer.invoke('prompt-config-name', packageName),
+  createConfig: (packageName, configName) => ipcRenderer.invoke('create-config', packageName, configName),
+  listPackageConfigs: (packageName) => ipcRenderer.invoke('list-package-configs', packageName),
+
+  // Launch file management
+  promptLaunchName: (packageName) => ipcRenderer.invoke('prompt-launch-name', packageName),
+  createLaunch: (packageName, launchName) => ipcRenderer.invoke('create-launch', packageName, launchName),
+  listPackageLaunches: (packageName) => ipcRenderer.invoke('list-package-launches', packageName),
+
+  // Generic file operations (used by UI for urdf, config, launch)
+  promptFileName: (packageName, title, prompt) => ipcRenderer.invoke('prompt-file-name', packageName, title, prompt),
+  createSectionFile: (packageName, folderName, fileName) => ipcRenderer.invoke('create-section-file', packageName, folderName, fileName)
 });

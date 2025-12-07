@@ -19,5 +19,9 @@ contextBridge.exposeInMainWorld('dialogAPI', {
     sendDeletePackageConfirmed: (packageName) => ipcRenderer.send('delete-package-confirmed', packageName),
 
     // Package creation loading
-    onPackageCreationStatus: (callback) => ipcRenderer.on('package-creation-status', (event, status) => callback(status))
+    onPackageCreationStatus: (callback) => ipcRenderer.on('package-creation-status', (event, status) => callback(status)),
+
+    // Generic item prompt (node, urdf, config, launch)
+    onSetItemConfig: (callback) => ipcRenderer.on('set-item-config', (event, config) => callback(config)),
+    sendItemNameResult: (result) => ipcRenderer.send('item-name-result', result)
 });

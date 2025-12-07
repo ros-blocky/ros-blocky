@@ -282,15 +282,16 @@ class PackageService {
     }
 
     /**
-     * Show node name prompt dialog
+     * Show generic item name prompt dialog
+     * @param {string} itemType - Type of item: 'node', 'urdf', 'config', 'launch'
      * @param {string} packageName - Name of the package
-     * @returns {Promise<string|null>} - Node name or null if cancelled
+     * @returns {Promise<{name: string, type: string}|null>} - Item info or null if cancelled
      */
-    promptNodeName(packageName) {
+    promptItemName(itemType, packageName) {
         return new Promise((resolve) => {
             const promptWindow = new BrowserWindow({
                 width: 450,
-                height: 280,
+                height: 300,
                 modal: true,
                 frame: false,
                 resizable: false,
@@ -303,32 +304,45 @@ class PackageService {
                 }
             });
 
-            promptWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/nodeNamePrompt.html'));
+            promptWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/itemNamePrompt.html'));
 
             // Show when ready to prevent white flash
             promptWindow.once('ready-to-show', () => {
                 promptWindow.show();
             });
 
-            // Send package name after load
+            // Send item config after load
             promptWindow.webContents.on('did-finish-load', () => {
-                promptWindow.webContents.send('set-package-name', packageName);
+                promptWindow.webContents.send('set-item-config', {
+                    type: itemType,
+                    packageName: packageName
+                });
             });
 
             const { ipcMain } = require('electron');
-            const handler = (event, nodeName) => {
+            const handler = (event, result) => {
                 promptWindow.close();
-                ipcMain.removeListener('node-name-result', handler);
-                resolve(nodeName);
+                ipcMain.removeListener('item-name-result', handler);
+                resolve(result);
             };
 
-            ipcMain.on('node-name-result', handler);
+            ipcMain.on('item-name-result', handler);
 
             promptWindow.on('closed', () => {
-                ipcMain.removeListener('node-name-result', handler);
+                ipcMain.removeListener('item-name-result', handler);
                 resolve(null);
             });
         });
+    }
+
+    /**
+     * Show node name prompt dialog (convenience method)
+     * @param {string} packageName - Name of the package
+     * @returns {Promise<string|null>} - Node name or null if cancelled
+     */
+    async promptNodeName(packageName) {
+        const result = await this.promptItemName('node', packageName);
+        return result ? result.name : null;
     }
 
     /**
@@ -505,6 +519,458 @@ if __name__ == '__main__':
                 .map(f => f.replace('.py', ''));
         } catch {
             return [];
+        }
+    }
+
+    /**
+     * Prompt for URDF name (convenience method)
+     * @param {string} packageName - Name of the package
+     * @returns {Promise<string|null>}
+     */
+    async promptUrdfName(packageName) {
+        const result = await this.promptItemName('urdf', packageName);
+        return result ? result.name : null;
+    }
+
+    /**
+     * Create a new URDF file in a package
+     * @param {string} packageName - Name of the package
+     * @param {string} urdfName - Name of the URDF file
+     * @returns {Promise<{success: boolean, message: string, urdfPath?: string}>}
+     */
+    async createUrdf(packageName, urdfName) {
+        try {
+            if (!this.currentProjectPath) {
+                return {
+                    success: false,
+                    message: 'No project is currently loaded.'
+                };
+            }
+
+            // Validate name
+            if (!urdfName || urdfName.trim() === '') {
+                return { success: false, message: 'URDF name cannot be empty' };
+            }
+
+            const validNamePattern = /^[a-z][a-z0-9_]*$/;
+            if (!validNamePattern.test(urdfName)) {
+                return {
+                    success: false,
+                    message: 'Invalid URDF name. Must start with a letter and contain only lowercase letters, numbers, and underscores.'
+                };
+            }
+
+            const packagePath = path.join(this.currentProjectPath, 'src', packageName);
+            const urdfDir = path.join(packagePath, 'urdf');
+            const urdfPath = path.join(urdfDir, `${urdfName}.xacro`);
+
+            // Check if package exists
+            try {
+                await fs.access(packagePath);
+            } catch {
+                return {
+                    success: false,
+                    message: `Package "${packageName}" not found.`
+                };
+            }
+
+            // Create urdf directory if it doesn't exist
+            await fs.mkdir(urdfDir, { recursive: true });
+
+            // Check if URDF already exists
+            try {
+                await fs.access(urdfPath);
+                return {
+                    success: false,
+                    message: `URDF "${urdfName}" already exists in package "${packageName}".`
+                };
+            } catch {
+                // URDF doesn't exist, continue
+            }
+
+            // Create URDF xacro file
+            const urdfContent = `<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="${urdfName}">
+    <!-- ${urdfName} URDF description -->
+    
+    <!-- Materials -->
+    <material name="white">
+        <color rgba="1 1 1 1"/>
+    </material>
+    <material name="blue">
+        <color rgba="0 0 0.8 1"/>
+    </material>
+    
+    <!-- Base Link -->
+    <link name="base_link">
+        <visual>
+            <geometry>
+                <box size="0.1 0.1 0.1"/>
+            </geometry>
+            <material name="blue"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.1 0.1 0.1"/>
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="1.0"/>
+            <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
+        </inertial>
+    </link>
+    
+</robot>
+`;
+
+            await fs.writeFile(urdfPath, urdfContent);
+
+            return {
+                success: true,
+                message: `URDF "${urdfName}" created successfully!`,
+                urdfPath
+            };
+
+        } catch (error) {
+            console.error('Error creating URDF:', error);
+            return {
+                success: false,
+                message: `Error creating URDF: ${error.message}`
+            };
+        }
+    }
+
+    /**
+     * List URDFs in a package
+     * @param {string} packageName - Name of the package
+     * @returns {Promise<string[]>}
+     */
+    async listPackageUrdfs(packageName) {
+        try {
+            const urdfDir = path.join(this.currentProjectPath, 'src', packageName, 'urdf');
+            const files = await fs.readdir(urdfDir);
+            return files
+                .filter(f => f.endsWith('.xacro') || f.endsWith('.urdf'))
+                .map(f => f.replace(/\.(xacro|urdf)$/, ''));
+        } catch {
+            return [];
+        }
+    }
+
+    /**
+     * Prompt for config name (convenience method)
+     * @param {string} packageName - Name of the package
+     * @returns {Promise<string|null>}
+     */
+    async promptConfigName(packageName) {
+        const result = await this.promptItemName('config', packageName);
+        return result ? result.name : null;
+    }
+
+    /**
+     * Create a new config file in a package
+     * @param {string} packageName - Name of the package
+     * @param {string} configName - Name of the config file
+     * @returns {Promise<{success: boolean, message: string, configPath?: string}>}
+     */
+    async createConfig(packageName, configName) {
+        try {
+            if (!this.currentProjectPath) {
+                return {
+                    success: false,
+                    message: 'No project is currently loaded.'
+                };
+            }
+
+            // Validate name
+            if (!configName || configName.trim() === '') {
+                return { success: false, message: 'Config name cannot be empty' };
+            }
+
+            const validNamePattern = /^[a-z][a-z0-9_]*$/;
+            if (!validNamePattern.test(configName)) {
+                return {
+                    success: false,
+                    message: 'Invalid config name. Must start with a letter and contain only lowercase letters, numbers, and underscores.'
+                };
+            }
+
+            const packagePath = path.join(this.currentProjectPath, 'src', packageName);
+            const configDir = path.join(packagePath, 'config');
+            const configPath = path.join(configDir, `${configName}.yaml`);
+
+            // Check if package exists
+            try {
+                await fs.access(packagePath);
+            } catch {
+                return {
+                    success: false,
+                    message: `Package "${packageName}" not found.`
+                };
+            }
+
+            // Create config directory if it doesn't exist
+            await fs.mkdir(configDir, { recursive: true });
+
+            // Check if config already exists
+            try {
+                await fs.access(configPath);
+                return {
+                    success: false,
+                    message: `Config "${configName}" already exists in package "${packageName}".`
+                };
+            } catch {
+                // Config doesn't exist, continue
+            }
+
+            // Create config yaml file
+            const configContent = `# ${configName} configuration file
+# Package: ${packageName}
+
+/**:
+  ros__parameters:
+    # Add your parameters here
+    example_param: "value"
+    example_number: 1.0
+    example_list:
+      - item1
+      - item2
+`;
+
+            await fs.writeFile(configPath, configContent);
+
+            return {
+                success: true,
+                message: `Config "${configName}" created successfully!`,
+                configPath
+            };
+
+        } catch (error) {
+            console.error('Error creating config:', error);
+            return {
+                success: false,
+                message: `Error creating config: ${error.message}`
+            };
+        }
+    }
+
+    /**
+     * List configs in a package
+     * @param {string} packageName - Name of the package
+     * @returns {Promise<string[]>}
+     */
+    async listPackageConfigs(packageName) {
+        try {
+            const configDir = path.join(this.currentProjectPath, 'src', packageName, 'config');
+            const files = await fs.readdir(configDir);
+            return files
+                .filter(f => f.endsWith('.yaml') || f.endsWith('.yml'))
+                .map(f => f.replace(/\.(yaml|yml)$/, ''));
+        } catch {
+            return [];
+        }
+    }
+
+    /**
+     * Prompt for launch file name (convenience method)
+     * @param {string} packageName - Name of the package
+     * @returns {Promise<string|null>}
+     */
+    async promptLaunchName(packageName) {
+        const result = await this.promptItemName('launch', packageName);
+        return result ? result.name : null;
+    }
+
+    /**
+     * Create a new launch file in a package
+     * @param {string} packageName - Name of the package
+     * @param {string} launchName - Name of the launch file
+     * @returns {Promise<{success: boolean, message: string, launchPath?: string}>}
+     */
+    async createLaunch(packageName, launchName) {
+        try {
+            if (!this.currentProjectPath) {
+                return {
+                    success: false,
+                    message: 'No project is currently loaded.'
+                };
+            }
+
+            // Validate name
+            if (!launchName || launchName.trim() === '') {
+                return { success: false, message: 'Launch file name cannot be empty' };
+            }
+
+            const validNamePattern = /^[a-z][a-z0-9_]*$/;
+            if (!validNamePattern.test(launchName)) {
+                return {
+                    success: false,
+                    message: 'Invalid launch name. Must start with a letter and contain only lowercase letters, numbers, and underscores.'
+                };
+            }
+
+            const packagePath = path.join(this.currentProjectPath, 'src', packageName);
+            const launchDir = path.join(packagePath, 'launch');
+            const launchPath = path.join(launchDir, `${launchName}.py`);
+
+            // Check if package exists
+            try {
+                await fs.access(packagePath);
+            } catch {
+                return {
+                    success: false,
+                    message: `Package "${packageName}" not found.`
+                };
+            }
+
+            // Create launch directory if it doesn't exist
+            await fs.mkdir(launchDir, { recursive: true });
+
+            // Check if launch file already exists
+            try {
+                await fs.access(launchPath);
+                return {
+                    success: false,
+                    message: `Launch file "${launchName}" already exists in package "${packageName}".`
+                };
+            } catch {
+                // Launch doesn't exist, continue
+            }
+
+            // Create launch Python file
+            const launchContent = `#!/usr/bin/env python3
+"""${launchName} launch file for ${packageName} package."""
+
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node
+
+
+def generate_launch_description():
+    """Generate launch description."""
+    
+    # Declare launch arguments
+    # use_sim_time = LaunchConfiguration('use_sim_time')
+    
+    # declare_use_sim_time = DeclareLaunchArgument(
+    #     'use_sim_time',
+    #     default_value='false',
+    #     description='Use simulation time'
+    # )
+    
+    # Define nodes
+    # example_node = Node(
+    #     package='${packageName}',
+    #     executable='your_node_name',
+    #     name='your_node_name',
+    #     output='screen',
+    #     parameters=[{'use_sim_time': use_sim_time}]
+    # )
+    
+    return LaunchDescription([
+        # declare_use_sim_time,
+        # example_node,
+    ])
+`;
+
+            await fs.writeFile(launchPath, launchContent);
+
+            return {
+                success: true,
+                message: `Launch file "${launchName}" created successfully!`,
+                launchPath
+            };
+
+        } catch (error) {
+            console.error('Error creating launch file:', error);
+            return {
+                success: false,
+                message: `Error creating launch file: ${error.message}`
+            };
+        }
+    }
+
+    /**
+     * List launch files in a package
+     * @param {string} packageName - Name of the package
+     * @returns {Promise<string[]>}
+     */
+    async listPackageLaunches(packageName) {
+        try {
+            const launchDir = path.join(this.currentProjectPath, 'src', packageName, 'launch');
+            const files = await fs.readdir(launchDir);
+            return files
+                .filter(f => f.endsWith('.py'))
+                .map(f => f.replace('.py', ''));
+        } catch {
+            return [];
+        }
+    }
+
+    /**
+     * Generic file name prompt (used by UI for urdf, config, launch)
+     * Uses the generic item prompt dialog
+     * @param {string} packageName - Name of the package
+     * @param {string} title - Dialog title
+     * @param {string} prompt - Prompt text
+     * @returns {Promise<string|null>}
+     */
+    async promptGenericFileName(packageName, title, prompt) {
+        // Determine the item type based on the title
+        let itemType = 'node'; // default
+        if (title.toLowerCase().includes('urdf')) {
+            itemType = 'urdf';
+        } else if (title.toLowerCase().includes('config')) {
+            itemType = 'config';
+        } else if (title.toLowerCase().includes('launch')) {
+            itemType = 'launch';
+        }
+
+        const result = await this.promptItemName(itemType, packageName);
+        return result ? result.name : null;
+    }
+
+    /**
+     * Create a file in a section folder (urdf, config, launch)
+     * @param {string} packageName - Name of the package
+     * @param {string} folderName - Folder name (urdf, config, launch)
+     * @param {string} fileName - Full file name with extension
+     * @returns {Promise<{success: boolean, message: string, filePath?: string}>}
+     */
+    async createSectionFile(packageName, folderName, fileName) {
+        try {
+            if (!this.currentProjectPath) {
+                return {
+                    success: false,
+                    message: 'No project is currently loaded.'
+                };
+            }
+
+            // Extract name without extension
+            const baseName = fileName.replace(/\.[^/.]+$/, '');
+
+            // Route to specific create method based on folder
+            switch (folderName) {
+                case 'urdf':
+                    return await this.createUrdf(packageName, baseName);
+                case 'config':
+                    return await this.createConfig(packageName, baseName);
+                case 'launch':
+                    return await this.createLaunch(packageName, baseName);
+                default:
+                    return {
+                        success: false,
+                        message: `Unknown folder type: ${folderName}`
+                    };
+            }
+
+        } catch (error) {
+            console.error('Error creating section file:', error);
+            return {
+                success: false,
+                message: `Error creating file: ${error.message}`
+            };
         }
     }
 

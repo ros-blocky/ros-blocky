@@ -639,30 +639,69 @@ async function createPackageElement(packageName, packagesList) {
     packageItem.className = 'package-item';
     packageItem.dataset.packageName = packageName;
 
-    // Get nodes for this package
-    const nodes = await window.electronAPI.listPackageNodes(packageName);
+    // Get all items for this package
+    const [nodes, urdfs, configs, launches] = await Promise.all([
+        window.electronAPI.listPackageNodes(packageName),
+        window.electronAPI.listPackageUrdfs(packageName),
+        window.electronAPI.listPackageConfigs(packageName),
+        window.electronAPI.listPackageLaunches(packageName)
+    ]);
+
+    // Check if package has any content
+    const hasContent = nodes.length > 0 || urdfs.length > 0 || configs.length > 0 || launches.length > 0;
 
     // Full package display with collapse arrow and sections
     packageItem.innerHTML = `
         <div class="package-header">
-            <span class="collapse-arrow ${nodes.length > 0 ? '' : 'hidden'}">▶</span>
+            <span class="collapse-arrow ${hasContent ? '' : 'hidden'}">▶</span>
             <span class="package-icon">📦</span>
             <span class="package-name">${packageName}</span>
         </div>
         <div class="package-content hidden">
-            <div class="nodes-section">
+            <!-- NODES Section -->
+            <div class="nodes-section" data-section="nodes">
                 <div class="nodes-header">
                     <span class="section-collapse-arrow">▶</span>
                     <span class="section-icon">⚙️</span>
                     <span class="section-name">NODES</span>
-                    <button class="section-add-btn" title="Add Node">+</button>
+                    <button class="section-add-btn" data-type="node" title="Add Node">+</button>
                 </div>
                 <div class="nodes-list hidden"></div>
+            </div>
+            <!-- URDF Section -->
+            <div class="file-section" data-section="urdf" data-folder="urdf">
+                <div class="file-header">
+                    <span class="section-collapse-arrow">▶</span>
+                    <span class="section-icon">🤖</span>
+                    <span class="section-name">URDF</span>
+                    <button class="section-add-btn" data-type="urdf" title="Add URDF">+</button>
+                </div>
+                <div class="file-list hidden"></div>
+            </div>
+            <!-- CONFIG Section -->
+            <div class="file-section" data-section="config" data-folder="config">
+                <div class="file-header">
+                    <span class="section-collapse-arrow">▶</span>
+                    <span class="section-icon">⚙️</span>
+                    <span class="section-name">CONFIG</span>
+                    <button class="section-add-btn" data-type="config" title="Add Config">+</button>
+                </div>
+                <div class="file-list hidden"></div>
+            </div>
+            <!-- LAUNCH Section -->
+            <div class="file-section" data-section="launch" data-folder="launch">
+                <div class="file-header">
+                    <span class="section-collapse-arrow">▶</span>
+                    <span class="section-icon">🚀</span>
+                    <span class="section-name">LAUNCH</span>
+                    <button class="section-add-btn" data-type="launch" title="Add Launch">+</button>
+                </div>
+                <div class="file-list hidden"></div>
             </div>
         </div>
     `;
 
-    // Setup collapse behavior
+    // Setup package collapse behavior
     const collapseArrow = packageItem.querySelector('.collapse-arrow');
     const packageContent = packageItem.querySelector('.package-content');
 
@@ -674,20 +713,21 @@ async function createPackageElement(packageName, packagesList) {
         });
     }
 
-    // Setup nodes section collapse
-    const nodesHeader = packageItem.querySelector('.nodes-header');
-    const sectionArrow = packageItem.querySelector('.section-collapse-arrow');
-    const nodesList = packageItem.querySelector('.nodes-list');
+    // Setup nodes section
+    const nodesSection = packageItem.querySelector('[data-section="nodes"]');
+    const nodesHeader = nodesSection.querySelector('.nodes-header');
+    const nodesSectionArrow = nodesSection.querySelector('.section-collapse-arrow');
+    const nodesList = nodesSection.querySelector('.nodes-list');
 
     nodesHeader.addEventListener('click', (e) => {
         if (e.target.classList.contains('section-add-btn')) return;
         e.stopPropagation();
-        sectionArrow.classList.toggle('expanded');
+        nodesSectionArrow.classList.toggle('expanded');
         nodesList.classList.toggle('hidden');
     });
 
-    // Setup add node button
-    const addNodeBtn = packageItem.querySelector('.section-add-btn');
+    // Add node button
+    const addNodeBtn = nodesSection.querySelector('.section-add-btn');
     addNodeBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         await addNodeToPackage(packageName);
@@ -700,16 +740,77 @@ async function createPackageElement(packageName, packagesList) {
             nodeItem.className = 'node-item';
             nodeItem.dataset.nodeName = nodeName;
             nodeItem.innerHTML = `
-                <span class="node-icon">🐍</span>
+                <img class="node-icon" src="assets/icons/file-icon.png" alt="file">
                 <span class="node-name">${nodeName}</span>
             `;
             nodesList.appendChild(nodeItem);
         });
-        // Auto-expand if has nodes
+    }
+
+    // File icon path for consistent styling
+    const fileIconPath = 'assets/icons/file-icon.png';
+
+    // Setup URDF, CONFIG, LAUNCH sections
+    const fileSections = [
+        { type: 'urdf', files: urdfs },
+        { type: 'config', files: configs },
+        { type: 'launch', files: launches }
+    ];
+
+    fileSections.forEach(({ type, files, icon }) => {
+        const section = packageItem.querySelector(`[data-section="${type}"]`);
+        const header = section.querySelector('.file-header');
+        const sectionArrow = section.querySelector('.section-collapse-arrow');
+        const fileList = section.querySelector('.file-list');
+
+        // Section collapse
+        header.addEventListener('click', (e) => {
+            if (e.target.classList.contains('section-add-btn')) return;
+            e.stopPropagation();
+            sectionArrow.classList.toggle('expanded');
+            fileList.classList.toggle('hidden');
+        });
+
+        // Add button
+        const addBtn = section.querySelector('.section-add-btn');
+        addBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await addFilesToSection(packageName, type);
+        });
+
+        // Populate files
+        if (files.length > 0) {
+            files.forEach(fileName => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <img class="file-icon" src="${fileIconPath}" alt="file">
+                    <span class="file-name">${fileName}</span>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        }
+    });
+
+    // Auto-expand package if it has content
+    if (hasContent) {
         collapseArrow.classList.add('expanded');
         packageContent.classList.remove('hidden');
-        sectionArrow.classList.add('expanded');
-        nodesList.classList.remove('hidden');
+
+        // Auto-expand sections that have items
+        if (nodes.length > 0) {
+            nodesSectionArrow.classList.add('expanded');
+            nodesList.classList.remove('hidden');
+        }
+        fileSections.forEach(({ type, files }) => {
+            if (files.length > 0) {
+                const section = packageItem.querySelector(`[data-section="${type}"]`);
+                const arrow = section.querySelector('.section-collapse-arrow');
+                const list = section.querySelector('.file-list');
+                arrow.classList.add('expanded');
+                list.classList.remove('hidden');
+            }
+        });
     }
 
     packagesList.appendChild(packageItem);
