@@ -3,6 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
     <style>
         * {
             margin: 0;
@@ -138,14 +140,7 @@
         <div class="progress-bar"></div>
     </div>
 
-    <script>
-        const { ipcRenderer } = require('electron');
-
-        // Listen for status updates
-        ipcRenderer.on('package-creation-status', (event, status) => {
-            document.getElementById('status-text').textContent = status;
-        });
-    </script>
+    <script src="./scripts/packageCreationLoading.js"></script>
 </body>
 
 </html>

@@ -18,17 +18,29 @@
             overflow: hidden;
         }
 
-        .title-bar {
-            background: #00bbfe;
-            color: white;
-            padding: 8px 16px;
-            font-size: 14px;
-            font-weight: 600;
-            -webkit-app-region: drag;
+        .container {
+            padding: 25px;
         }
 
-        .content {
-            padding: 20px;
+        h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .package-display {
+            background: #e8e8e8;
+            padding: 10px 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .package-name {
+            color: #00bbfe;
+            font-weight: 600;
         }
 
         label {
@@ -36,11 +48,12 @@
             margin-bottom: 8px;
             font-size: 14px;
             color: #333;
+            font-weight: 500;
         }
 
         input {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 14px;
@@ -51,18 +64,25 @@
             border-color: #00bbfe;
         }
 
+        .error {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 8px;
+            display: none;
+        }
+
         .buttons {
-            margin-top: 20px;
+            margin-top: 25px;
             text-align: right;
         }
 
         button {
-            padding: 8px 20px;
+            padding: 10px 25px;
             font-size: 14px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            margin-left: 8px;
+            margin-left: 10px;
         }
 
         .btn-create {
@@ -71,7 +91,12 @@
         }
 
         .btn-create:hover {
-            background: #0099d6;
+            background: #009ed8;
+        }
+
+        .btn-create:disabled {
+            background: #ccc;
+            cursor: not-allowed;
         }
 
         .btn-cancel {
@@ -86,16 +111,25 @@
 </head>
 
 <body>
-    <div class="title-bar">New Project</div>
-    <div class="content">
-        <label for="projectName">Project Name:</label>
-        <input type="text" id="projectName" placeholder="my_robot_project" autofocus>
+    <div class="container">
+        <h2>Create New Node</h2>
+
+        <div class="package-display">
+            Package: <span class="package-name" id="package-name"></span>
+        </div>
+
+        <label for="nodeInput">Node Name:</label>
+        <input type="text" id="nodeInput" placeholder="e.g., simple_publisher" autofocus>
+        <div class="error" id="error-msg">Node name must start with a letter and contain only lowercase letters,
+            numbers, and underscores</div>
+
         <div class="buttons">
             <button class="btn-cancel" id="cancel-btn">Cancel</button>
-            <button class="btn-create" id="create-btn">Create</button>
+            <button class="btn-create" id="create-btn" disabled>Create</button>
         </div>
     </div>
-    <script src="./scripts/projectNamePrompt.js"></script>
+
+    <script src="./scripts/nodeNamePrompt.js"></script>
 </body>
 
 </html>

@@ -48,6 +48,27 @@ function registerProjectIPC() {
     ipcMain.handle('delete-package', async (event, packageName) => {
         return await packageService.deletePackage(packageName);
     });
+
+    /**
+     * Handle prompt-node-name IPC request
+     */
+    ipcMain.handle('prompt-node-name', async (event, packageName) => {
+        return await packageService.promptNodeName(packageName);
+    });
+
+    /**
+     * Handle create-node IPC request
+     */
+    ipcMain.handle('create-node', async (event, packageName, nodeName) => {
+        return await packageService.createNode(packageName, nodeName);
+    });
+
+    /**
+     * Handle list-package-nodes IPC request
+     */
+    ipcMain.handle('list-package-nodes', async (event, packageName) => {
+        return await packageService.listPackageNodes(packageName);
+    });
 }
 
 module.exports = { registerProjectIPC };

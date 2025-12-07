@@ -639,13 +639,78 @@ async function createPackageElement(packageName, packagesList) {
     packageItem.className = 'package-item';
     packageItem.dataset.packageName = packageName;
 
-    // Simple package display - just show name with icon
+    // Get nodes for this package
+    const nodes = await window.electronAPI.listPackageNodes(packageName);
+
+    // Full package display with collapse arrow and sections
     packageItem.innerHTML = `
         <div class="package-header">
+            <span class="collapse-arrow ${nodes.length > 0 ? '' : 'hidden'}">▶</span>
             <span class="package-icon">📦</span>
             <span class="package-name">${packageName}</span>
         </div>
+        <div class="package-content hidden">
+            <div class="nodes-section">
+                <div class="nodes-header">
+                    <span class="section-collapse-arrow">▶</span>
+                    <span class="section-icon">⚙️</span>
+                    <span class="section-name">NODES</span>
+                    <button class="section-add-btn" title="Add Node">+</button>
+                </div>
+                <div class="nodes-list hidden"></div>
+            </div>
+        </div>
     `;
+
+    // Setup collapse behavior
+    const collapseArrow = packageItem.querySelector('.collapse-arrow');
+    const packageContent = packageItem.querySelector('.package-content');
+
+    if (collapseArrow && !collapseArrow.classList.contains('hidden')) {
+        collapseArrow.addEventListener('click', (e) => {
+            e.stopPropagation();
+            collapseArrow.classList.toggle('expanded');
+            packageContent.classList.toggle('hidden');
+        });
+    }
+
+    // Setup nodes section collapse
+    const nodesHeader = packageItem.querySelector('.nodes-header');
+    const sectionArrow = packageItem.querySelector('.section-collapse-arrow');
+    const nodesList = packageItem.querySelector('.nodes-list');
+
+    nodesHeader.addEventListener('click', (e) => {
+        if (e.target.classList.contains('section-add-btn')) return;
+        e.stopPropagation();
+        sectionArrow.classList.toggle('expanded');
+        nodesList.classList.toggle('hidden');
+    });
+
+    // Setup add node button
+    const addNodeBtn = packageItem.querySelector('.section-add-btn');
+    addNodeBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await addNodeToPackage(packageName);
+    });
+
+    // Populate nodes
+    if (nodes.length > 0) {
+        nodes.forEach(nodeName => {
+            const nodeItem = document.createElement('div');
+            nodeItem.className = 'node-item';
+            nodeItem.dataset.nodeName = nodeName;
+            nodeItem.innerHTML = `
+                <span class="node-icon">🐍</span>
+                <span class="node-name">${nodeName}</span>
+            `;
+            nodesList.appendChild(nodeItem);
+        });
+        // Auto-expand if has nodes
+        collapseArrow.classList.add('expanded');
+        packageContent.classList.remove('hidden');
+        sectionArrow.classList.add('expanded');
+        nodesList.classList.remove('hidden');
+    }
 
     packagesList.appendChild(packageItem);
 }

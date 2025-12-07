@@ -3,6 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
     <style>
         * {
             margin: 0;
@@ -27,6 +29,7 @@
 
         .content {
             padding: 20px;
+            -webkit-app-region: no-drag;
         }
 
         label {
@@ -104,53 +107,11 @@
         <input type="text" id="packageName" placeholder="my_robot_package" autofocus>
         <div class="error" id="error-msg"></div>
         <div class="buttons">
-            <button class="btn-cancel" onclick="cancel()">Cancel</button>
-            <button class="btn-create" onclick="create()">Create</button>
+            <button class="btn-cancel" id="cancel-btn">Cancel</button>
+            <button class="btn-create" id="create-btn">Create</button>
         </div>
     </div>
-    <script>
-        const { ipcRenderer } = require('electron');
-
-        function validatePackageName(name) {
-            // ROS2 package naming rules: lowercase letters, numbers, underscores, must start with letter
-            const validNamePattern = /^[a-z][a-z0-9_]*$/;
-            if (!name || name.trim() === '') {
-                return 'Package name cannot be empty';
-            }
-            if (!validNamePattern.test(name)) {
-                return 'Must start with a letter and contain only lowercase letters, numbers, and underscores';
-            }
-            return null;
-        }
-
-        function create() {
-            const name = document.getElementById('packageName').value.trim();
-            const errorMsg = document.getElementById('error-msg');
-            const error = validatePackageName(name);
-
-            if (error) {
-                errorMsg.textContent = error;
-                errorMsg.style.display = 'block';
-                document.getElementById('packageName').focus();
-            } else {
-                errorMsg.style.display = 'none';
-                ipcRenderer.send('package-name-response', name);
-            }
-        }
-
-        function cancel() {
-            ipcRenderer.send('package-name-response', null);
-        }
-
-        document.getElementById('packageName').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') create();
-        });
-
-        // Clear error on input
-        document.getElementById('packageName').addEventListener('input', () => {
-            document.getElementById('error-msg').style.display = 'none';
-        });
-    </script>
+    <script src="./scripts/packageNamePrompt.js"></script>
 </body>
 
 </html>

@@ -3,6 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
     <style>
         * {
             margin: 0;
@@ -132,54 +134,11 @@
         <input type="text" id="confirmInput" placeholder="Enter package name" autofocus>
         <div class="error" id="error-msg">Package name does not match</div>
         <div class="buttons">
-            <button class="btn-cancel" onclick="cancel()">Cancel</button>
-            <button class="btn-delete" id="delete-btn" onclick="confirmDelete()" disabled>Delete Package</button>
+            <button class="btn-cancel" id="cancel-btn">Cancel</button>
+            <button class="btn-delete" id="delete-btn" disabled>Delete Package</button>
         </div>
     </div>
-    <script>
-        const { ipcRenderer } = require('electron');
-
-        let packageName = '';
-
-        // Get package name from main process
-        ipcRenderer.on('set-package-name', (event, name) => {
-            packageName = name;
-            document.getElementById('package-name-display').textContent = name;
-        });
-
-        const confirmInput = document.getElementById('confirmInput');
-        const deleteBtn = document.getElementById('delete-btn');
-        const errorMsg = document.getElementById('error-msg');
-
-        confirmInput.addEventListener('input', () => {
-            const inputValue = confirmInput.value.trim();
-            if (inputValue === packageName) {
-                deleteBtn.disabled = false;
-                errorMsg.style.display = 'none';
-            } else {
-                deleteBtn.disabled = true;
-            }
-        });
-
-        function confirmDelete() {
-            const inputValue = confirmInput.value.trim();
-            if (inputValue === packageName) {
-                ipcRenderer.send('delete-package-confirmed', packageName);
-            } else {
-                errorMsg.style.display = 'block';
-            }
-        }
-
-        function cancel() {
-            ipcRenderer.send('delete-package-confirmed', null);
-        }
-
-        confirmInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !deleteBtn.disabled) {
-                confirmDelete();
-            }
-        });
-    </script>
+    <script src="./scripts/deletePackageConfirm.js"></script>
 </body>
 
 </html>

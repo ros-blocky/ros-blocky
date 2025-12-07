@@ -76,15 +76,22 @@ class MainService {
                 modal: true,
                 frame: false,
                 resizable: false,
+                show: false,
                 parent: BrowserWindow.getFocusedWindow(),
                 webPreferences: {
-                    nodeIntegration: true,
-                    contextIsolation: false
+                    preload: path.join(__dirname, '../../preload/dialogPreload.js'),
+                    nodeIntegration: false,
+                    contextIsolation: true
                 }
             });
 
             // Load HTML file
             promptWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/projectNamePrompt.html'));
+
+            // Show when ready to prevent white flash
+            promptWindow.once('ready-to-show', () => {
+                promptWindow.show();
+            });
 
             const handler = (event, name) => {
                 promptWindow.close();
