@@ -4,7 +4,7 @@
     width: 100%;
     height: calc(100vh - 32px - 22px);
     /* Full height minus top bar (32px) and bottom bar (22px) */
-    background: #00BCD4;
+    background: #ffffff;
     overflow: hidden;
 }
 
@@ -21,14 +21,14 @@
 /* Resize Handle */
 .workspace-resize-handle {
     width: 3px;
-    background: #ffffff;
+    background: transparent;
     cursor: ew-resize;
     flex-shrink: 0;
     transition: background 0.2s;
 }
 
 .workspace-resize-handle:hover {
-    background: #00bcd4;
+    background: #00bbfe;
 }
 
 /* Packages Panel (Right) */
@@ -40,8 +40,6 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border-left: 1px solid #e0e0e0;
-    transition: width 0.15s ease-out;
 }
 
 /* Collapsed state for packages panel */
@@ -72,7 +70,7 @@
 /* Workspace Bottom Bar (Full Width) */
 .workspace-bottom-bar {
     height: 22px;
-    background: #00BCD4;
+    background: #00bbfe;
     display: flex;
     justify-content: space-between;
     align-items: center;

@@ -62,12 +62,14 @@ function setupResizeHandle() {
             // Expand
             packagesPanel.classList.remove('collapsed');
             packagesPanel.style.width = `${lastExpandedWidth}px`;
+            blocksPanel.style.flex = '';  // Reset to CSS default
             resizeHandle.style.display = '';
         } else {
             // Collapse
             lastExpandedWidth = packagesPanel.offsetWidth;
             packagesPanel.classList.add('collapsed');
             packagesPanel.style.width = '0px';
+            blocksPanel.style.flex = '1';  // Expand blocks to fill space
         }
     });
 
@@ -85,7 +87,6 @@ function setupResizeHandle() {
         if (!isResizing) return;
 
         const diff = e.clientX - startX;
-        const newBlocksWidth = startBlocksWidth + diff;
         const newPackagesWidth = startPackagesWidth - diff;
 
         // Check if should collapse (dragged to the right past threshold)
@@ -94,19 +95,15 @@ function setupResizeHandle() {
             packagesPanel.classList.add('collapsed');
             packagesPanel.style.width = '0px';
             blocksPanel.style.flex = '1';
-        } else if (newPackagesWidth >= COLLAPSE_THRESHOLD) {
+        } else {
             // Expand/resize normally
             packagesPanel.classList.remove('collapsed');
+            blocksPanel.style.flex = '1';  // Always fill remaining space
 
-            if (newBlocksWidth >= 300 && newPackagesWidth >= MIN_WIDTH && newPackagesWidth <= MAX_WIDTH) {
-                blocksPanel.style.flex = `0 0 ${newBlocksWidth}px`;
-                packagesPanel.style.width = `${newPackagesWidth}px`;
-                lastExpandedWidth = newPackagesWidth;
-            } else if (newPackagesWidth > MAX_WIDTH) {
-                packagesPanel.style.width = `${MAX_WIDTH}px`;
-            } else if (newPackagesWidth < MIN_WIDTH && newPackagesWidth >= COLLAPSE_THRESHOLD) {
-                packagesPanel.style.width = `${MIN_WIDTH}px`;
-            }
+            // Clamp packages width between MIN and MAX
+            const clampedWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newPackagesWidth));
+            packagesPanel.style.width = `${clampedWidth}px`;
+            lastExpandedWidth = clampedWidth;
         }
     });
 
