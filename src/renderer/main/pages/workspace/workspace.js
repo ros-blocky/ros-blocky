@@ -50,12 +50,32 @@ function setupResizeHandle() {
     let startX = 0;
     let startBlocksWidth = 0;
     let startPackagesWidth = 0;
+    let lastExpandedWidth = 300; // Remember last width before collapse
+
+    const COLLAPSE_THRESHOLD = 100; // Collapse when width goes below this
+    const MIN_WIDTH = 200;
+    const MAX_WIDTH = 500;
+
+    // Double-click to toggle collapse
+    resizeHandle.addEventListener('dblclick', () => {
+        if (packagesPanel.classList.contains('collapsed')) {
+            // Expand
+            packagesPanel.classList.remove('collapsed');
+            packagesPanel.style.width = `${lastExpandedWidth}px`;
+            resizeHandle.style.display = '';
+        } else {
+            // Collapse
+            lastExpandedWidth = packagesPanel.offsetWidth;
+            packagesPanel.classList.add('collapsed');
+            packagesPanel.style.width = '0px';
+        }
+    });
 
     resizeHandle.addEventListener('mousedown', (e) => {
         isResizing = true;
         startX = e.clientX;
         startBlocksWidth = blocksPanel.offsetWidth;
-        startPackagesWidth = packagesPanel.offsetWidth;
+        startPackagesWidth = packagesPanel.classList.contains('collapsed') ? 0 : packagesPanel.offsetWidth;
         document.body.style.cursor = 'ew-resize';
         document.body.style.userSelect = 'none';
         e.preventDefault();
@@ -68,10 +88,25 @@ function setupResizeHandle() {
         const newBlocksWidth = startBlocksWidth + diff;
         const newPackagesWidth = startPackagesWidth - diff;
 
-        // Apply min/max constraints
-        if (newBlocksWidth >= 300 && newPackagesWidth >= 200 && newPackagesWidth <= 500) {
-            blocksPanel.style.flex = `0 0 ${newBlocksWidth}px`;
-            packagesPanel.style.width = `${newPackagesWidth}px`;
+        // Check if should collapse (dragged to the right past threshold)
+        if (newPackagesWidth < COLLAPSE_THRESHOLD) {
+            // Collapse the panel
+            packagesPanel.classList.add('collapsed');
+            packagesPanel.style.width = '0px';
+            blocksPanel.style.flex = '1';
+        } else if (newPackagesWidth >= COLLAPSE_THRESHOLD) {
+            // Expand/resize normally
+            packagesPanel.classList.remove('collapsed');
+
+            if (newBlocksWidth >= 300 && newPackagesWidth >= MIN_WIDTH && newPackagesWidth <= MAX_WIDTH) {
+                blocksPanel.style.flex = `0 0 ${newBlocksWidth}px`;
+                packagesPanel.style.width = `${newPackagesWidth}px`;
+                lastExpandedWidth = newPackagesWidth;
+            } else if (newPackagesWidth > MAX_WIDTH) {
+                packagesPanel.style.width = `${MAX_WIDTH}px`;
+            } else if (newPackagesWidth < MIN_WIDTH && newPackagesWidth >= COLLAPSE_THRESHOLD) {
+                packagesPanel.style.width = `${MIN_WIDTH}px`;
+            }
         }
     });
 
