@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .title-bar {
+            background: #e74c3c;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            -webkit-app-region: drag;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .warning-icon {
+            font-size: 48px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .warning-message {
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .package-name-display {
+            font-weight: 600;
+            color: #e74c3c;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .confirm-text {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #e74c3c;
+        }
+
+        .error {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .buttons {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        button {
+            padding: 8px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        .btn-delete {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #c0392b;
+        }
+
+        .btn-delete:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-cancel {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-cancel:hover {
+            background: #d0d0d0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="title-bar">Delete Package</div>
+    <div class="content">
+        <div class="warning-icon">⚠️</div>
+        <div class="warning-message">
+            You are about to delete the package <span class="package-name-display" id="package-name-display"></span>
+            <br><br>
+            This action cannot be undone. All files in the package will be permanently deleted.
+        </div>
+        <div class="confirm-text">Type the package name to confirm:</div>
+        <input type="text" id="confirmInput" placeholder="Enter package name" autofocus>
+        <div class="error" id="error-msg">Package name does not match</div>
+        <div class="buttons">
+            <button class="btn-cancel" onclick="cancel()">Cancel</button>
+            <button class="btn-delete" id="delete-btn" onclick="confirmDelete()" disabled>Delete Package</button>
+        </div>
+    </div>
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        let packageName = '';
+
+        // Get package name from main process
+        ipcRenderer.on('set-package-name', (event, name) => {
+            packageName = name;
+            document.getElementById('package-name-display').textContent = name;
+        });
+
+        const confirmInput = document.getElementById('confirmInput');
+        const deleteBtn = document.getElementById('delete-btn');
+        const errorMsg = document.getElementById('error-msg');
+
+        confirmInput.addEventListener('input', () => {
+            const inputValue = confirmInput.value.trim();
+            if (inputValue === packageName) {
+                deleteBtn.disabled = false;
+                errorMsg.style.display = 'none';
+            } else {
+                deleteBtn.disabled = true;
+            }
+        });
+
+        function confirmDelete() {
+            const inputValue = confirmInput.value.trim();
+            if (inputValue === packageName) {
+                ipcRenderer.send('delete-package-confirmed', packageName);
+            } else {
+                errorMsg.style.display = 'block';
+            }
+        }
+
+        function cancel() {
+            ipcRenderer.send('delete-package-confirmed', null);
+        }
+
+        confirmInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !deleteBtn.disabled) {
+                confirmDelete();
+            }
+        });
+    </script>
+</body>
+
+</html>

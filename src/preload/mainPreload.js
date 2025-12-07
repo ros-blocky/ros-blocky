@@ -23,5 +23,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Package management
   listPackages: () => ipcRenderer.invoke('list-packages'),
   createPackage: (packageName) => ipcRenderer.invoke('create-package', packageName),
-  promptPackageName: () => ipcRenderer.invoke('prompt-package-name')
+  promptPackageName: () => ipcRenderer.invoke('prompt-package-name'),
+  deletePackage: (packageName) => ipcRenderer.invoke('delete-package', packageName)
 });

@@ -41,6 +41,13 @@ function registerProjectIPC() {
     ipcMain.handle('list-packages', async (event) => {
         return await packageService.listPackages();
     });
+
+    /**
+     * Handle delete-package IPC request
+     */
+    ipcMain.handle('delete-package', async (event, packageName) => {
+        return await packageService.deletePackage(packageName);
+    });
 }
 
 module.exports = { registerProjectIPC };

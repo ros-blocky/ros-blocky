@@ -252,21 +252,8 @@ function setupContextMenu() {
             if (addPackageItem) addPackageItem.classList.add('hidden');
             if (addNodeItem) addNodeItem.classList.remove('hidden');
 
-            // Check if meshes folder already exists
-            if (addMeshesItem) {
-                window.electronAPI.checkPackageFolderExists(currentPackageContext, 'meshes')
-                    .then(exists => {
-                        if (exists) {
-                            addMeshesItem.classList.add('hidden');
-                        } else {
-                            addMeshesItem.classList.remove('hidden');
-                        }
-                    })
-                    .catch(err => {
-                        console.error('Error checking meshes folder:', err);
-                        addMeshesItem.classList.remove('hidden');
-                    });
-            }
+            // Check if meshes folder already exists - just show for now
+            if (addMeshesItem) addMeshesItem.classList.remove('hidden');
 
             // Check and show URDF, CONFIG, LAUNCH options
             if (addUrdfItem) addUrdfItem.classList.remove('hidden');
@@ -659,13 +646,6 @@ async function createPackageElement(packageName, packagesList) {
             <span class="package-name">${packageName}</span>
         </div>
     `;
-
-    // Add right-click context menu
-    packageItem.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        currentPackageContext = packageName;
-        showContextMenu(e.clientX, e.clientY, 'package');
-    });
 
     packagesList.appendChild(packageItem);
 }

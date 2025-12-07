@@ -166,6 +166,101 @@ class PackageService {
     }
 
     /**
+     * Show delete confirmation dialog
+     * @param {string} packageName - Name of the package to delete
+     * @returns {Promise<boolean>} - True if user confirmed, false otherwise
+     */
+    promptDeletePackage(packageName) {
+        return new Promise((resolve) => {
+            const confirmWindow = new BrowserWindow({
+                width: 450,
+                height: 320,
+                modal: true,
+                frame: false,
+                resizable: false,
+                parent: BrowserWindow.getFocusedWindow(),
+                webPreferences: {
+                    nodeIntegration: true,
+                    contextIsolation: false
+                }
+            });
+
+            confirmWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/deletePackageConfirm.html'));
+
+            // Send package name after load
+            confirmWindow.webContents.on('did-finish-load', () => {
+                confirmWindow.webContents.send('set-package-name', packageName);
+            });
+
+            const { ipcMain } = require('electron');
+            const handler = (event, confirmedName) => {
+                confirmWindow.close();
+                ipcMain.removeListener('delete-package-confirmed', handler);
+                resolve(confirmedName === packageName);
+            };
+
+            ipcMain.on('delete-package-confirmed', handler);
+
+            confirmWindow.on('closed', () => {
+                ipcMain.removeListener('delete-package-confirmed', handler);
+                resolve(false);
+            });
+        });
+    }
+
+    /**
+     * Delete a ROS2 package
+     * @param {string} packageName - Name of the package to delete
+     * @returns {Promise<{success: boolean, message: string}>}
+     */
+    async deletePackage(packageName) {
+        try {
+            if (!this.currentProjectPath) {
+                return {
+                    success: false,
+                    message: 'No project is currently loaded.'
+                };
+            }
+
+            // Show confirmation dialog
+            const confirmed = await this.promptDeletePackage(packageName);
+            if (!confirmed) {
+                return {
+                    success: false,
+                    message: 'Deletion cancelled'
+                };
+            }
+
+            const packagePath = path.join(this.currentProjectPath, 'src', packageName);
+
+            // Check if package exists
+            try {
+                await fs.access(packagePath);
+            } catch {
+                return {
+                    success: false,
+                    message: `Package "${packageName}" not found.`
+                };
+            }
+
+            // Delete the package folder recursively
+            await fs.rm(packagePath, { recursive: true, force: true });
+
+            return {
+                success: true,
+                message: `Package "${packageName}" deleted successfully.`
+            };
+
+        } catch (error) {
+            console.error('Error deleting package:', error);
+            return {
+                success: false,
+                message: `Error deleting package: ${error.message}`
+            };
+        }
+    }
+
+    /**
      * Run a command in the pixi environment
      * @param {string} command - Command to run
      * @param {string} cwd - Working directory
