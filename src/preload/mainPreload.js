@@ -18,5 +18,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   createProject: () => ipcRenderer.invoke('create-project'),
   openProject: () => ipcRenderer.invoke('open-project'),
   onProjectDialogsComplete: (callback) => ipcRenderer.on('project-dialogs-complete', (event, type) => callback(type)),
-  onProjectLoaded: (callback) => ipcRenderer.on('project-loaded', (event, projectPath) => callback(projectPath))
+  onProjectLoaded: (callback) => ipcRenderer.on('project-loaded', (event, projectPath) => callback(projectPath)),
+
+  // Package management
+  listPackages: () => ipcRenderer.invoke('list-packages'),
+  createPackage: (packageName) => ipcRenderer.invoke('create-package', packageName),
+  promptPackageName: () => ipcRenderer.invoke('prompt-package-name')
 });

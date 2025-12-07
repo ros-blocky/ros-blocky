@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .title-bar {
+            background: #00bbfe;
+            color: white;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            -webkit-app-region: drag;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #00bbfe;
+        }
+
+        .error {
+            color: #e74c3c;
+            font-size: 12px;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .buttons {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        button {
+            padding: 8px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+
+        .btn-create {
+            background: #00bbfe;
+            color: white;
+        }
+
+        .btn-create:hover {
+            background: #0099d6;
+        }
+
+        .btn-cancel {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-cancel:hover {
+            background: #d0d0d0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="title-bar">New Package</div>
+    <div class="content">
+        <label for="packageName">Package Name:</label>
+        <div class="hint">Lowercase letters, numbers, and underscores only. Must start with a letter.</div>
+        <input type="text" id="packageName" placeholder="my_robot_package" autofocus>
+        <div class="error" id="error-msg"></div>
+        <div class="buttons">
+            <button class="btn-cancel" onclick="cancel()">Cancel</button>
+            <button class="btn-create" onclick="create()">Create</button>
+        </div>
+    </div>
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        function validatePackageName(name) {
+            // ROS2 package naming rules: lowercase letters, numbers, underscores, must start with letter
+            const validNamePattern = /^[a-z][a-z0-9_]*$/;
+            if (!name || name.trim() === '') {
+                return 'Package name cannot be empty';
+            }
+            if (!validNamePattern.test(name)) {
+                return 'Must start with a letter and contain only lowercase letters, numbers, and underscores';
+            }
+            return null;
+        }
+
+        function create() {
+            const name = document.getElementById('packageName').value.trim();
+            const errorMsg = document.getElementById('error-msg');
+            const error = validatePackageName(name);
+
+            if (error) {
+                errorMsg.textContent = error;
+                errorMsg.style.display = 'block';
+                document.getElementById('packageName').focus();
+            } else {
+                errorMsg.style.display = 'none';
+                ipcRenderer.send('package-name-response', name);
+            }
+        }
+
+        function cancel() {
+            ipcRenderer.send('package-name-response', null);
+        }
+
+        document.getElementById('packageName').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') create();
+        });
+
+        // Clear error on input
+        document.getElementById('packageName').addEventListener('input', () => {
+            document.getElementById('error-msg').style.display = 'none';
+        });
+    </script>
+</body>
+
+</html>

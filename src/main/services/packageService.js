@@ -106,11 +106,8 @@ class PackageService {
             // Ensure src directory exists
             await fs.mkdir(srcPath, { recursive: true });
 
-            // Create package using ros2 pkg create command
-            const result = await this.runPixiCommand(
-                `ros2 pkg create ${packageName} --build-type ament_python`,
-                srcPath
-            );
+            // Create package using pixi shell approach
+            const result = await this.runPackageCreation(packageName, this.currentProjectPath);
 
             if (result.success) {
                 return {
@@ -132,6 +129,110 @@ class PackageService {
                 message: `Error creating package: ${error.message}`
             };
         }
+    }
+
+    /**
+     * Run package creation in pixi shell
+     * @param {string} packageName - Name of the package
+     * @param {string} projectPath - Path to the project
+     * @returns {Promise<{success: boolean, output?: string, error?: string}>}
+     */
+    runPackageCreation(packageName, projectPath) {
+        return new Promise((resolve) => {
+            console.log('Creating package:', packageName, 'in', projectPath);
+
+            // Create loading dialog
+            const loadingWindow = new BrowserWindow({
+                width: 400,
+                height: 280,
+                modal: true,
+                frame: false,
+                resizable: false,
+                parent: BrowserWindow.getFocusedWindow(),
+                webPreferences: {
+                    nodeIntegration: true,
+                    contextIsolation: false
+                }
+            });
+
+            loadingWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/packageCreationLoading.html'));
+
+            // Helper to update status
+            const updateStatus = (status) => {
+                if (!loadingWindow.isDestroyed()) {
+                    loadingWindow.webContents.send('package-creation-status', status);
+                }
+            };
+
+            const shell = spawn('cmd.exe', [], {
+                cwd: 'c:\\pixi_ws',
+                windowsHide: true
+            });
+
+            let output = '';
+            let errorOutput = '';
+            let packageCreated = false;
+
+            shell.stdout.on('data', (data) => {
+                const text = data.toString();
+                output += text;
+                console.log('Output:', text);
+                if (text.includes('Successfully created') || text.includes('going to create')) {
+                    packageCreated = true;
+                }
+            });
+
+            shell.stderr.on('data', (data) => {
+                const text = data.toString();
+                errorOutput += text;
+                console.error('Error:', text);
+            });
+
+            shell.on('close', (code) => {
+                console.log('Shell closed with code:', code);
+                // Close loading dialog
+                if (!loadingWindow.isDestroyed()) {
+                    loadingWindow.close();
+                }
+                if (packageCreated || code === 0) {
+                    resolve({ success: true, output });
+                } else {
+                    resolve({ success: false, error: errorOutput || output || 'Package creation failed' });
+                }
+            });
+
+            shell.on('error', (error) => {
+                console.error('Shell error:', error);
+                if (!loadingWindow.isDestroyed()) {
+                    loadingWindow.close();
+                }
+                resolve({ success: false, error: error.message });
+            });
+
+            // Execute commands in sequence
+            setTimeout(() => {
+                console.log('Sending commands to shell...');
+                updateStatus('Starting pixi environment...');
+                shell.stdin.write('cd c:\\pixi_ws\n');
+                shell.stdin.write('pixi shell\n');
+                setTimeout(() => {
+                    // Source ROS2 setup
+                    updateStatus('Loading ROS2 environment...');
+                    shell.stdin.write('call C:\\pixi_ws\\ros2-windows\\local_setup.bat\n');
+                    setTimeout(() => {
+                        // Change to project src directory and create package
+                        updateStatus(`Creating package "${packageName}"...`);
+                        shell.stdin.write(`cd /d "${path.join(projectPath, 'src')}"\n`);
+                        shell.stdin.write(`ros2 pkg create ${packageName} --build-type ament_python\n`);
+                        setTimeout(() => {
+                            updateStatus('Finishing up...');
+                            shell.stdin.write('exit\n');
+                            shell.stdin.write('exit\n');
+                        }, 5000); // Wait for package creation
+                    }, 1000); // Wait for source
+                }, 2000); // Wait for pixi shell
+            }, 500);
+        });
     }
 
     /**

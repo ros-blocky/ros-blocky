@@ -49,6 +49,10 @@ export function initPackagesPanel() {
     setupCreatePackageButton();
     setupContextMenu();
 
+    // Refresh package list immediately (project might already be loaded)
+    refreshPackageList();
+
+    // Also refresh when project-loaded event fires
     window.electronAPI.onProjectLoaded((projectPath) => {
         console.log('Project loaded in packages panel:', projectPath);
         refreshPackageList();
@@ -610,25 +614,28 @@ async function deleteFolder(packageName, folderName) {
  * Refresh the package list
  */
 async function refreshPackageList() {
+    console.log('refreshPackageList called');
     try {
         const packages = await window.electronAPI.listPackages();
+        console.log('Packages received:', packages);
+
         const emptyStateContainer = document.getElementById('empty-state-container');
         const packagesList = document.getElementById('packages-list');
-        const emptyStateText = emptyStateContainer.querySelector('.empty-state');
 
         if (packages && packages.length > 0) {
-            emptyStateText.textContent = '';
-            emptyStateText.style.display = 'none';
+            console.log('Showing packages list with', packages.length, 'packages');
+            // Hide empty state, show packages list
             emptyStateContainer.classList.add('hidden');
             packagesList.classList.remove('hidden');
             packagesList.innerHTML = '';
 
             for (const packageName of packages) {
+                console.log('Creating element for package:', packageName);
                 await createPackageElement(packageName, packagesList);
             }
         } else {
-            emptyStateText.textContent = 'No packages';
-            emptyStateText.style.display = 'block';
+            console.log('No packages found, showing empty state');
+            // Show empty state, hide packages list
             emptyStateContainer.classList.remove('hidden');
             packagesList.classList.add('hidden');
         }
@@ -641,91 +648,24 @@ async function refreshPackageList() {
  * Create package element in the tree
  */
 async function createPackageElement(packageName, packagesList) {
-    const nodes = await window.electronAPI.listPackageNodes(packageName);
-    const folders = await window.electronAPI.getPackageFolders(packageName);
-    const hasNodes = nodes && nodes.length > 0;
-    const hasFolders = folders && folders.length > 0;
-
     const packageItem = document.createElement('div');
     packageItem.className = 'package-item';
     packageItem.dataset.packageName = packageName;
 
-    if (hasNodes || hasFolders) {
-        let contentHtml = `
-            <div class="package-header">
-                <span class="collapse-arrow">▸</span>
-                <span class="package-icon">📦</span>
-                <span class="package-name">${packageName}</span>
-            </div>
-            <div class="package-content hidden">
-        `;
+    // Simple package display - just show name with icon
+    packageItem.innerHTML = `
+        <div class="package-header">
+            <span class="package-icon">📦</span>
+            <span class="package-name">${packageName}</span>
+        </div>
+    `;
 
-        // Add Nodes section
-        if (hasNodes) {
-            contentHtml += `
-                <div class="nodes-section">
-                    <div class="nodes-header">
-                        <span class="collapse-arrow-small">▸</span>
-                        <span class="nodes-icon">🕸️</span>
-                        <span class="nodes-label">Nodes</span>
-                        <button class="section-add-btn" data-package="${packageName}" title="Add Node">+</button>
-                    </div>
-                    <div class="nodes-list hidden"></div>
-                </div>
-            `;
-        }
-
-        // Add each folder individually at the same level as Nodes
-        if (hasFolders) {
-            const folderIcons = {
-                'meshes': '🦾',
-                'urdf': '🤖',
-                'launch': '🚀',
-                'config': '⚙️',
-                'worlds': '🌍',
-                'rviz': '👁️'
-            };
-
-            folders.forEach(folderName => {
-                const icon = folderIcons[folderName] || '📂';
-
-                // Check if this folder is a file section (meshes, urdf, config, launch)
-                if (FILE_SECTIONS[folderName]) {
-                    const section = FILE_SECTIONS[folderName];
-                    contentHtml += `
-                        <div class="file-section" data-folder="${folderName}">
-                            <div class="file-header">
-                                <span class="collapse-arrow-small">▸</span>
-                                <span class="folder-icon">${section.icon}</span>
-                                <span class="folder-name">${section.label}</span>
-                                <button class="section-add-btn" data-folder="${folderName}" data-package="${packageName}" title="Add ${section.fileTypeLabel}">+</button>
-                            </div>
-                            <div class="file-list hidden"></div>
-                        </div>
-                    `;
-                } else {
-                    // Regular folder (worlds, rviz, etc.)
-                    contentHtml += `
-                        <div class="folder-item">
-                            <span class="folder-icon">${icon}</span>
-                            <span class="folder-name">${folderName}</span>
-                        </div>
-                    `;
-                }
-            });
-        }
-
-        contentHtml += `</div>`;
-        packageItem.innerHTML = contentHtml;
-        setupPackageCollapse(packageItem, packageName, nodes);
-    } else {
-        packageItem.innerHTML = `
-            <div class="package-header">
-                <span class="package-icon">📦</span>
-                <span class="package-name">${packageName}</span>
-            </div>
-        `;
-    }
+    // Add right-click context menu
+    packageItem.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        currentPackageContext = packageName;
+        showContextMenu(e.clientX, e.clientY, 'package');
+    });
 
     packagesList.appendChild(packageItem);
 }

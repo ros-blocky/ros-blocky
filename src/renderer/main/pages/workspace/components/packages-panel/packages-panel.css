@@ -64,6 +64,7 @@
     justify-content: center;
     padding: 40px 20px;
     text-align: center;
+    height: 100%;
 }
 
 .empty-state {
@@ -73,7 +74,7 @@
 }
 
 .create-package-btn {
-    background: #00bcd4;
+    background: #00bbfe;
     color: white;
     border: none;
     padding: 10px 20px;
@@ -84,7 +85,7 @@
 }
 
 .create-package-btn:hover {
-    background: #00acc1;
+    background: #00a8e8;
 }
 
 /* Packages List */

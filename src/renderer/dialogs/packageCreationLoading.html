@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #ffffff;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            border: 2px solid #00bbfe;
+            border-radius: 8px;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 40px;
+        }
+
+        .spinner-container {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin-bottom: 30px;
+        }
+
+        .spinner-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 4px solid #e0e0e0;
+            border-top: 4px solid #00bbfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .logo-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo {
+            max-width: 50px;
+            max-height: 50px;
+            object-fit: contain;
+            animation: pulse 1.5s ease-in-out infinite;
+            filter: brightness(0) saturate(100%) invert(55%) sepia(98%) saturate(1500%) hue-rotate(165deg) brightness(101%) contrast(101%);
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+        }
+
+        .status {
+            font-size: 14px;
+            color: #00bbfe;
+            margin-bottom: 30px;
+        }
+
+        .progress-container {
+            width: 80%;
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #e0e0e0, #00bbfe, #e0e0e0);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            width: 100%;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+
+            100% {
+                background-position: 200% 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="title">Creating Package...</div>
+    <div class="spinner-container">
+        <div class="spinner-ring"></div>
+        <div class="logo-container">
+            <img src="../../../assets/logo.png" alt="Logo" class="logo">
+        </div>
+    </div>
+    <div class="status" id="status-text">Initializing...</div>
+    <div class="progress-container">
+        <div class="progress-bar"></div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        // Listen for status updates
+        ipcRenderer.on('package-creation-status', (event, status) => {
+            document.getElementById('status-text').textContent = status;
+        });
+    </script>
+</body>
+
+</html>

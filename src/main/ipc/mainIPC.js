@@ -34,6 +34,13 @@ function registerProjectIPC() {
     ipcMain.handle('prompt-package-name', async (event) => {
         return await packageService.promptPackageName();
     });
+
+    /**
+     * Handle list-packages IPC request
+     */
+    ipcMain.handle('list-packages', async (event) => {
+        return await packageService.listPackages();
+    });
 }
 
 module.exports = { registerProjectIPC };

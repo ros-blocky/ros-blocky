@@ -138,6 +138,11 @@ class MainService {
             const packageService = require('./packageService');
             packageService.setProjectPath(projectPath);
 
+            // Notify renderer that project is loaded
+            if (focusedWindow) {
+                focusedWindow.webContents.send('project-loaded', projectPath);
+            }
+
             return {
                 success: true,
                 message: 'Project opened successfully',
@@ -210,6 +215,12 @@ class MainService {
                     // Set project path in package service
                     const packageService = require('./packageService');
                     packageService.setProjectPath(projectPath);
+
+                    // Notify renderer that project is loaded
+                    const focusedWindow = BrowserWindow.getFocusedWindow();
+                    if (focusedWindow) {
+                        focusedWindow.webContents.send('project-loaded', projectPath);
+                    }
 
                     resolve({
                         success: true,
