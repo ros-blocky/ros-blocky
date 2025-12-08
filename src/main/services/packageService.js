@@ -554,6 +554,124 @@ if __name__ == '__main__':
     }
 
     /**
+     * Remove node entry point from setup.py
+     * @param {string} packageName - Package name
+     * @param {string} nodeName - Node name to remove
+     */
+    async removeNodeEntryPoint(packageName, nodeName) {
+        const setupPyPath = path.join(this.currentProjectPath, 'src', packageName, 'setup.py');
+
+        try {
+            let content = await fs.readFile(setupPyPath, 'utf8');
+
+            // Create regex pattern to match the entry point line (with various whitespace)
+            const entryPointPattern = new RegExp(
+                `\\s*'${nodeName}\\s*=\\s*${packageName}\\.${nodeName}:main'\\s*,?`,
+                'g'
+            );
+
+            // Remove the entry point
+            content = content.replace(entryPointPattern, '');
+
+            // Clean up any trailing commas before closing bracket
+            content = content.replace(/,(\s*)\]/g, '$1]');
+
+            // Clean up empty console_scripts arrays (remove extra whitespace)
+            content = content.replace(
+                /'console_scripts':\s*\[\s*\n\s*\]/g,
+                "'console_scripts': []"
+            );
+
+            await fs.writeFile(setupPyPath, content);
+            console.log(`Removed entry point for ${nodeName} from setup.py`);
+        } catch (error) {
+            console.error('Error removing entry point from setup.py:', error);
+        }
+    }
+
+    /**
+     * Add a data_files entry for a folder (meshes, urdf, config, launch)
+     * @param {string} packageName - Package name
+     * @param {string} folderName - Folder name (meshes, urdf, config, launch)
+     */
+    async addDataFilesEntry(packageName, folderName) {
+        const setupPyPath = path.join(this.currentProjectPath, 'src', packageName, 'setup.py');
+
+        try {
+            let content = await fs.readFile(setupPyPath, 'utf8');
+
+            // Determine the glob pattern based on folder type
+            const globPattern = folderName === 'launch' ? `glob('${folderName}/*.py')` : `glob('${folderName}/*')`;
+
+            // The entry to add: (os.path.join('share', package_name, 'folder'), glob('folder/*'))
+            const entryToAdd = `(os.path.join('share', package_name, '${folderName}'), ${globPattern})`;
+
+            // Check if entry already exists
+            if (content.includes(`'${folderName}'`)) {
+                console.log(`Data files entry for ${folderName} already exists`);
+                return;
+            }
+
+            // Add necessary imports if not present
+            if (!content.includes('from glob import glob')) {
+                content = content.replace(
+                    'from setuptools import setup',
+                    'from setuptools import setup\nfrom glob import glob'
+                );
+            }
+            if (!content.includes('import os')) {
+                content = content.replace(
+                    'from setuptools import setup',
+                    'import os\nfrom setuptools import setup'
+                );
+            }
+
+            // Find data_files array and add entry
+            // Look for the closing of data_files array
+            const dataFilesMatch = content.match(/data_files=\[([\s\S]*?)\],/);
+            if (dataFilesMatch) {
+                const existingContent = dataFilesMatch[1];
+                const newDataFiles = `data_files=[${existingContent}        ${entryToAdd},\n    ],`;
+                content = content.replace(dataFilesMatch[0], newDataFiles);
+            }
+
+            await fs.writeFile(setupPyPath, content);
+            console.log(`Added data_files entry for ${folderName} to setup.py`);
+        } catch (error) {
+            console.error('Error adding data_files entry to setup.py:', error);
+        }
+    }
+
+    /**
+     * Remove a data_files entry for a folder (meshes, urdf, config, launch)
+     * @param {string} packageName - Package name
+     * @param {string} folderName - Folder name (meshes, urdf, config, launch)
+     */
+    async removeDataFilesEntry(packageName, folderName) {
+        const setupPyPath = path.join(this.currentProjectPath, 'src', packageName, 'setup.py');
+
+        try {
+            let content = await fs.readFile(setupPyPath, 'utf8');
+
+            // Remove the data_files entry line for this folder
+            // Match patterns like: (os.path.join('share', package_name, 'folderName'), glob('folderName/*')),
+            const entryPattern = new RegExp(
+                `\\s*\\(os\\.path\\.join\\('share',\\s*package_name,\\s*'${folderName}'\\),\\s*glob\\('[^']*'\\)\\),?`,
+                'g'
+            );
+            content = content.replace(entryPattern, '');
+
+            // Clean up any double newlines
+            content = content.replace(/\n\n\n+/g, '\n\n');
+
+            await fs.writeFile(setupPyPath, content);
+            console.log(`Removed data_files entry for ${folderName} from setup.py`);
+        } catch (error) {
+            console.error('Error removing data_files entry from setup.py:', error);
+        }
+    }
+
+    /**
      * List nodes in a package
      * @param {string} packageName - Name of the package
      * @returns {Promise<string[]>}
@@ -675,6 +793,9 @@ if __name__ == '__main__':
 
             await fs.writeFile(urdfPath, urdfContent);
 
+            // Add urdf folder to setup.py data_files
+            await this.addDataFilesEntry(packageName, 'urdf');
+
             return {
                 success: true,
                 message: `URDF "${urdfName}" created successfully!`,
@@ -786,6 +907,9 @@ if __name__ == '__main__':
 `;
 
             await fs.writeFile(configPath, configContent);
+
+            // Add config folder to setup.py data_files
+            await this.addDataFilesEntry(packageName, 'config');
 
             return {
                 success: true,
@@ -921,6 +1045,9 @@ def generate_launch_description():
 `;
 
             await fs.writeFile(launchPath, launchContent);
+
+            // Add launch folder to setup.py data_files
+            await this.addDataFilesEntry(packageName, 'launch');
 
             return {
                 success: true,
@@ -1113,6 +1240,7 @@ def generate_launch_description():
             // Map section type to folder name
             const folderMap = {
                 'nodes': packageName,  // nodes are in package/package_name folder
+                'meshes': 'meshes',
                 'urdf': 'urdf',
                 'config': 'config',
                 'launch': 'launch'
@@ -1151,10 +1279,10 @@ def generate_launch_description():
 
                 for (const file of nodeFiles) {
                     await fs.unlink(path.join(sectionPath, file));
+                    // Remove entry point from setup.py
+                    const nodeName = file.replace('.py', '');
+                    await this.removeNodeEntryPoint(packageName, nodeName);
                 }
-
-                // Also need to update setup.py to remove entry points
-                // For simplicity, we'll just delete the files for now
 
                 return {
                     success: true,
@@ -1163,6 +1291,9 @@ def generate_launch_description():
             } else {
                 // For other sections, delete the entire folder and recreate it empty
                 await fs.rm(sectionPath, { recursive: true, force: true });
+
+                // Remove data_files entry from setup.py
+                await this.removeDataFilesEntry(packageName, sectionType);
 
                 return {
                     success: true,
@@ -1198,6 +1329,7 @@ def generate_launch_description():
             // Map section type to folder name
             const folderMap = {
                 'nodes': packageName,
+                'meshes': 'meshes',
                 'urdf': 'urdf',
                 'config': 'config',
                 'launch': 'launch'
@@ -1231,7 +1363,13 @@ def generate_launch_description():
             // Delete the file
             await fs.unlink(filePath);
 
-            // For urdf/config/launch, check if folder is now empty and delete it
+            // For nodes, also remove entry point from setup.py
+            if (sectionType === 'nodes') {
+                const nodeName = fileName.replace('.py', '');
+                await this.removeNodeEntryPoint(packageName, nodeName);
+            }
+
+            // For urdf/config/launch/meshes, check if folder is now empty and delete it
             if (sectionType !== 'nodes') {
                 const folderPath = path.join(this.currentProjectPath, 'src', packageName, folderName);
                 try {
@@ -1239,6 +1377,8 @@ def generate_launch_description():
                     if (remainingFiles.length === 0) {
                         await fs.rmdir(folderPath);
                         console.log(`Deleted empty folder: ${folderPath}`);
+                        // Remove data_files entry from setup.py
+                        await this.removeDataFilesEntry(packageName, sectionType);
                     }
                 } catch (err) {
                     console.log('Could not check/delete folder:', err.message);
@@ -1256,6 +1396,122 @@ def generate_launch_description():
                 success: false,
                 message: `Error deleting file: ${error.message}`
             };
+        }
+    }
+
+    /**
+     * Import mesh files (.stl, .dae) into a package's meshes folder
+     * @param {string} packageName - Name of the package
+     * @returns {Promise<{success: boolean, message: string, filesCopied?: number}>}
+     */
+    async importMeshFiles(packageName) {
+        try {
+            if (!this.currentProjectPath) {
+                return {
+                    success: false,
+                    message: 'No project is currently loaded.'
+                };
+            }
+
+            // Open file dialog for mesh files
+            const result = await dialog.showOpenDialog({
+                title: 'Select Mesh Files',
+                filters: [
+                    { name: 'Mesh Files', extensions: ['stl', 'STL', 'dae', 'DAE'] }
+                ],
+                properties: ['openFile', 'multiSelections']
+            });
+
+            if (result.canceled || result.filePaths.length === 0) {
+                return {
+                    success: false,
+                    message: 'No files selected'
+                };
+            }
+
+            const meshesDir = path.join(this.currentProjectPath, 'src', packageName, 'meshes');
+
+            // Create meshes folder if it doesn't exist
+            try {
+                await fs.access(meshesDir);
+            } catch {
+                await fs.mkdir(meshesDir, { recursive: true });
+                console.log('Created meshes folder:', meshesDir);
+            }
+
+            // Check for duplicate files
+            const duplicates = [];
+            for (const filePath of result.filePaths) {
+                const fileName = path.basename(filePath);
+                const destPath = path.join(meshesDir, fileName);
+                try {
+                    await fs.access(destPath);
+                    duplicates.push(fileName);
+                } catch {
+                    // File doesn't exist, no duplicate
+                }
+            }
+
+            // If duplicates found, ask for confirmation
+            if (duplicates.length > 0) {
+                const duplicateList = duplicates.length <= 3
+                    ? duplicates.join(', ')
+                    : `${duplicates.slice(0, 3).join(', ')} and ${duplicates.length - 3} more`;
+                const confirmOverwrite = await this.showConfirmDialog(
+                    `The following files already exist:\n${duplicateList}\n\nDo you want to overwrite them?`
+                );
+
+                if (!confirmOverwrite) {
+                    return {
+                        success: false,
+                        message: 'Import cancelled'
+                    };
+                }
+            }
+
+            // Copy each selected file to meshes folder
+            let filesCopied = 0;
+            for (const filePath of result.filePaths) {
+                const fileName = path.basename(filePath);
+                const destPath = path.join(meshesDir, fileName);
+                await fs.copyFile(filePath, destPath);
+                filesCopied++;
+                console.log(`Copied mesh file: ${fileName}`);
+            }
+
+            // Add meshes folder to setup.py data_files
+            await this.addDataFilesEntry(packageName, 'meshes');
+
+            return {
+                success: true,
+                message: `Successfully imported ${filesCopied} mesh file(s).`,
+                filesCopied
+            };
+
+        } catch (error) {
+            console.error('Error importing mesh files:', error);
+            return {
+                success: false,
+                message: `Error importing mesh files: ${error.message}`
+            };
+        }
+    }
+
+    /**
+     * List mesh files in a package
+     * @param {string} packageName - Name of the package
+     * @returns {Promise<string[]>}
+     */
+    async listPackageMeshes(packageName) {
+        try {
+            const meshesDir = path.join(this.currentProjectPath, 'src', packageName, 'meshes');
+            const files = await fs.readdir(meshesDir);
+            return files.filter(f =>
+                f.toLowerCase().endsWith('.stl') ||
+                f.toLowerCase().endsWith('.dae')
+            );
+        } catch {
+            return [];
         }
     }
 }

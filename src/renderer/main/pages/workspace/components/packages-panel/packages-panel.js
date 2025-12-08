@@ -319,7 +319,7 @@ function setupContextMenu() {
             e.stopPropagation();
             contextMenu.classList.add('hidden');
             if (currentPackageContext) {
-                await addFolderToPackage(currentPackageContext, 'meshes');
+                await importMeshes(currentPackageContext);
             }
         });
     }
@@ -505,6 +505,27 @@ async function addMeshFilesToPackage(packageName) {
 
 
 /**
+ * Import mesh files to a package
+ * @param {string} packageName - Package name
+ */
+async function importMeshes(packageName) {
+    try {
+        const result = await window.electronAPI.importMeshFiles(packageName);
+        if (result.success) {
+            console.log(`Imported ${result.filesCopied} mesh file(s)`);
+            await refreshPackageList();
+        } else {
+            if (result.message !== 'No files selected') {
+                alert('Error: ' + result.message);
+            }
+        }
+    } catch (error) {
+        console.error('Error importing mesh files:', error);
+        alert('Error importing mesh files: ' + error.message);
+    }
+}
+
+/**
  * Delete a package
  */
 async function deletePackage(packageName) {
@@ -566,15 +587,16 @@ async function createPackageElement(packageName, packagesList) {
     packageItem.dataset.packageName = packageName;
 
     // Get all items for this package
-    const [nodes, urdfs, configs, launches] = await Promise.all([
+    const [nodes, urdfs, configs, launches, meshes] = await Promise.all([
         window.electronAPI.listPackageNodes(packageName),
         window.electronAPI.listPackageUrdfs(packageName),
         window.electronAPI.listPackageConfigs(packageName),
-        window.electronAPI.listPackageLaunches(packageName)
+        window.electronAPI.listPackageLaunches(packageName),
+        window.electronAPI.listPackageMeshes(packageName)
     ]);
 
     // Check if package has any content
-    const hasContent = nodes.length > 0 || urdfs.length > 0 || configs.length > 0 || launches.length > 0;
+    const hasContent = nodes.length > 0 || urdfs.length > 0 || configs.length > 0 || launches.length > 0 || meshes.length > 0;
 
     // Full package display with collapse arrow and sections
     packageItem.innerHTML = `
@@ -593,6 +615,16 @@ async function createPackageElement(packageName, packagesList) {
                     <button class="section-add-btn" data-type="node" title="Add Node">+</button>
                 </div>
                 <div class="nodes-list hidden"></div>
+            </div>
+            <!-- MESHES Section -->
+            <div class="file-section" data-section="meshes" data-folder="meshes">
+                <div class="file-header">
+                    <img class="section-collapse-arrow" src="assets/icons/chevron-right.svg" alt="">
+                    <span class="section-icon">🦾</span>
+                    <span class="section-name">MESHES</span>
+                    <button class="section-add-btn" data-type="meshes" title="Add Meshes">+</button>
+                </div>
+                <div class="file-list hidden"></div>
             </div>
             <!-- URDF Section -->
             <div class="file-section" data-section="urdf" data-folder="urdf">
@@ -679,8 +711,9 @@ async function createPackageElement(packageName, packagesList) {
     // File icon path for consistent styling
     const fileIconPath = 'assets/icons/file-icon.svg';
 
-    // Setup URDF, CONFIG, LAUNCH sections
+    // Setup MESHES, URDF, CONFIG, LAUNCH sections
     const fileSections = [
+        { type: 'meshes', files: meshes },
         { type: 'urdf', files: urdfs },
         { type: 'config', files: configs },
         { type: 'launch', files: launches }
@@ -700,12 +733,17 @@ async function createPackageElement(packageName, packagesList) {
             fileList.classList.toggle('hidden');
         });
 
-        // Add button
+        // Add button - special handling for meshes (import) vs others (create)
         const addBtn = section.querySelector('.section-add-btn');
         addBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            await addFilesToSection(packageName, type);
+            if (type === 'meshes') {
+                await importMeshes(packageName);
+            } else {
+                await addFilesToSection(packageName, type);
+            }
         });
+
 
         // Populate files
         if (files.length > 0) {
@@ -1058,6 +1096,7 @@ async function deleteFolder(packageName, sectionType) {
         // Map section types to display names for messages
         const displayNames = {
             'nodes': 'nodes',
+            'meshes': 'mesh files',
             'urdf': 'URDF files',
             'config': 'config files',
             'launch': 'launch files'

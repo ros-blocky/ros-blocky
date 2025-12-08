@@ -177,6 +177,22 @@ function registerProjectIPC() {
     ipcMain.handle('show-confirm-dialog', async (event, message) => {
         return await packageService.showConfirmDialog(message);
     });
+
+    // ========== Mesh Operations ==========
+
+    /**
+     * Handle import-mesh-files IPC request
+     */
+    ipcMain.handle('import-mesh-files', async (event, packageName) => {
+        return await packageService.importMeshFiles(packageName);
+    });
+
+    /**
+     * Handle list-package-meshes IPC request
+     */
+    ipcMain.handle('list-package-meshes', async (event, packageName) => {
+        return await packageService.listPackageMeshes(packageName);
+    });
 }
 
 module.exports = { registerProjectIPC };

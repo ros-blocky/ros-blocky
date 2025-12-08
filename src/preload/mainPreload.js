@@ -55,5 +55,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteSectionFile: (packageName, sectionType, fileName) => ipcRenderer.invoke('delete-section-file', packageName, sectionType, fileName),
 
   // Dialogs
-  showConfirmDialog: (message) => ipcRenderer.invoke('show-confirm-dialog', message)
+  showConfirmDialog: (message) => ipcRenderer.invoke('show-confirm-dialog', message),
+
+  // Mesh operations
+  importMeshFiles: (packageName) => ipcRenderer.invoke('import-mesh-files', packageName),
+  listPackageMeshes: (packageName) => ipcRenderer.invoke('list-package-meshes', packageName)
 });
