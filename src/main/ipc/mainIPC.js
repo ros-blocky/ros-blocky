@@ -154,6 +154,29 @@ function registerProjectIPC() {
     ipcMain.handle('create-section-file', async (event, packageName, folderName, fileName) => {
         return await packageService.createSectionFile(packageName, folderName, fileName);
     });
+
+    // ========== Delete Operations ==========
+
+    /**
+     * Handle delete-section-files IPC request (delete all files in a section)
+     */
+    ipcMain.handle('delete-section-files', async (event, packageName, sectionType) => {
+        return await packageService.deleteSectionFiles(packageName, sectionType);
+    });
+
+    /**
+     * Handle delete-section-file IPC request (delete a single file from a section)
+     */
+    ipcMain.handle('delete-section-file', async (event, packageName, sectionType, fileName) => {
+        return await packageService.deleteSectionFile(packageName, sectionType, fileName);
+    });
+
+    /**
+     * Handle show-confirm-dialog IPC request (show generic Yes/No dialog)
+     */
+    ipcMain.handle('show-confirm-dialog', async (event, message) => {
+        return await packageService.showConfirmDialog(message);
+    });
 }
 
 module.exports = { registerProjectIPC };

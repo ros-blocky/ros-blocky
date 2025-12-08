@@ -48,5 +48,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Generic file operations (used by UI for urdf, config, launch)
   promptFileName: (packageName, title, prompt) => ipcRenderer.invoke('prompt-file-name', packageName, title, prompt),
-  createSectionFile: (packageName, folderName, fileName) => ipcRenderer.invoke('create-section-file', packageName, folderName, fileName)
+  createSectionFile: (packageName, folderName, fileName) => ipcRenderer.invoke('create-section-file', packageName, folderName, fileName),
+
+  // Delete operations
+  deleteSectionFiles: (packageName, sectionType) => ipcRenderer.invoke('delete-section-files', packageName, sectionType),
+  deleteSectionFile: (packageName, sectionType, fileName) => ipcRenderer.invoke('delete-section-file', packageName, sectionType, fileName),
+
+  // Dialogs
+  showConfirmDialog: (message) => ipcRenderer.invoke('show-confirm-dialog', message)
 });

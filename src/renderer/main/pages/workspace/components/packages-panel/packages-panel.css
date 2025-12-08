@@ -92,7 +92,7 @@
 .packages-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 2px;
 }
 
 /* Package Item */
@@ -104,25 +104,29 @@
 }
 
 .package-header {
-    padding: 12px 15px;
+    padding: 2px 8px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 4px;
     cursor: pointer;
     user-select: none;
     transition: background 0.2s;
     background: white;
+    height: 22px;
 }
 
 .package-header:hover {
-    background: #f8f8f8;
+    background: #e8e8e8;
 }
 
 .collapse-arrow {
-    font-size: 12px;
-    color: #666;
-    width: 12px;
-    transition: transform 0.2s;
+    width: 16px;
+    height: 16px;
+    transition: transform 0.15s ease;
+}
+
+.collapse-arrow.expanded {
+    transform: rotate(90deg);
 }
 
 .package-icon {
@@ -130,48 +134,43 @@
 }
 
 .package-name {
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 13px;
+    font-weight: 400;
     color: #333;
     flex: 1;
 }
 
 .package-content {
-    padding-left: 20px;
+    padding-left: 12px;
 }
 
 /* Nodes Section */
 .nodes-section {
-    padding: 5px 0;
+    padding: 0;
 }
 
 .nodes-header {
-    padding: 6px 12px;
+    padding: 2px 8px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     cursor: pointer;
     user-select: none;
     transition: background 0.2s;
+    height: 22px;
 }
 
 .nodes-header:hover {
-    background: #f5f5f5;
+    background: #e8e8e8;
 }
 
 .section-collapse-arrow {
-    font-size: 10px;
-    color: #666;
-    width: 12px;
-    transition: transform 0.2s;
-    display: inline-block;
+    width: 16px;
+    height: 16px;
+    transition: transform 0.15s ease;
 }
 
 .section-collapse-arrow.expanded {
-    transform: rotate(90deg);
-}
-
-.collapse-arrow.expanded {
     transform: rotate(90deg);
 }
 
@@ -229,25 +228,26 @@
 }
 
 .nodes-list {
-    padding-left: 15px;
+    padding-left: 12px;
 }
 
 .node-item {
-    padding: 5px 12px;
+    padding: 2px 8px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     cursor: pointer;
     transition: background 0.2s;
+    height: 22px;
 }
 
 .node-item:hover {
-    background: #f5f5f5;
+    background: #e8e8e8;
 }
 
 .node-icon {
-    width: 35px;
-    height: 35px;
+    width: 14px;
+    height: 14px;
     object-fit: contain;
 }
 
@@ -258,22 +258,23 @@
 
 /* File Sections (MESHES, URDF, CONFIG, LAUNCH) */
 .file-section {
-    padding: 5px 0;
+    padding: 0;
 }
 
 .file-header {
-    padding: 6px 12px;
+    padding: 2px 8px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     cursor: pointer;
     user-select: none;
     transition: background 0.2s;
     position: relative;
+    height: 22px;
 }
 
 .file-header:hover {
-    background: #f5f5f5;
+    background: #e8e8e8;
 }
 
 .folder-icon {
@@ -314,25 +315,26 @@
 }
 
 .file-list {
-    padding-left: 15px;
+    padding-left: 12px;
 }
 
 .file-item {
-    padding: 5px 12px;
+    padding: 2px 8px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     cursor: pointer;
     transition: background 0.2s;
+    height: 22px;
 }
 
 .file-item:hover {
-    background: #f5f5f5;
+    background: #e8e8e8;
 }
 
 .file-icon {
-    width: 35px;
-    height: 35px;
+    width: 14px;
+    height: 14px;
     object-fit: contain;
 }
 

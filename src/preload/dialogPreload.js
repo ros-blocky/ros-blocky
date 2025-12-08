@@ -23,5 +23,9 @@ contextBridge.exposeInMainWorld('dialogAPI', {
 
     // Generic item prompt (node, urdf, config, launch)
     onSetItemConfig: (callback) => ipcRenderer.on('set-item-config', (event, config) => callback(config)),
-    sendItemNameResult: (result) => ipcRenderer.send('item-name-result', result)
+    sendItemNameResult: (result) => ipcRenderer.send('item-name-result', result),
+
+    // Generic confirm dialog
+    onSetConfirmConfig: (callback) => ipcRenderer.on('set-confirm-config', (event, config) => callback(config)),
+    sendConfirmResult: (confirmed) => ipcRenderer.send('confirm-result', confirmed)
 });

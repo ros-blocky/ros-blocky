@@ -180,6 +180,56 @@ class PackageService {
     }
 
     /**
+     * Show generic confirm dialog with Yes/No buttons
+     * @param {string} message - Message to display
+     * @returns {Promise<boolean>} - True if user clicked Yes, false otherwise
+     */
+    showConfirmDialog(message) {
+        return new Promise((resolve) => {
+            const confirmWindow = new BrowserWindow({
+                width: 400,
+                height: 180,
+                modal: true,
+                frame: false,
+                resizable: false,
+                show: false,
+                parent: BrowserWindow.getFocusedWindow(),
+                webPreferences: {
+                    preload: path.join(__dirname, '../../preload/dialogPreload.js'),
+                    nodeIntegration: false,
+                    contextIsolation: true
+                }
+            });
+
+            confirmWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/confirmDialog.html'));
+
+            // Show when ready to prevent white flash
+            confirmWindow.once('ready-to-show', () => {
+                confirmWindow.show();
+            });
+
+            // Send config after load
+            confirmWindow.webContents.on('did-finish-load', () => {
+                confirmWindow.webContents.send('set-confirm-config', { message });
+            });
+
+            const { ipcMain } = require('electron');
+            const handler = (event, confirmed) => {
+                confirmWindow.close();
+                ipcMain.removeListener('confirm-result', handler);
+                resolve(confirmed);
+            };
+
+            ipcMain.on('confirm-result', handler);
+
+            confirmWindow.on('closed', () => {
+                ipcMain.removeListener('confirm-result', handler);
+                resolve(false);
+            });
+        });
+    }
+
+    /**
      * Show delete confirmation dialog
      * @param {string} packageName - Name of the package to delete
      * @returns {Promise<boolean>} - True if user confirmed, false otherwise
@@ -649,9 +699,7 @@ if __name__ == '__main__':
         try {
             const urdfDir = path.join(this.currentProjectPath, 'src', packageName, 'urdf');
             const files = await fs.readdir(urdfDir);
-            return files
-                .filter(f => f.endsWith('.xacro') || f.endsWith('.urdf'))
-                .map(f => f.replace(/\.(xacro|urdf)$/, ''));
+            return files.filter(f => f.endsWith('.xacro') || f.endsWith('.urdf'));
         } catch {
             return [];
         }
@@ -763,9 +811,7 @@ if __name__ == '__main__':
         try {
             const configDir = path.join(this.currentProjectPath, 'src', packageName, 'config');
             const files = await fs.readdir(configDir);
-            return files
-                .filter(f => f.endsWith('.yaml') || f.endsWith('.yml'))
-                .map(f => f.replace(/\.(yaml|yml)$/, ''));
+            return files.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
         } catch {
             return [];
         }
@@ -900,9 +946,7 @@ def generate_launch_description():
         try {
             const launchDir = path.join(this.currentProjectPath, 'src', packageName, 'launch');
             const files = await fs.readdir(launchDir);
-            return files
-                .filter(f => f.endsWith('.py'))
-                .map(f => f.replace('.py', ''));
+            return files.filter(f => f.endsWith('.py'));
         } catch {
             return [];
         }
@@ -1048,6 +1092,170 @@ def generate_launch_description():
         } catch (error) {
             console.error('Error listing packages:', error);
             return [];
+        }
+    }
+
+    /**
+     * Delete all files in a section (nodes, urdf, config, launch)
+     * @param {string} packageName - Name of the package
+     * @param {string} sectionType - Type of section: 'nodes', 'urdf', 'config', 'launch'
+     * @returns {Promise<{success: boolean, message: string}>}
+     */
+    async deleteSectionFiles(packageName, sectionType) {
+        try {
+            if (!this.currentProjectPath) {
+                return {
+                    success: false,
+                    message: 'No project is currently loaded.'
+                };
+            }
+
+            // Map section type to folder name
+            const folderMap = {
+                'nodes': packageName,  // nodes are in package/package_name folder
+                'urdf': 'urdf',
+                'config': 'config',
+                'launch': 'launch'
+            };
+
+            const folderName = folderMap[sectionType];
+            if (!folderName) {
+                return {
+                    success: false,
+                    message: `Unknown section type: ${sectionType}`
+                };
+            }
+
+            let sectionPath;
+            if (sectionType === 'nodes') {
+                // Nodes are in package/package_name/ folder (the Python module)
+                sectionPath = path.join(this.currentProjectPath, 'src', packageName, packageName);
+            } else {
+                sectionPath = path.join(this.currentProjectPath, 'src', packageName, folderName);
+            }
+
+            // Check if section exists
+            try {
+                await fs.access(sectionPath);
+            } catch {
+                return {
+                    success: false,
+                    message: `Section "${sectionType}" not found in package "${packageName}".`
+                };
+            }
+
+            if (sectionType === 'nodes') {
+                // For nodes, we delete all .py files except __init__.py
+                const files = await fs.readdir(sectionPath);
+                const nodeFiles = files.filter(f => f.endsWith('.py') && f !== '__init__.py');
+
+                for (const file of nodeFiles) {
+                    await fs.unlink(path.join(sectionPath, file));
+                }
+
+                // Also need to update setup.py to remove entry points
+                // For simplicity, we'll just delete the files for now
+
+                return {
+                    success: true,
+                    message: `Deleted ${nodeFiles.length} node(s) from package "${packageName}".`
+                };
+            } else {
+                // For other sections, delete the entire folder and recreate it empty
+                await fs.rm(sectionPath, { recursive: true, force: true });
+
+                return {
+                    success: true,
+                    message: `Deleted all ${sectionType} files from package "${packageName}".`
+                };
+            }
+
+        } catch (error) {
+            console.error('Error deleting section files:', error);
+            return {
+                success: false,
+                message: `Error deleting ${sectionType} files: ${error.message}`
+            };
+        }
+    }
+
+    /**
+     * Delete a single file from a section
+     * @param {string} packageName - Name of the package
+     * @param {string} sectionType - Type of section: 'nodes', 'urdf', 'config', 'launch'
+     * @param {string} fileName - Name of the file to delete
+     * @returns {Promise<{success: boolean, message: string}>}
+     */
+    async deleteSectionFile(packageName, sectionType, fileName) {
+        try {
+            if (!this.currentProjectPath) {
+                return {
+                    success: false,
+                    message: 'No project is currently loaded.'
+                };
+            }
+
+            // Map section type to folder name
+            const folderMap = {
+                'nodes': packageName,
+                'urdf': 'urdf',
+                'config': 'config',
+                'launch': 'launch'
+            };
+
+            const folderName = folderMap[sectionType];
+            if (!folderName) {
+                return {
+                    success: false,
+                    message: `Unknown section type: ${sectionType}`
+                };
+            }
+
+            let filePath;
+            if (sectionType === 'nodes') {
+                filePath = path.join(this.currentProjectPath, 'src', packageName, packageName, fileName);
+            } else {
+                filePath = path.join(this.currentProjectPath, 'src', packageName, folderName, fileName);
+            }
+
+            // Check if file exists
+            try {
+                await fs.access(filePath);
+            } catch {
+                return {
+                    success: false,
+                    message: `File "${fileName}" not found.`
+                };
+            }
+
+            // Delete the file
+            await fs.unlink(filePath);
+
+            // For urdf/config/launch, check if folder is now empty and delete it
+            if (sectionType !== 'nodes') {
+                const folderPath = path.join(this.currentProjectPath, 'src', packageName, folderName);
+                try {
+                    const remainingFiles = await fs.readdir(folderPath);
+                    if (remainingFiles.length === 0) {
+                        await fs.rmdir(folderPath);
+                        console.log(`Deleted empty folder: ${folderPath}`);
+                    }
+                } catch (err) {
+                    console.log('Could not check/delete folder:', err.message);
+                }
+            }
+
+            return {
+                success: true,
+                message: `File "${fileName}" deleted successfully.`
+            };
+
+        } catch (error) {
+            console.error('Error deleting file:', error);
+            return {
+                success: false,
+                message: `Error deleting file: ${error.message}`
+            };
         }
     }
 }

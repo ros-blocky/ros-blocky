@@ -183,7 +183,7 @@ function setupContextMenu() {
             currentPackageContext = packageItem.dataset.packageName;
             currentNodeContext = null;
             currentFileContext = { folder: null, fileName: null };
-            currentFolderContext = packageItem.dataset.packageName;
+            currentFolderContext = 'nodes';
 
             // Show only "Delete Folder"
             if (addPackageItem) addPackageItem.classList.add('hidden');
@@ -524,80 +524,6 @@ async function deletePackage(packageName) {
 }
 
 /**
- * Delete a node
- */
-async function deleteNode(packageName, nodeName) {
-    try {
-        const result = await window.electronAPI.deleteNode(packageName, nodeName);
-        if (result.success) {
-            console.log('Node deleted successfully');
-            await refreshPackageList();
-        } else {
-            if (!result.message.includes('cancelled')) {
-                alert('Error: ' + result.message);
-            }
-        }
-    } catch (error) {
-        console.error('Error deleting node:', error);
-        alert('Error deleting node: ' + error.message);
-    }
-}
-
-/**
- * Delete a file from a section folder (generic for meshes, urdf, config, launch)
- */
-async function deleteFile(packageName, folderName, fileName) {
-    try {
-        // Confirm deletion
-        const confirmed = await window.electronAPI.confirm({
-            message: `Delete ${fileName} from ${folderName}?`,
-            confirmButtonText: 'Delete',
-            cancelButtonText: 'Cancel'
-        });
-
-        if (!confirmed) return;
-
-        const result = await window.electronAPI.deleteFile(packageName, folderName, fileName);
-        if (result.success) {
-            console.log(`File ${fileName} deleted successfully`);
-            await refreshPackageList();
-        } else {
-            alert('Error: ' + result.message);
-        }
-    } catch (error) {
-        console.error('Error deleting file:', error);
-        alert('Error deleting file: ' + error.message);
-    }
-}
-
-/**
- * Delete an entire folder (meshes, urdf, config, launch, or package nodes folder)
- */
-async function deleteFolder(packageName, folderName) {
-    try {
-        // Confirm deletion with folder name
-        const confirmed = await window.electronAPI.confirm({
-            message: `Delete the entire ${folderName} folder and all its contents?`,
-            confirmButtonText: 'Delete',
-            cancelButtonText: 'Cancel'
-        });
-
-        if (!confirmed) return;
-
-        const result = await window.electronAPI.deleteFolder(packageName, folderName);
-        if (result.success) {
-            console.log(`Folder ${folderName} deleted successfully`);
-            await refreshPackageList();
-        } else {
-            alert('Error: ' + result.message);
-        }
-    } catch (error) {
-        console.error('Error deleting folder:', error);
-        alert('Error deleting folder: ' + error.message);
-    }
-}
-
-/**
  * Refresh the package list
  */
 async function refreshPackageList() {
@@ -653,7 +579,7 @@ async function createPackageElement(packageName, packagesList) {
     // Full package display with collapse arrow and sections
     packageItem.innerHTML = `
         <div class="package-header">
-            <span class="collapse-arrow ${hasContent ? '' : 'hidden'}">▶</span>
+            <img class="collapse-arrow ${hasContent ? '' : 'hidden'}" src="assets/icons/chevron-right.svg" alt="">
             <span class="package-icon">📦</span>
             <span class="package-name">${packageName}</span>
         </div>
@@ -661,7 +587,7 @@ async function createPackageElement(packageName, packagesList) {
             <!-- NODES Section -->
             <div class="nodes-section" data-section="nodes">
                 <div class="nodes-header">
-                    <span class="section-collapse-arrow">▶</span>
+                    <img class="section-collapse-arrow" src="assets/icons/chevron-right.svg" alt="">
                     <span class="section-icon">⚙️</span>
                     <span class="section-name">NODES</span>
                     <button class="section-add-btn" data-type="node" title="Add Node">+</button>
@@ -671,7 +597,7 @@ async function createPackageElement(packageName, packagesList) {
             <!-- URDF Section -->
             <div class="file-section" data-section="urdf" data-folder="urdf">
                 <div class="file-header">
-                    <span class="section-collapse-arrow">▶</span>
+                    <img class="section-collapse-arrow" src="assets/icons/chevron-right.svg" alt="">
                     <span class="section-icon">🤖</span>
                     <span class="section-name">URDF</span>
                     <button class="section-add-btn" data-type="urdf" title="Add URDF">+</button>
@@ -681,7 +607,7 @@ async function createPackageElement(packageName, packagesList) {
             <!-- CONFIG Section -->
             <div class="file-section" data-section="config" data-folder="config">
                 <div class="file-header">
-                    <span class="section-collapse-arrow">▶</span>
+                    <img class="section-collapse-arrow" src="assets/icons/chevron-right.svg" alt="">
                     <span class="section-icon">⚙️</span>
                     <span class="section-name">CONFIG</span>
                     <button class="section-add-btn" data-type="config" title="Add Config">+</button>
@@ -691,7 +617,7 @@ async function createPackageElement(packageName, packagesList) {
             <!-- LAUNCH Section -->
             <div class="file-section" data-section="launch" data-folder="launch">
                 <div class="file-header">
-                    <span class="section-collapse-arrow">▶</span>
+                    <img class="section-collapse-arrow" src="assets/icons/chevron-right.svg" alt="">
                     <span class="section-icon">🚀</span>
                     <span class="section-name">LAUNCH</span>
                     <button class="section-add-btn" data-type="launch" title="Add Launch">+</button>
@@ -740,15 +666,18 @@ async function createPackageElement(packageName, packagesList) {
             nodeItem.className = 'node-item';
             nodeItem.dataset.nodeName = nodeName;
             nodeItem.innerHTML = `
-                <img class="node-icon" src="assets/icons/file-icon.png" alt="file">
+                <img class="node-icon" src="assets/icons/file-icon.svg" alt="file">
                 <span class="node-name">${nodeName}</span>
             `;
             nodesList.appendChild(nodeItem);
         });
+    } else {
+        // Hide nodes section if no nodes
+        nodesSection.classList.add('hidden');
     }
 
     // File icon path for consistent styling
-    const fileIconPath = 'assets/icons/file-icon.png';
+    const fileIconPath = 'assets/icons/file-icon.svg';
 
     // Setup URDF, CONFIG, LAUNCH sections
     const fileSections = [
@@ -789,6 +718,9 @@ async function createPackageElement(packageName, packagesList) {
                 `;
                 fileList.appendChild(fileItem);
             });
+        } else {
+            // Hide section if no files
+            section.classList.add('hidden');
         }
     });
 
@@ -1061,6 +993,94 @@ async function addFilesToSection(packageName, folderName) {
  */
 async function loadMeshFiles(meshesList, packageName) {
     await loadSectionFiles(meshesList, packageName, 'meshes');
+}
+
+/**
+ * Delete a single file from a section (node, urdf, config, launch)
+ * @param {string} packageName - Package name
+ * @param {string} sectionType - Section type (nodes, urdf, config, launch)
+ * @param {string} fileName - File name to delete
+ */
+async function deleteFile(packageName, sectionType, fileName) {
+    try {
+        // Show confirmation dialog
+        const message = `Are you sure you want to delete "${fileName}" from package "${packageName}"?`;
+        const confirmed = await window.electronAPI.showConfirmDialog(message);
+
+        if (!confirmed) return;
+
+        const result = await window.electronAPI.deleteSectionFile(packageName, sectionType, fileName);
+        if (result.success) {
+            console.log(`File ${fileName} deleted successfully`);
+            await refreshPackageList();
+        } else {
+            alert('Error: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error deleting file:', error);
+        alert('Error deleting file: ' + error.message);
+    }
+}
+
+/**
+ * Delete a node from a package
+ * @param {string} packageName - Package name
+ * @param {string} nodeName - Node name to delete
+ */
+async function deleteNode(packageName, nodeName) {
+    try {
+        // Show confirmation dialog
+        const message = `Are you sure you want to delete node "${nodeName}" from package "${packageName}"?`;
+        const confirmed = await window.electronAPI.showConfirmDialog(message);
+
+        if (!confirmed) return;
+
+        const result = await window.electronAPI.deleteSectionFile(packageName, 'nodes', nodeName + '.py');
+        if (result.success) {
+            console.log('Node deleted successfully');
+            await refreshPackageList();
+        } else {
+            alert('Error: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error deleting node:', error);
+        alert('Error deleting node: ' + error.message);
+    }
+}
+
+/**
+ * Delete all files in a section (folder)
+ * @param {string} packageName - Package name
+ * @param {string} sectionType - Section type (nodes, urdf, config, launch)
+ */
+async function deleteFolder(packageName, sectionType) {
+    try {
+        // Map section types to display names for messages
+        const displayNames = {
+            'nodes': 'nodes',
+            'urdf': 'URDF files',
+            'config': 'config files',
+            'launch': 'launch files'
+        };
+        const displayName = displayNames[sectionType] || sectionType;
+
+        // Show confirmation dialog
+        const message = `Are you sure you want to delete all ${displayName} from package "${packageName}"?`;
+        const confirmed = await window.electronAPI.showConfirmDialog(message);
+
+        if (!confirmed) return;
+
+        const result = await window.electronAPI.deleteSectionFiles(packageName, sectionType);
+        if (result.success) {
+            console.log(`${sectionType} folder deleted successfully`);
+            await refreshPackageList();
+        } else {
+            alert('Error: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error deleting folder:', error);
+        alert('Error deleting folder: ' + error.message);
+    }
 }
 
 /**
