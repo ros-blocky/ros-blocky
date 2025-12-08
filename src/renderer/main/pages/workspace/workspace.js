@@ -26,7 +26,7 @@ export async function initWorkspace() {
         packagesPanelContainer.innerHTML = packagesHtml;
 
         // Initialize packages panel module
-        const { initPackagesPanel } = await import('./components/packages-panel/packages-panel.js');
+        const { initPackagesPanel } = await import('./components/packages-panel/index.js');
         initPackagesPanel();
     }
 
