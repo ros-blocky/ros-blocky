@@ -1,64 +1,45 @@
 /**
  * Dynamic Icon Sidebar
- * Renders icons based on active file type
+ * Renders icons based on active file type from editor registry
+ * Hides when no file is selected
  */
 
-import { getState, setActiveCategory, onEditorChange, onCategoryChange } from './editor-state.js';
-
-// Icon configurations per editor type
-const ICON_CONFIGS = {
-    urdf: [
-        { id: 'links', icon: '🔗', label: 'Links', color: '#667eea' },
-        { id: 'joints', icon: '⚙️', label: 'Joints', color: '#11998e' },
-        { id: 'geometry', icon: '📦', label: 'Geometry', color: '#ee0979' },
-        { id: 'materials', icon: '🎨', label: 'Materials', color: '#f093fb' },
-        { id: 'physics', icon: '⚡', label: 'Physics', color: '#4facfe' }
-    ],
-    node: [
-        { id: 'publishers', icon: '📤', label: 'Publishers', color: '#667eea' },
-        { id: 'subscribers', icon: '📥', label: 'Subscribers', color: '#11998e' },
-        { id: 'services', icon: '🔄', label: 'Services', color: '#ee0979' },
-        { id: 'timers', icon: '⏱️', label: 'Timers', color: '#f093fb' },
-        { id: 'control', icon: '🎮', label: 'Control', color: '#4facfe' }
-    ],
-    config: [
-        { id: 'parameters', icon: '⚙️', label: 'Parameters', color: '#667eea' },
-        { id: 'lists', icon: '📋', label: 'Lists', color: '#11998e' },
-        { id: 'objects', icon: '📦', label: 'Objects', color: '#ee0979' }
-    ],
-    launch: [
-        { id: 'nodes', icon: '🚀', label: 'Nodes', color: '#667eea' },
-        { id: 'arguments', icon: '📝', label: 'Arguments', color: '#11998e' },
-        { id: 'conditions', icon: '❓', label: 'Conditions', color: '#ee0979' },
-        { id: 'groups', icon: '📁', label: 'Groups', color: '#f093fb' }
-    ]
-};
-
-// Default icons when no file selected
-const DEFAULT_ICONS = [
-    { id: 'grid', icon: '⊞', label: 'Grid View', color: null },
-    { id: 'search', icon: '🔍', label: 'Search', color: null },
-    { id: 'blocks', icon: '📊', label: 'Blocks', color: null, active: true },
-    { id: 'run', icon: '▶️', label: 'Run', color: null }
-];
+import { getState, setActiveCategory, onEditorChange, onCategoryChange, hasActiveFile } from './editor-state.js';
+import { getEditorById } from './editor-registry.js';
 
 let sidebarElement = null;
+let sidebarContainer = null;
 let currentActiveId = null;
+let currentEditorType = null;
 
 /**
  * Initialize the icon sidebar
- * @param {string} containerId - ID of the sidebar container
+ * @param {string} containerId - ID of the sidebar container (the icon sidebar div)
  */
 export function initIconSidebar(containerId) {
     sidebarElement = document.getElementById(containerId);
+    if (!sidebarElement) {
+        // Try to find by class
+        sidebarElement = document.querySelector('.blocks-icon-sidebar');
+    }
+
     if (!sidebarElement) {
         console.error('[IconSidebar] Container not found:', containerId);
         return;
     }
 
+    // Store reference to parent for show/hide
+    sidebarContainer = sidebarElement;
+
     // Listen for editor type changes
     onEditorChange((editorType) => {
-        renderIcons(editorType);
+        currentEditorType = editorType;
+        if (editorType) {
+            showSidebar();
+            renderIconsFromRegistry(editorType);
+        } else {
+            hideSidebar();
+        }
     });
 
     // Listen for category changes to update active state
@@ -66,46 +47,81 @@ export function initIconSidebar(containerId) {
         updateActiveState(category);
     });
 
-    // Render default icons initially
-    renderIcons(null);
+    // Initially hide if no file is open
+    if (!hasActiveFile()) {
+        hideSidebar();
+    }
 
     console.log('[IconSidebar] Initialized');
 }
 
 /**
- * Render icons for the given editor type
- * @param {string|null} editorType 
+ * Show the sidebar
  */
-function renderIcons(editorType) {
+export function showSidebar() {
+    if (sidebarContainer) {
+        sidebarContainer.classList.remove('hidden');
+        sidebarContainer.style.display = '';
+    }
+}
+
+/**
+ * Hide the sidebar
+ */
+export function hideSidebar() {
+    if (sidebarContainer) {
+        sidebarContainer.classList.add('hidden');
+        sidebarContainer.style.display = 'none';
+    }
+    // Clear content
+    if (sidebarElement) {
+        sidebarElement.innerHTML = '';
+    }
+}
+
+/**
+ * Render icons from editor registry for the given editor type
+ * @param {string} editorType - Editor type ID (e.g., 'urdf')
+ */
+function renderIconsFromRegistry(editorType) {
     if (!sidebarElement) return;
 
-    const icons = editorType && ICON_CONFIGS[editorType]
-        ? ICON_CONFIGS[editorType]
-        : DEFAULT_ICONS;
+    // Get editor config from registry
+    const editorConfig = getEditorById(editorType);
 
-    // Build top icons
-    const topIconsHtml = icons.map(icon => `
-        <button class="sidebar-icon-btn ${icon.active ? 'active' : ''}" 
-                data-category="${icon.id}"
-                title="${icon.label}"
-                ${icon.color ? `style="--icon-color: ${icon.color}"` : ''}>
-            <span class="icon-emoji">${icon.icon}</span>
-        </button>
-    `).join('');
+    if (!editorConfig || !editorConfig.categories) {
+        console.warn('[IconSidebar] No categories found for editor:', editorType);
+        hideSidebar();
+        return;
+    }
 
-    // Settings icon at bottom (always present)
-    const bottomIconHtml = `
-        <button class="sidebar-icon-btn" data-category="settings" title="Settings">
-            <span class="icon-emoji">⭐</span>
-        </button>
-    `;
+    const categories = editorConfig.categories;
+
+    // Build category icons - support both emoji and image types
+    const iconsHtml = categories.map((cat, index) => {
+        const iconContent = cat.iconType === 'image'
+            ? `<img src="${sanitizeAttr(cat.icon)}" class="sidebar-icon-img" alt="${sanitizeAttr(cat.label)}">`
+            : `<span class="icon-emoji">${cat.icon}</span>`;
+
+        return `
+            <button class="sidebar-icon-btn ${index === 0 ? 'active' : ''}" 
+                    data-category="${sanitizeAttr(cat.id)}"
+                    title="${sanitizeAttr(cat.label)}"
+                    style="--icon-color: ${cat.color}">
+                ${iconContent}
+                <span class="sidebar-icon-label">${sanitizeAttr(cat.label)}</span>
+            </button>
+        `;
+    }).join('');
 
     sidebarElement.innerHTML = `
         <div class="icon-sidebar-top">
-            ${topIconsHtml}
+            ${iconsHtml}
         </div>
         <div class="icon-sidebar-bottom">
-            ${bottomIconHtml}
+            <button class="sidebar-icon-btn" data-category="settings" title="Settings">
+                <span class="icon-emoji">⚙️</span>
+            </button>
         </div>
     `;
 
@@ -119,10 +135,14 @@ function renderIcons(editorType) {
         });
     });
 
-    // Reset active state
-    currentActiveId = null;
+    // Auto-select first category with delay to ensure block-palette is ready
+    if (categories.length > 0) {
+        setTimeout(() => {
+            setActiveCategory(categories[0].id);
+        }, 50);
+    }
 
-    console.log('[IconSidebar] Rendered icons for:', editorType || 'default');
+    console.log('[IconSidebar] Rendered icons for:', editorType, `(${categories.length} categories)`);
 }
 
 /**
@@ -149,10 +169,32 @@ function updateActiveState(categoryId) {
 }
 
 /**
- * Get icons for a specific editor type
- * @param {string} editorType 
- * @returns {Array} Icon configurations
+ * Sanitize string for use in HTML attributes
+ * @param {string} str - String to sanitize
+ * @returns {string} Sanitized string
  */
-export function getIconsForType(editorType) {
-    return ICON_CONFIGS[editorType] || DEFAULT_ICONS;
+function sanitizeAttr(str) {
+    if (typeof str !== 'string') return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+/**
+ * Get current active category
+ * @returns {string|null} Active category ID
+ */
+export function getActiveCategory() {
+    return currentActiveId;
+}
+
+/**
+ * Check if sidebar is visible
+ * @returns {boolean} True if visible
+ */
+export function isSidebarVisible() {
+    return sidebarContainer && !sidebarContainer.classList.contains('hidden');
 }

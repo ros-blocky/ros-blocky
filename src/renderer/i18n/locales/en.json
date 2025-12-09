@@ -25,11 +25,11 @@
         "emptyStateHint": "Click the + button to create your first package",
         "contextMenu": {
             "addPackage": "➕ Add Package",
-            "addNode": "⚡ Add Node",
-            "addMeshes": "🦾 Add Meshes",
-            "addUrdf": "🤖 Add URDF",
-            "addConfig": "⚙️ Add Config",
-            "addLaunch": "🚀 Add Launch",
+            "addNode": "Add Node",
+            "addMeshes": "Add Meshes",
+            "addUrdf": "Add URDF",
+            "addConfig": "Add Config",
+            "addLaunch": "Add Launch",
             "deletePackage": "🗑️ Delete Package",
             "deleteNode": "🗑️ Delete Node",
             "deleteFile": "🗑️ Delete File",
@@ -64,6 +64,8 @@
         "launchFiles": "Launch Files"
     },
     "blocks": {
+        "selectFile": "Select a File",
+        "clickToOpen": "Click a file in the packages panel to open it",
         "motion": "Motion",
         "motors": "Motors",
         "sensors": "Sensors",

@@ -16,15 +16,30 @@
 
 /* Icon Sidebar (Cyan with simple icons) */
 .blocks-icon-sidebar {
-    width: 48px;
+    width: 64px;
     background: #00bbfe;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 0;
+    padding: 10px 4px;
     flex-shrink: 0;
     height: 100%;
+    transition: width 0.2s ease, opacity 0.2s ease;
+}
+
+/* Hidden state for icon sidebar */
+.blocks-icon-sidebar.hidden {
+    width: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+}
+
+/* Hidden state for resize handle */
+.blocks-sidebar-resize-handle.hidden {
+    width: 0;
+    display: none;
 }
 
 .icon-sidebar-top,
@@ -35,16 +50,20 @@
 }
 
 .sidebar-icon-btn {
-    width: 40px;
-    height: 40px;
+    width: 56px;
+    height: auto;
+    min-height: 54px;
+    padding: 6px 4px;
     background: transparent;
     border: none;
     border-radius: 6px;
     color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 2px;
     transition: all 0.15s;
 }
 
@@ -69,6 +88,38 @@
     filter: brightness(0) invert(1);
 }
 
+/* Sidebar image icons */
+.sidebar-icon-img {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    opacity: 0.9;
+}
+
+.sidebar-icon-btn:hover .sidebar-icon-img,
+.sidebar-icon-btn.active .sidebar-icon-img {
+    opacity: 1;
+}
+
+/* Sidebar icon label text */
+.sidebar-icon-label {
+    font-size: 7px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    line-height: 1.1;
+}
+
+.sidebar-icon-btn:hover .sidebar-icon-label,
+.sidebar-icon-btn.active .sidebar-icon-label {
+    color: rgba(255, 255, 255, 0.9);
+}
+
 /* ========================================
    Blocks Sidebar (matching packages panel)
    ======================================== */
@@ -79,6 +130,23 @@
     flex-direction: column;
     flex-shrink: 0;
     overflow-y: auto;
+    transition: width 0.2s ease, opacity 0.2s ease;
+}
+
+/* Hidden state for blocks sidebar */
+.blocks-sidebar.hidden {
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    opacity: 0;
+}
+
+/* Palette error message */
+.palette-error {
+    color: #999;
+    font-size: 12px;
+    padding: 20px;
+    text-align: center;
 }
 
 /* Header matching packages panel header */
@@ -98,33 +166,57 @@
     text-transform: uppercase;
 }
 
-/* Block items in sidebar */
-.blocks-category {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    margin: 4px 8px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-    color: white;
-    font-weight: 500;
-    font-size: 13px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+/* Blockly Flyout Container (sidebar) */
+.blockly-flyout-container {
+    flex: 1;
+    min-height: 200px;
+    background: #f7f7f7;
+    overflow: hidden;
+    padding: 10px;
 }
 
-.blocks-category:first-of-type {
-    margin-top: 8px;
+/* Blockly Workspace Container (main editor) */
+.blockly-workspace-container {
+    width: 100%;
+    height: 100%;
+    display: none;
 }
 
-.blocks-category:hover {
-    transform: translateX(3px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+.blockly-workspace-container.active {
+    display: block;
+}
+
+/* Hide Blockly UI elements in flyout for cleaner look */
+.blockly-flyout-container .blocklyScrollbarVertical,
+.blockly-flyout-container .blocklyScrollbarHorizontal,
+.blockly-flyout-container .blocklyMainBackground {
+    display: none !important;
+}
+
+/* Make flyout background transparent */
+.blockly-flyout-container svg {
+    background: transparent !important;
 }
 
 .blocks-category-icon {
     font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+/* File type icons (for PNG icons) */
+.file-type-icon {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(166deg) brightness(100%) contrast(101%);
+}
+
+/* Block icons (for PNG icons in block items) */
+.block-icon {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
 }
 
 .blocks-category-label {
@@ -313,20 +405,29 @@
 
 /* Placeholder */
 .blocks-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     color: #999;
+    padding: 40px;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
 }
 
 .placeholder-icon {
-    font-size: 64px;
-    margin-bottom: 20px;
-    opacity: 0.5;
+    font-size: 80px;
+    margin-bottom: 24px;
+    opacity: 0.4;
+    line-height: 1;
 }
 
 .blocks-placeholder h2 {
-    font-size: 20px;
-    font-weight: 400;
-    margin: 0 0 10px 0;
+    font-size: 22px;
+    font-weight: 500;
+    margin: 0 0 12px 0;
     color: #555;
 }
 
@@ -334,4 +435,5 @@
     font-size: 14px;
     margin: 0;
     color: #888;
+    max-width: 300px;
 }

@@ -27,43 +27,10 @@
 
         <!-- Block Palette Sidebar -->
         <div class="blocks-sidebar">
-            <div class="blocks-sidebar-header" data-i18n="workspace.blocks">BLOCKS</div>
+            <div class="blocks-sidebar-header" data-i18n="workspace.blocks">STRUCTURE</div>
 
-            <!-- Motion Category -->
-            <div class="blocks-category motion">
-                <span class="blocks-category-icon">🤖</span>
-                <span class="blocks-category-label" data-i18n="blocks.motion">Motion</span>
-            </div>
-
-            <!-- Motors Category -->
-            <div class="blocks-category motors">
-                <span class="blocks-category-icon">⚙️</span>
-                <span class="blocks-category-label" data-i18n="blocks.motors">Motors</span>
-            </div>
-
-            <!-- Sensors Category -->
-            <div class="blocks-category sensors">
-                <span class="blocks-category-icon">📡</span>
-                <span class="blocks-category-label" data-i18n="blocks.sensors">Sensors</span>
-            </div>
-
-            <!-- Control Category -->
-            <div class="blocks-category control">
-                <span class="blocks-category-icon">🎮</span>
-                <span class="blocks-category-label" data-i18n="blocks.control">Control</span>
-            </div>
-
-            <!-- Operators Category -->
-            <div class="blocks-category operators">
-                <span class="blocks-category-icon">➕</span>
-                <span class="blocks-category-label" data-i18n="blocks.operators">Operators</span>
-            </div>
-
-            <!-- Variables Category -->
-            <div class="blocks-category variables">
-                <span class="blocks-category-icon">📊</span>
-                <span class="blocks-category-label" data-i18n="blocks.variables">Variables</span>
-            </div>
+            <!-- Blockly Flyout Container - Real Blockly blocks will be rendered here -->
+            <div id="blockly-flyout" class="blockly-flyout-container"></div>
         </div>
 
         <!-- Resize Handle -->
@@ -83,8 +50,9 @@
                 <!-- Breadcrumb inserted here by JS -->
             </div>
 
-            <!-- Editor Workspace -->
+            <!-- Editor Workspace - Main Blockly workspace -->
             <div class="blocks-editor" id="blocks-editor">
+                <div id="blockly-workspace" class="blockly-workspace-container"></div>
                 <div class="blocks-placeholder" id="editor-placeholder">
                     <div class="placeholder-icon">📂</div>
                     <h2 data-i18n="blocks.selectFile">Select a File</h2>

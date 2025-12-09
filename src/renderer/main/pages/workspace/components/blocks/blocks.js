@@ -1,76 +1,32 @@
 /**
  * Blocks Component
- * Handles the visual block-based programming interface
+ * Main orchestrator for the block-based editor
+ * Implements 2-state UI: hidden (no file) / visible (file open)
  */
 
+// Import core modules
+import { setActiveFile, clearActiveFile, onFileChange, hasActiveFile } from './core/editor-state.js';
+import { getEditorForFile, hasEditorForFile } from './core/editor-registry.js';
+import { initIconSidebar, showSidebar, hideSidebar } from './core/icon-sidebar.js';
+import { initBlockPalette, showPalette, hidePalette, resizeFlyout } from './core/block-palette.js';
+
+// Import URDF editor (auto-registers with registry)
+import { initUrdfEditor } from './editors/urdf/urdf-editor.js';
+
+// State
 let initialized = false;
-let currentFileType = null;
-
-// URDF icon configuration (Option A organization)
-const URDF_ICONS = [
-    { id: 'structure', icon: '🏗️', label: 'Structure' },
-    { id: 'geometry', icon: '📦', label: 'Geometry' },
-    { id: 'transform', icon: '📍', label: 'Transform' },
-    { id: 'appearance', icon: '🎨', label: 'Appearance' },
-    { id: 'physics', icon: '⚡', label: 'Physics' }
-];
-
-// Default icons
-const DEFAULT_ICONS = [
-    { id: 'grid', icon: '⊞', label: 'Grid View' },
-    { id: 'search', icon: '🔍', label: 'Search' },
-    { id: 'blocks', icon: '📊', label: 'Blocks', active: true },
-    { id: 'run', icon: '▶️', label: 'Run' }
-];
-
-// URDF blocks per category (Option A - no duplicates)
-const URDF_BLOCKS = {
-    structure: [
-        { id: 'robot', label: 'Robot', icon: '🤖', color: '#667eea' },
-        { id: 'link', label: 'Link', icon: '🔗', color: '#764ba2' },
-        { id: 'joint_fixed', label: 'Fixed Joint', icon: '🔒', color: '#8b5cf6' },
-        { id: 'joint_revolute', label: 'Revolute Joint', icon: '🔄', color: '#a78bfa' },
-        { id: 'joint_continuous', label: 'Continuous Joint', icon: '♾️', color: '#c4b5fd' },
-        { id: 'joint_prismatic', label: 'Prismatic Joint', icon: '↔️', color: '#ddd6fe' }
-    ],
-    geometry: [
-        { id: 'box', label: 'Box', icon: '📦', color: '#ee0979' },
-        { id: 'cylinder', label: 'Cylinder', icon: '🛢️', color: '#ff6a00' },
-        { id: 'sphere', label: 'Sphere', icon: '🔴', color: '#f97316' },
-        { id: 'mesh', label: 'Mesh', icon: '🦾', color: '#fb923c' },
-        { id: 'visual', label: 'Visual', icon: '👁️', color: '#fdba74' },
-        { id: 'collision', label: 'Collision', icon: '💥', color: '#fed7aa' }
-    ],
-    transform: [
-        { id: 'origin', label: 'Origin XYZ RPY', icon: '📍', color: '#11998e' },
-        { id: 'axis', label: 'Axis', icon: '➡️', color: '#38ef7d' }
-    ],
-    appearance: [
-        { id: 'material', label: 'Material', icon: '🎨', color: '#f093fb' },
-        { id: 'color', label: 'Color RGBA', icon: '🌈', color: '#f5576c' },
-        { id: 'texture', label: 'Texture', icon: '🖼️', color: '#ec4899' }
-    ],
-    physics: [
-        { id: 'mass', label: 'Mass', icon: '⚖️', color: '#4facfe' },
-        { id: 'inertia', label: 'Inertia', icon: '🌀', color: '#00f2fe' },
-        { id: 'inertial', label: 'Inertial', icon: '⚙️', color: '#22d3ee' },
-        { id: 'limit', label: 'Limit', icon: '🚧', color: '#67e8f9' },
-        { id: 'dynamics', label: 'Dynamics', icon: '📊', color: '#a5f3fc' }
-    ]
-};
-
-// Open files state for tabs
+let mainWorkspace = null;
 let openFiles = [];
 let activeFile = null;
 
-// File type icons
+// File type icons for tabs
 const FILE_ICONS = {
-    urdf: '🤖',
-    xacro: '🤖',
-    py: '🐍',
-    launch: '🚀',
-    yaml: '⚙️',
-    xml: '📄',
+    urdf: '<img src="assets/icons/urdf.png" class="file-type-icon" alt="urdf">',
+    xacro: '<img src="assets/icons/urdf.png" class="file-type-icon" alt="xacro">',
+    py: '<img src="assets/icons/nodes.svg" class="file-type-icon" alt="python">',
+    launch: '<img src="assets/icons/launch.svg" class="file-type-icon" alt="launch">',
+    yaml: '<img src="assets/icons/config.svg" class="file-type-icon" alt="yaml">',
+    xml: '<img src="assets/icons/meshes.svg" class="file-type-icon" alt="xml">',
     default: '📄'
 };
 
@@ -85,14 +41,159 @@ export function initBlocks() {
 
     console.log('[Blocks] Initializing...');
 
+    // Initialize URDF editor (registers blocks and categories)
+    if (typeof Blockly !== 'undefined') {
+        initUrdfEditor(Blockly);
+    } else {
+        console.warn('[Blocks] Blockly not loaded, editor features disabled');
+    }
+
+    // Initialize UI components (they will hide themselves initially)
+    initIconSidebar('blocks-icon-sidebar');
+    initBlockPalette('blocks-sidebar');
+
     // Setup sidebar resize
     setupSidebarResize();
 
     // Listen for file selection events from packages panel
     window.addEventListener('fileSelected', handleFileSelected);
 
+    // Set initial state (no file open)
+    updateUIState(false);
+
     initialized = true;
     console.log('[Blocks] Component initialized');
+}
+
+/**
+ * Update UI state based on whether a file is open
+ * @param {boolean} hasFile - Whether a file is currently open
+ */
+function updateUIState(hasFile) {
+    const iconSidebar = document.querySelector('.blocks-icon-sidebar');
+    const blocksSidebar = document.querySelector('.blocks-sidebar');
+    const resizeHandle = document.querySelector('.blocks-sidebar-resize-handle');
+    const placeholder = document.getElementById('editor-placeholder');
+    const workspace = document.getElementById('blockly-workspace');
+
+    if (hasFile) {
+        // State 2: File is open - show everything
+        if (iconSidebar) {
+            iconSidebar.classList.remove('hidden');
+            iconSidebar.style.display = '';
+        }
+        if (blocksSidebar) {
+            blocksSidebar.classList.remove('hidden');
+            blocksSidebar.style.display = '';
+        }
+        if (resizeHandle) {
+            resizeHandle.classList.remove('hidden');
+            resizeHandle.style.display = '';
+        }
+        if (placeholder) {
+            placeholder.style.display = 'none';
+        }
+        if (workspace) {
+            workspace.classList.add('active');
+        }
+    } else {
+        // State 1: No file open - hide sidebar elements
+        if (iconSidebar) {
+            iconSidebar.classList.add('hidden');
+            iconSidebar.style.display = 'none';
+        }
+        if (blocksSidebar) {
+            blocksSidebar.classList.add('hidden');
+            blocksSidebar.style.display = 'none';
+        }
+        if (resizeHandle) {
+            resizeHandle.classList.add('hidden');
+            resizeHandle.style.display = 'none';
+        }
+        if (placeholder) {
+            placeholder.style.display = 'flex';
+        }
+        if (workspace) {
+            workspace.classList.remove('active');
+        }
+    }
+}
+
+/**
+ * Handle file selection event from packages panel
+ * @param {CustomEvent} event - File selection event
+ */
+function handleFileSelected(event) {
+    const { type, fileName, packageName } = event.detail;
+
+    // Validate event data
+    if (!fileName || typeof fileName !== 'string') {
+        console.error('[Blocks] Invalid file selection event');
+        return;
+    }
+
+    console.log('[Blocks] File selected:', type, fileName);
+
+    // Create file info object
+    const fileInfo = {
+        fileName: sanitizeText(fileName),
+        packageName: sanitizeText(packageName || ''),
+        type: type || getFileType(fileName)
+    };
+
+    // Check if file already open
+    const existingIndex = openFiles.findIndex(f =>
+        f.fileName === fileInfo.fileName && f.packageName === fileInfo.packageName
+    );
+
+    if (existingIndex >= 0) {
+        activeFile = openFiles[existingIndex];
+    } else {
+        openFiles.push(fileInfo);
+        activeFile = fileInfo;
+    }
+
+    // Update editor state (triggers icon sidebar and block palette updates)
+    setActiveFile({
+        type: fileInfo.type,
+        path: fileInfo.fileName,
+        package: fileInfo.packageName
+    });
+
+    // Update UI
+    updateUIState(true);
+    renderTabs();
+    renderBreadcrumb();
+}
+
+/**
+ * Get file type from filename
+ * @param {string} fileName - File name
+ * @returns {string} File type
+ */
+function getFileType(fileName) {
+    if (!fileName) return 'unknown';
+    const lower = fileName.toLowerCase();
+    if (lower.endsWith('.urdf') || lower.endsWith('.xacro')) return 'urdf';
+    if (lower.endsWith('.launch.py')) return 'launch';
+    if (lower.endsWith('.py')) return 'node';
+    if (lower.endsWith('.yaml') || lower.endsWith('.yml')) return 'config';
+    return 'unknown';
+}
+
+/**
+ * Sanitize text for display (prevent XSS)
+ * @param {string} text - Text to sanitize
+ * @returns {string} Sanitized text
+ */
+function sanitizeText(text) {
+    if (typeof text !== 'string') return '';
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 /**
@@ -123,6 +224,7 @@ function setupSidebarResize() {
             blocksSidebar.classList.add('collapsed');
             blocksSidebar.style.width = '0px';
         }
+        resizeFlyout();
     });
 
     resizeHandle.addEventListener('mousedown', (e) => {
@@ -149,6 +251,8 @@ function setupSidebarResize() {
             blocksSidebar.style.width = `${clampedWidth}px`;
             lastExpandedWidth = clampedWidth;
         }
+
+        resizeFlyout();
     });
 
     document.addEventListener('mouseup', () => {
@@ -158,54 +262,6 @@ function setupSidebarResize() {
             document.body.style.userSelect = '';
         }
     });
-}
-
-/**
- * Handle file selection event - opens file as tab
- */
-function handleFileSelected(event) {
-    const { type, fileName, packageName } = event.detail;
-    console.log('[Blocks] File selected event received:', type, fileName);
-
-    // Create file info object
-    const fileInfo = {
-        fileName: fileName,
-        packageName: packageName,
-        type: type
-    };
-
-    // Check if file already open
-    const existingIndex = openFiles.findIndex(f =>
-        f.fileName === fileName && f.packageName === packageName
-    );
-
-    if (existingIndex >= 0) {
-        // File already open, activate it
-        activeFile = openFiles[existingIndex];
-    } else {
-        // Add new file
-        openFiles.push(fileInfo);
-        activeFile = fileInfo;
-    }
-
-    // Render tabs and breadcrumb
-    renderTabs();
-    renderBreadcrumb();
-
-    // Update sidebar based on file type
-    if (type === 'urdf') {
-        currentFileType = 'urdf';
-        renderUrdfIcons();
-    } else {
-        currentFileType = type;
-        renderDefaultIcons();
-    }
-
-    // Hide placeholder
-    const placeholder = document.getElementById('editor-placeholder');
-    if (placeholder) {
-        placeholder.style.display = 'none';
-    }
 }
 
 /**
@@ -244,15 +300,16 @@ function renderTabs() {
 
             const index = parseInt(tab.dataset.index);
             activeFile = openFiles[index];
+
+            // Update editor state
+            setActiveFile({
+                type: activeFile.type,
+                path: activeFile.fileName,
+                package: activeFile.packageName
+            });
+
             renderTabs();
             renderBreadcrumb();
-
-            // Update icons for file type
-            if (activeFile.type === 'urdf') {
-                renderUrdfIcons();
-            } else {
-                renderDefaultIcons();
-            }
         });
     });
 
@@ -268,6 +325,7 @@ function renderTabs() {
 
 /**
  * Close a tab
+ * @param {number} index - Tab index to close
  */
 function closeTab(index) {
     const wasActive = activeFile &&
@@ -280,14 +338,15 @@ function closeTab(index) {
         if (openFiles.length > 0) {
             const newIndex = Math.min(index, openFiles.length - 1);
             activeFile = openFiles[newIndex];
+            setActiveFile({
+                type: activeFile.type,
+                path: activeFile.fileName,
+                package: activeFile.packageName
+            });
         } else {
             activeFile = null;
-            // Show placeholder
-            const placeholder = document.getElementById('editor-placeholder');
-            if (placeholder) {
-                placeholder.style.display = 'flex';
-            }
-            renderDefaultIcons();
+            clearActiveFile();
+            updateUIState(false);
         }
     }
 
@@ -337,152 +396,17 @@ function renderBreadcrumb() {
 }
 
 /**
- * Render URDF-specific icons in the sidebar
+ * Get currently active file
+ * @returns {Object|null} Active file info or null
  */
-function renderUrdfIcons() {
-    const iconSidebar = document.querySelector('.blocks-icon-sidebar');
-    if (!iconSidebar) return;
-
-    const topIcons = URDF_ICONS.map((icon, index) => `
-        <button class="sidebar-icon-btn ${index === 0 ? 'active' : ''}" 
-                data-category="${icon.id}" 
-                title="${icon.label}">
-            <span class="icon-emoji">${icon.icon}</span>
-        </button>
-    `).join('');
-
-    iconSidebar.innerHTML = `
-        <div class="icon-sidebar-top">
-            ${topIcons}
-        </div>
-        <div class="icon-sidebar-bottom">
-            <button class="sidebar-icon-btn" title="Settings">
-                <span class="icon-emoji">⭐</span>
-            </button>
-        </div>
-    `;
-
-    // Attach click handlers to icons
-    iconSidebar.querySelectorAll('.sidebar-icon-btn[data-category]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            // Remove active from all
-            iconSidebar.querySelectorAll('.sidebar-icon-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            const category = btn.dataset.category;
-            renderBlocksForCategory(category);
-        });
-    });
-
-    // Render blocks for first category
-    renderBlocksForCategory('structure');
+export function getActiveFile() {
+    return activeFile ? { ...activeFile } : null;
 }
 
 /**
- * Render default icons in the sidebar
+ * Get all open files
+ * @returns {Array} Array of open file info objects
  */
-function renderDefaultIcons() {
-    const iconSidebar = document.querySelector('.blocks-icon-sidebar');
-    if (!iconSidebar) return;
-
-    const topIcons = DEFAULT_ICONS.map(icon => `
-        <button class="sidebar-icon-btn ${icon.active ? 'active' : ''}" title="${icon.label}">
-            <span class="icon-emoji">${icon.icon}</span>
-        </button>
-    `).join('');
-
-    iconSidebar.innerHTML = `
-        <div class="icon-sidebar-top">
-            ${topIcons}
-        </div>
-        <div class="icon-sidebar-bottom">
-            <button class="sidebar-icon-btn" title="Favorites">
-                <span class="icon-emoji">⭐</span>
-            </button>
-        </div>
-    `;
-}
-
-/**
- * Render blocks for a category in the sidebar
- */
-function renderBlocksForCategory(category) {
-    const blocksSidebar = document.querySelector('.blocks-sidebar');
-    if (!blocksSidebar) return;
-
-    const blocks = URDF_BLOCKS[category] || [];
-    const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
-
-    const blocksHtml = blocks.map(block => `
-        <div class="blocks-category" 
-             style="background: linear-gradient(135deg, ${block.color} 0%, ${adjustColor(block.color, -20)} 100%)"
-             data-block-id="${block.id}">
-            <span class="blocks-category-icon">${block.icon}</span>
-            <span class="blocks-category-label">${block.label}</span>
-        </div>
-    `).join('');
-
-    blocksSidebar.innerHTML = `
-        <div class="blocks-sidebar-header">${categoryLabel.toUpperCase()}</div>
-        ${blocksHtml}
-    `;
-
-    // Attach click handlers
-    blocksSidebar.querySelectorAll('.blocks-category').forEach(block => {
-        block.addEventListener('click', () => {
-            const blockId = block.dataset.blockId;
-            console.log('[Blocks] Block clicked:', blockId);
-            // Future: Add block to Blockly workspace
-        });
-    });
-}
-
-/**
- * Update editor placeholder text
- */
-function updateEditorPlaceholder(title, subtitle) {
-    const placeholder = document.querySelector('.blocks-placeholder');
-    if (!placeholder) return;
-
-    const h2 = placeholder.querySelector('h2');
-    const p = placeholder.querySelector('p');
-
-    if (h2) h2.textContent = title;
-    if (p) p.textContent = subtitle;
-}
-
-/**
- * Adjust color brightness
- */
-function adjustColor(hex, amount) {
-    const num = parseInt(hex.replace('#', ''), 16);
-    const r = Math.max(0, Math.min(255, (num >> 16) + amount));
-    const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
-    const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
-    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
-}
-
-/**
- * Setup tabs
- */
-function setupTabs() {
-    const tabs = document.querySelectorAll('.blocks-tab');
-
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            console.log('Tab clicked:', tab.textContent);
-        });
-    });
-}
-
-/**
- * Reset the blocks component
- */
-export function resetBlocks() {
-    initialized = false;
-    currentFileType = null;
-    window.removeEventListener('fileSelected', handleFileSelected);
-    console.log('[Blocks] Reset');
+export function getOpenFiles() {
+    return [...openFiles];
 }

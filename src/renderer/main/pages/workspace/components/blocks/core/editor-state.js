@@ -116,3 +116,19 @@ export function clearActiveFile() {
 
     console.log('[EditorState] State cleared');
 }
+
+/**
+ * Check if there is an active file open
+ * @returns {boolean} True if a file is currently open
+ */
+export function hasActiveFile() {
+    return state.activeFile !== null;
+}
+
+/**
+ * Get the current file type (editor type)
+ * @returns {string|null} Current file type or null
+ */
+export function getActiveFileType() {
+    return state.activeEditor;
+}

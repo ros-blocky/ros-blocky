@@ -14,7 +14,7 @@ export const FILE_SECTIONS = {
     },
     urdf: {
         label: 'URDF',
-        icon: '🤖',
+        icon: '<img src="assets/icons/urdf.png" class="file-type-icon" alt="urdf">',
         extensions: ['.urdf', '.xacro'],
         fileTypeLabel: 'URDF files',
         mode: 'create' // Create new file

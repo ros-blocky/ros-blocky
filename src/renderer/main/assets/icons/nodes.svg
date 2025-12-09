@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+  <!-- Top node (rectangle) -->
+  <rect x="8" y="2" width="8" height="5" rx="1"/>
+  <!-- Vertical line from top node -->
+  <path d="M12 7v3" stroke="currentColor" stroke-width="2"/>
+  <!-- Horizontal line -->
+  <path d="M5 10h14" stroke="currentColor" stroke-width="2"/>
+  <!-- Left vertical line -->
+  <path d="M5 10v4" stroke="currentColor" stroke-width="2"/>
+  <!-- Center vertical line -->
+  <path d="M12 10v4" stroke="currentColor" stroke-width="2"/>
+  <!-- Right vertical line -->
+  <path d="M19 10v4" stroke="currentColor" stroke-width="2"/>
+  <!-- Bottom left circle -->
+  <circle cx="5" cy="17" r="3"/>
+  <!-- Bottom center circle -->
+  <circle cx="12" cy="17" r="3"/>
+  <!-- Bottom right circle -->
+  <circle cx="19" cy="17" r="3"/>
+</svg>

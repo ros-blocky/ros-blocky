@@ -4,13 +4,19 @@
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+    content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
   <link href="./index.css" rel="stylesheet">
   <link href="./pages/welcome/welcome.css" rel="stylesheet">
   <link href="./pages/loading/loading.css" rel="stylesheet">
   <link href="./pages/workspace/workspace.css" rel="stylesheet">
   <link href="./pages/workspace/components/blocks/blocks.css" rel="stylesheet">
   <link href="./pages/workspace/components/packages-panel/packages-panel.css" rel="stylesheet">
+  <!-- Blockly Library -->
+  <script src="../../../node_modules/blockly/blockly_compressed.js"></script>
+  <script src="../../../node_modules/blockly/blocks_compressed.js"></script>
+  <script src="../../../node_modules/blockly/msg/en.js"></script>
+  <!-- Blockly Theme (external file to comply with CSP) -->
+  <script src="./pages/workspace/components/blocks/blockly-theme.js"></script>
   <title>ROS Block Code</title>
 </head>
 

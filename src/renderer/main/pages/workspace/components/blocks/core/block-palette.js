@@ -1,53 +1,17 @@
 /**
  * Block Palette
- * Renders block options based on active category
+ * Renders Blockly blocks based on active category from editor registry
+ * Hides when no file is selected
  */
 
-import { getState, onCategoryChange, onEditorChange } from './editor-state.js';
-
-// Block definitions per category (for URDF editor)
-const URDF_BLOCKS = {
-    links: [
-        { id: 'link', label: 'Link', icon: '🔗', color: '#667eea' },
-        { id: 'visual', label: 'Visual', icon: '👁️', color: '#764ba2' },
-        { id: 'collision', label: 'Collision', icon: '💥', color: '#8b5cf6' },
-        { id: 'inertial', label: 'Inertial', icon: '⚖️', color: '#a78bfa' }
-    ],
-    joints: [
-        { id: 'joint_fixed', label: 'Fixed Joint', icon: '🔒', color: '#11998e' },
-        { id: 'joint_revolute', label: 'Revolute', icon: '🔄', color: '#38ef7d' },
-        { id: 'joint_continuous', label: 'Continuous', icon: '♾️', color: '#10b981' },
-        { id: 'joint_prismatic', label: 'Prismatic', icon: '↔️', color: '#059669' },
-        { id: 'axis', label: 'Axis', icon: '➡️', color: '#34d399' },
-        { id: 'limit', label: 'Limit', icon: '🚧', color: '#6ee7b7' }
-    ],
-    geometry: [
-        { id: 'box', label: 'Box', icon: '📦', color: '#ee0979' },
-        { id: 'cylinder', label: 'Cylinder', icon: '🛢️', color: '#ff6a00' },
-        { id: 'sphere', label: 'Sphere', icon: '🔴', color: '#f97316' },
-        { id: 'mesh', label: 'Mesh', icon: '🦾', color: '#fb923c' }
-    ],
-    materials: [
-        { id: 'material', label: 'Material', icon: '🎨', color: '#f093fb' },
-        { id: 'color', label: 'Color RGBA', icon: '🌈', color: '#f5576c' }
-    ],
-    physics: [
-        { id: 'mass', label: 'Mass', icon: '⚖️', color: '#4facfe' },
-        { id: 'inertia', label: 'Inertia', icon: '🌀', color: '#00f2fe' },
-        { id: 'origin', label: 'Origin XYZ RPY', icon: '📍', color: '#22d3ee' }
-    ]
-};
-
-// Store all block configs for different editors
-const BLOCK_CONFIGS = {
-    urdf: URDF_BLOCKS,
-    // node: NODE_BLOCKS,   // Future
-    // config: CONFIG_BLOCKS, // Future
-    // launch: LAUNCH_BLOCKS  // Future
-};
+import { getState, onCategoryChange, onEditorChange, hasActiveFile } from './editor-state.js';
+import { getEditorById } from './editor-registry.js';
 
 let paletteElement = null;
+let paletteContainer = null;
+let flyoutWorkspace = null;
 let currentEditorType = null;
+let currentCategory = null;
 
 /**
  * Initialize the block palette
@@ -56,144 +20,225 @@ let currentEditorType = null;
 export function initBlockPalette(containerId) {
     paletteElement = document.getElementById(containerId);
     if (!paletteElement) {
+        // Try to find by class
+        paletteElement = document.querySelector('.blocks-sidebar');
+    }
+
+    if (!paletteElement) {
         console.error('[BlockPalette] Container not found:', containerId);
         return;
     }
 
+    paletteContainer = paletteElement;
+
     // Listen for editor type changes
     onEditorChange((editorType) => {
         currentEditorType = editorType;
-        // Clear palette when editor changes
-        renderBlocks(null);
+        currentCategory = null;
+
+        if (editorType) {
+            showPalette();
+        } else {
+            hidePalette();
+        }
     });
 
     // Listen for category changes
     onCategoryChange((category) => {
-        renderBlocks(category);
+        currentCategory = category;
+        if (currentEditorType && category) {
+            renderBlocksForCategory(currentEditorType, category);
+        }
     });
 
-    // Render empty state initially
-    renderEmptyState();
+    // Initially hide if no file is open
+    if (!hasActiveFile()) {
+        hidePalette();
+    }
 
     console.log('[BlockPalette] Initialized');
 }
 
 /**
- * Render blocks for the given category
- * @param {string|null} category 
+ * Show the palette
  */
-function renderBlocks(category) {
+export function showPalette() {
+    if (paletteContainer) {
+        paletteContainer.classList.remove('hidden');
+        paletteContainer.style.display = '';
+    }
+}
+
+/**
+ * Hide the palette
+ */
+export function hidePalette() {
+    if (paletteContainer) {
+        paletteContainer.classList.add('hidden');
+        paletteContainer.style.display = 'none';
+    }
+    // Dispose flyout workspace if exists
+    if (flyoutWorkspace) {
+        flyoutWorkspace.dispose();
+        flyoutWorkspace = null;
+    }
+}
+
+/**
+ * Render Blockly blocks for a category
+ * @param {string} editorType - Editor type ID
+ * @param {string} categoryId - Category ID
+ */
+function renderBlocksForCategory(editorType, categoryId) {
     if (!paletteElement) return;
 
-    if (!currentEditorType || !category) {
-        renderEmptyState();
+    // Get editor config from registry
+    const editorConfig = getEditorById(editorType);
+    if (!editorConfig) {
+        console.warn('[BlockPalette] Editor not found:', editorType);
         return;
     }
 
-    const editorBlocks = BLOCK_CONFIGS[currentEditorType];
-    if (!editorBlocks) {
-        renderEmptyState();
+    // Find category
+    const category = editorConfig.categories.find(c => c.id === categoryId);
+    if (!category) {
+        console.warn('[BlockPalette] Category not found:', categoryId);
         return;
     }
 
-    const blocks = editorBlocks[category];
-    if (!blocks || blocks.length === 0) {
-        renderEmptyState();
+    // Get flyout container
+    const flyoutContainer = paletteElement.querySelector('.blockly-flyout-container') ||
+        paletteElement.querySelector('#blockly-flyout');
+
+    if (!flyoutContainer) {
+        console.error('[BlockPalette] Flyout container not found');
         return;
     }
 
-    // Find category label
-    const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
+    // Update header
+    const header = paletteElement.querySelector('.blocks-sidebar-header');
+    if (header) {
+        header.textContent = category.label.toUpperCase();
+    }
 
-    const blocksHtml = blocks.map(block => `
-        <div class="block-item" 
-             data-block-id="${block.id}"
-             draggable="true"
-             style="background: linear-gradient(135deg, ${block.color} 0%, ${adjustColor(block.color, -20)} 100%)">
-            <span class="block-icon">${block.icon}</span>
-            <span class="block-label">${block.label}</span>
-        </div>
-    `).join('');
+    // Dispose existing flyout workspace
+    if (flyoutWorkspace) {
+        flyoutWorkspace.dispose();
+        flyoutWorkspace = null;
+    }
 
-    paletteElement.innerHTML = `
-        <div class="palette-header">${categoryLabel.toUpperCase()}</div>
-        <div class="palette-blocks">
-            ${blocksHtml}
-        </div>
-    `;
+    // Clear container
+    flyoutContainer.innerHTML = '';
 
-    // Attach drag handlers
-    paletteElement.querySelectorAll('.block-item').forEach(item => {
-        item.addEventListener('dragstart', handleDragStart);
-        item.addEventListener('click', handleBlockClick);
-    });
+    // Check if Blockly is available
+    if (typeof Blockly === 'undefined') {
+        console.error('[BlockPalette] Blockly not loaded');
+        flyoutContainer.innerHTML = '<p class="palette-error">Blockly not loaded</p>';
+        return;
+    }
 
-    console.log('[BlockPalette] Rendered blocks for:', category);
+    // Create flyout workspace with Zelos renderer
+    try {
+        flyoutWorkspace = Blockly.inject(flyoutContainer, {
+            renderer: 'zelos',
+            readOnly: true,
+            scrollbars: false,
+            zoom: {
+                controls: false,
+                wheel: false,
+                startScale: 0.75
+            },
+            move: {
+                scrollbars: false,
+                drag: false,
+                wheel: false
+            },
+            sounds: false,
+            trashcan: false
+        });
+
+        // Build XML for blocks in this category
+        const blocksXml = buildBlocksXml(category.blocks);
+
+        if (blocksXml) {
+            Blockly.Xml.domToWorkspace(
+                Blockly.utils.xml.textToDom(blocksXml),
+                flyoutWorkspace
+            );
+        }
+
+        console.log('[BlockPalette] Rendered blocks for:', categoryId, `(${category.blocks.length} blocks)`);
+    } catch (error) {
+        console.error('[BlockPalette] Failed to create flyout:', error);
+        flyoutContainer.innerHTML = '<p class="palette-error">Failed to load blocks</p>';
+    }
 }
 
 /**
- * Render empty state
+ * Build XML string for blocks
+ * @param {string[]} blockTypes - Array of block type names
+ * @returns {string} XML string
  */
-function renderEmptyState() {
-    if (!paletteElement) return;
+function buildBlocksXml(blockTypes) {
+    if (!blockTypes || blockTypes.length === 0) {
+        return null;
+    }
 
-    paletteElement.innerHTML = `
-        <div class="palette-header">BLOCKS</div>
-        <div class="palette-empty">
-            <p>Select a file and category</p>
-        </div>
-    `;
+    let y = 10;
+    const blockElements = blockTypes.map(blockType => {
+        // Check if block type is registered
+        if (!Blockly.Blocks[blockType]) {
+            console.warn('[BlockPalette] Block type not registered:', blockType);
+            return '';
+        }
+        const element = `<block type="${sanitizeXml(blockType)}" x="10" y="${y}"></block>`;
+        y += 80; // Spacing between blocks
+        return element;
+    }).filter(Boolean);
+
+    if (blockElements.length === 0) {
+        return null;
+    }
+
+    return `<xml>${blockElements.join('')}</xml>`;
 }
 
 /**
- * Handle drag start for blocks
- * @param {DragEvent} e 
+ * Sanitize string for XML
+ * @param {string} str - String to sanitize
+ * @returns {string} Sanitized string
  */
-function handleDragStart(e) {
-    const blockId = e.target.dataset.blockId;
-    e.dataTransfer.setData('text/plain', blockId);
-    e.dataTransfer.effectAllowed = 'copy';
-
-    console.log('[BlockPalette] Drag started:', blockId);
+function sanitizeXml(str) {
+    if (typeof str !== 'string') return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
 }
 
 /**
- * Handle block click (for adding to workspace)
- * @param {MouseEvent} e 
+ * Get current flyout workspace
+ * @returns {Object|null} Blockly workspace or null
  */
-function handleBlockClick(e) {
-    const blockItem = e.currentTarget;
-    const blockId = blockItem.dataset.blockId;
-
-    // Dispatch custom event for editor to handle
-    const event = new CustomEvent('blockSelected', {
-        detail: { blockId, editorType: currentEditorType }
-    });
-    document.dispatchEvent(event);
-
-    console.log('[BlockPalette] Block clicked:', blockId);
+export function getFlyoutWorkspace() {
+    return flyoutWorkspace;
 }
 
 /**
- * Adjust color brightness
- * @param {string} hex 
- * @param {number} amount 
- * @returns {string}
+ * Check if palette is visible
+ * @returns {boolean} True if visible
  */
-function adjustColor(hex, amount) {
-    const num = parseInt(hex.replace('#', ''), 16);
-    const r = Math.max(0, Math.min(255, (num >> 16) + amount));
-    const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
-    const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
-    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+export function isPaletteVisible() {
+    return paletteContainer && !paletteContainer.classList.contains('hidden');
 }
 
 /**
- * Get blocks for a specific editor type and category
- * @param {string} editorType 
- * @param {string} category 
- * @returns {Array}
+ * Resize the flyout workspace (call after container resize)
  */
-export function getBlocksForCategory(editorType, category) {
-    return BLOCK_CONFIGS[editorType]?.[category] || [];
+export function resizeFlyout() {
+    if (flyoutWorkspace) {
+        Blockly.svgResize(flyoutWorkspace);
+    }
 }

@@ -25,11 +25,11 @@
         "emptyStateHint": "Cliquez sur le bouton + pour créer votre premier paquet",
         "contextMenu": {
             "addPackage": "➕ Ajouter un paquet",
-            "addNode": "⚡ Ajouter un nœud",
-            "addMeshes": "🦾 Ajouter des maillages",
-            "addUrdf": "🤖 Ajouter URDF",
-            "addConfig": "⚙️ Ajouter une config",
-            "addLaunch": "🚀 Ajouter un launch",
+            "addNode": "Ajouter un nœud",
+            "addMeshes": "Ajouter des maillages",
+            "addUrdf": "Ajouter URDF",
+            "addConfig": "Ajouter une config",
+            "addLaunch": "Ajouter un launch",
             "deletePackage": "🗑️ Supprimer le paquet",
             "deleteNode": "🗑️ Supprimer le nœud",
             "deleteFile": "🗑️ Supprimer le fichier",
@@ -64,6 +64,8 @@
         "launchFiles": "Fichiers Launch"
     },
     "blocks": {
+        "selectFile": "Sélectionnez un fichier",
+        "clickToOpen": "Cliquez sur un fichier dans le panneau des paquets pour l'ouvrir",
         "motion": "Mouvement",
         "motors": "Moteurs",
         "sensors": "Capteurs",

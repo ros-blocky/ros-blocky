@@ -130,7 +130,9 @@
 }
 
 .package-icon {
-    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(166deg) brightness(100%) contrast(101%);
 }
 
 .package-name {
@@ -176,6 +178,9 @@
 
 .section-icon {
     font-size: 14px;
+    width: 16px;
+    height: 16px;
+    filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(166deg) brightness(100%) contrast(101%);
 }
 
 .section-name {
@@ -393,6 +398,12 @@
 
 .context-menu-item.danger:hover {
     background: #ffebee;
+}
+
+.context-menu-icon {
+    width: 16px;
+    height: 16px;
+    filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(166deg) brightness(100%) contrast(101%);
 }
 
 .context-menu-divider {

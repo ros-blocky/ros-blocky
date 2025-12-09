@@ -135,7 +135,7 @@ async function createPackageElement(packageName, packagesList) {
     packageItem.innerHTML = `
         <div class="package-header">
             <img class="collapse-arrow ${hasContent ? '' : 'hidden'}" src="assets/icons/chevron-right.svg" alt="">
-            <span class="package-icon">📦</span>
+            <img class="package-icon" src="assets/icons/package.svg" alt="package">
             <span class="package-name">${packageName}</span>
         </div>
         <div class="package-content hidden">
@@ -143,7 +143,7 @@ async function createPackageElement(packageName, packagesList) {
             <div class="nodes-section" data-section="nodes">
                 <div class="nodes-header">
                     <img class="section-collapse-arrow" src="assets/icons/chevron-right.svg" alt="">
-                    <span class="section-icon">⚙️</span>
+                    <img class="section-icon" src="assets/icons/nodes.svg" alt="nodes">
                     <span class="section-name">NODES</span>
                     <button class="section-add-btn" data-type="node" title="Add Node">+</button>
                 </div>
@@ -153,7 +153,7 @@ async function createPackageElement(packageName, packagesList) {
             <div class="file-section" data-section="meshes" data-folder="meshes">
                 <div class="file-header">
                     <img class="section-collapse-arrow" src="assets/icons/chevron-right.svg" alt="">
-                    <span class="section-icon">🦾</span>
+                    <img class="section-icon" src="assets/icons/meshes.svg" alt="meshes">
                     <span class="section-name">MESHES</span>
                     <button class="section-add-btn" data-type="meshes" title="Add Meshes">+</button>
                 </div>
@@ -163,7 +163,7 @@ async function createPackageElement(packageName, packagesList) {
             <div class="file-section" data-section="urdf" data-folder="urdf">
                 <div class="file-header">
                     <img class="section-collapse-arrow" src="assets/icons/chevron-right.svg" alt="">
-                    <span class="section-icon">🤖</span>
+                    <img class="section-icon" src="assets/icons/urdf.png" alt="urdf">
                     <span class="section-name">URDF</span>
                     <button class="section-add-btn" data-type="urdf" title="Add URDF">+</button>
                 </div>
@@ -173,7 +173,7 @@ async function createPackageElement(packageName, packagesList) {
             <div class="file-section" data-section="config" data-folder="config">
                 <div class="file-header">
                     <img class="section-collapse-arrow" src="assets/icons/chevron-right.svg" alt="">
-                    <span class="section-icon">⚙️</span>
+                    <img class="section-icon" src="assets/icons/config.svg" alt="config">
                     <span class="section-name">CONFIG</span>
                     <button class="section-add-btn" data-type="config" title="Add Config">+</button>
                 </div>
@@ -183,7 +183,7 @@ async function createPackageElement(packageName, packagesList) {
             <div class="file-section" data-section="launch" data-folder="launch">
                 <div class="file-header">
                     <img class="section-collapse-arrow" src="assets/icons/chevron-right.svg" alt="">
-                    <span class="section-icon">🚀</span>
+                    <img class="section-icon" src="assets/icons/launch.svg" alt="launch">
                     <span class="section-name">LAUNCH</span>
                     <button class="section-add-btn" data-type="launch" title="Add Launch">+</button>
                 </div>
