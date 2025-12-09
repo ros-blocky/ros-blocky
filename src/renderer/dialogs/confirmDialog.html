@@ -100,7 +100,7 @@
 
 <body>
     <div class="title-bar">
-        <span id="dialog-title">ros-block-code</span>
+        <span id="dialog-title" data-i18n="common.confirm">Confirm</span>
         <button class="close-btn" id="close-btn">×</button>
     </div>
     <div class="content">
@@ -108,10 +108,11 @@
             Are you sure you want to delete this item?
         </div>
         <div class="buttons">
-            <button class="btn-yes" id="yes-btn">Yes</button>
-            <button class="btn-no" id="no-btn">No</button>
+            <button class="btn-yes" id="yes-btn" data-i18n="common.yes">Yes</button>
+            <button class="btn-no" id="no-btn" data-i18n="common.no">No</button>
         </div>
     </div>
+    <script src="./scripts/dialogI18n.js"></script>
     <script src="./scripts/confirmDialog.js"></script>
 </body>
 

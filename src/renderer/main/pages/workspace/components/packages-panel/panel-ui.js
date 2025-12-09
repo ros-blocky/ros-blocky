@@ -309,10 +309,34 @@ function setupFileSection(packageItem, packageName, type, files) {
         files.forEach(fileName => {
             const fileItem = document.createElement('div');
             fileItem.className = 'file-item';
+            fileItem.dataset.fileName = fileName;
+            fileItem.dataset.fileType = type;
+            fileItem.dataset.packageName = packageName;
             fileItem.innerHTML = `
                 <img class="file-icon" src="${fileIconPath}" alt="file">
                 <span class="file-name">${fileName}</span>
             `;
+
+            // Click handler to select file
+            fileItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+
+                // Remove selection from all file items
+                document.querySelectorAll('.file-item.selected').forEach(item => {
+                    item.classList.remove('selected');
+                });
+
+                // Add selection to this item
+                fileItem.classList.add('selected');
+
+                // Dispatch window event for blocks component to listen to
+                window.dispatchEvent(new CustomEvent('fileSelected', {
+                    detail: { type: type, fileName: fileName, packageName: packageName }
+                }));
+
+                console.log('[PackagesPanel] File selected:', type, fileName);
+            });
+
             fileList.appendChild(fileItem);
         });
     } else {

@@ -332,6 +332,16 @@
     background: #e8e8e8;
 }
 
+.file-item.selected {
+    background: #d4edff;
+    border-left: 3px solid #00bbfe;
+}
+
+.node-item.selected {
+    background: #d4edff;
+    border-left: 3px solid #00bbfe;
+}
+
 .file-icon {
     width: 14px;
     height: 14px;

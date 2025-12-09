@@ -11,8 +11,7 @@
 /* Blocks Panel (Left) */
 .blocks-panel {
     flex: 1;
-    min-width: 300px;
-    background: #ffffff;
+    background: #f7f7f7;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -21,7 +20,7 @@
 /* Resize Handle */
 .workspace-resize-handle {
     width: 3px;
-    background: transparent;
+    background: #ffffff;
     cursor: ew-resize;
     flex-shrink: 0;
     transition: background 0.2s;
@@ -33,13 +32,14 @@
 
 /* Packages Panel (Right) */
 .packages-panel {
-    width: 300px;
-    min-width: 0;
-    max-width: 500px;
+    width: 280px;
+    min-width: 200px;
+    max-width: 450px;
     background: #f8f8f8;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 /* Collapsed state for packages panel */

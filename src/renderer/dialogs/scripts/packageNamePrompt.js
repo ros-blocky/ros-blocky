@@ -30,7 +30,12 @@ function cancel() {
     window.dialogAPI.sendPackageNameResult(null);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize i18n for dialog
+    if (window.dialogI18n) {
+        await window.dialogI18n.init();
+    }
+
     const packageNameInput = document.getElementById('packageName');
     const createBtn = document.getElementById('create-btn');
     const cancelBtn = document.getElementById('cancel-btn');

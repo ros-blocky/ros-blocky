@@ -1,0 +1,100 @@
+{
+    "common": {
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "delete": "Supprimer",
+        "create": "Créer",
+        "add": "Ajouter",
+        "edit": "Modifier",
+        "close": "Fermer",
+        "confirm": "Confirmer",
+        "yes": "Oui",
+        "no": "Non",
+        "ok": "OK",
+        "loading": "Chargement...",
+        "error": "Erreur",
+        "success": "Succès",
+        "warning": "Avertissement",
+        "info": "Info"
+    },
+    "packages": {
+        "title": "PAQUETS",
+        "create": "Créer un paquet",
+        "addPackage": "Ajouter un paquet",
+        "emptyState": "Aucun paquet",
+        "emptyStateHint": "Cliquez sur le bouton + pour créer votre premier paquet",
+        "contextMenu": {
+            "addPackage": "➕ Ajouter un paquet",
+            "addNode": "⚡ Ajouter un nœud",
+            "addMeshes": "🦾 Ajouter des maillages",
+            "addUrdf": "🤖 Ajouter URDF",
+            "addConfig": "⚙️ Ajouter une config",
+            "addLaunch": "🚀 Ajouter un launch",
+            "deletePackage": "🗑️ Supprimer le paquet",
+            "deleteNode": "🗑️ Supprimer le nœud",
+            "deleteFile": "🗑️ Supprimer le fichier",
+            "deleteFolder": "🗑️ Supprimer le dossier"
+        },
+        "sections": {
+            "nodes": "NŒUDS",
+            "meshes": "MAILLAGES",
+            "urdf": "URDF",
+            "config": "CONFIG",
+            "launch": "LAUNCH"
+        }
+    },
+    "dialogs": {
+        "newPackage": "Nouveau paquet",
+        "packageName": "Nom du paquet :",
+        "packageNameHint": "Lettres minuscules, chiffres et underscores uniquement. Doit commencer par une lettre.",
+        "packageNamePlaceholder": "mon_paquet_robot",
+        "confirmDelete": "Êtes-vous sûr de vouloir supprimer",
+        "confirmDeleteAll": "Êtes-vous sûr de vouloir supprimer tous les",
+        "enterNodeName": "Entrez le nom du nœud",
+        "enterFileName": "Entrez le nom du fichier",
+        "invalidName": "Nom invalide. Utilisez uniquement des lettres minuscules, des chiffres et des underscores.",
+        "nameExists": "Ce nom existe déjà.",
+        "confirmOverwrite": "Le fichier existe déjà. Voulez-vous l'écraser ?"
+    },
+    "workspace": {
+        "title": "Espace de travail",
+        "blocks": "BLOCS",
+        "urdfEditor": "Éditeur URDF",
+        "programming": "Programmation",
+        "launchFiles": "Fichiers Launch"
+    },
+    "blocks": {
+        "motion": "Mouvement",
+        "motors": "Moteurs",
+        "sensors": "Capteurs",
+        "control": "Contrôle",
+        "operators": "Opérateurs",
+        "variables": "Variables"
+    },
+    "settings": {
+        "title": "Paramètres",
+        "language": "Langue",
+        "theme": "Thème",
+        "general": "Général",
+        "appearance": "Apparence",
+        "editor": "Éditeur"
+    },
+    "menu": {
+        "file": "Fichier",
+        "edit": "Édition",
+        "view": "Affichage",
+        "help": "Aide",
+        "newProject": "Nouveau projet",
+        "openProject": "Ouvrir un projet",
+        "saveProject": "Enregistrer le projet",
+        "exit": "Quitter"
+    },
+    "welcome": {
+        "title": "Bienvenue dans ROS Block Code",
+        "subtitle": "Un environnement de programmation visuelle pour la robotique ROS2",
+        "createProject": "Créer un nouveau projet",
+        "openProject": "Ouvrir un projet existant",
+        "recentProjects": "Projets récents",
+        "noRecent": "Aucun projet récent"
+    }
+}

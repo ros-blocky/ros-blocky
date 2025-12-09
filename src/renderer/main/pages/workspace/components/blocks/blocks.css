@@ -4,7 +4,7 @@
     flex-direction: column;
     width: 100%;
     height: 100%;
-    background: #ffffff;
+    background: #f7f7f7;
 }
 
 /* Top Content Area */
@@ -14,15 +14,15 @@
     overflow: hidden;
 }
 
-/* Cyan Icon Sidebar (Far Left) */
+/* Icon Sidebar (Cyan with simple icons) */
 .blocks-icon-sidebar {
-    width: 50px;
+    width: 48px;
     background: #00bbfe;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 0;
+    padding: 10px 0;
     flex-shrink: 0;
     height: 100%;
 }
@@ -31,158 +31,277 @@
 .icon-sidebar-bottom {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 8px;
 }
 
 .sidebar-icon-btn {
-    width: 35px;
-    height: 35px;
-    background: rgba(255, 255, 255, 0.1);
+    width: 40px;
+    height: 40px;
+    background: transparent;
     border: none;
-    border-radius: 8px;
-    color: white;
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
+    transition: all 0.15s;
 }
 
 .sidebar-icon-btn:hover {
-    background: rgba(255, 255, 255, 0.25);
-    transform: scale(1.05);
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .sidebar-icon-btn.active {
-    background: rgba(255, 255, 255, 0.3);
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.25);
 }
 
 .sidebar-icon-btn svg {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
 }
 
-/* Main Blocks Area */
-.blocks-main {
-    flex: 1;
-    display: flex;
-    flex-direction: row;
-    overflow: hidden;
-    border-top: 3px solid #ffffff;
+.icon-emoji {
+    font-size: 20px;
+    line-height: 1;
+    filter: brightness(0) invert(1);
 }
 
-/* Blocks Sidebar */
+/* ========================================
+   Blocks Sidebar (matching packages panel)
+   ======================================== */
 .blocks-sidebar {
     width: 200px;
-    background: #f5f5f5;
-    border-right: 1px solid #e0e0e0;
+    background: #f7f7f7;
     display: flex;
     flex-direction: column;
-    padding: 10px;
-    gap: 5px;
     flex-shrink: 0;
     overflow-y: auto;
 }
 
+/* Header matching packages panel header */
 .blocks-sidebar-header {
-    font-size: 13px;
+    background: #e8e8e8;
+    padding: 10px 15px;
+    border-top: 3px solid #ffffff;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    min-height: 44px;
+    box-sizing: border-box;
+    font-size: 12px;
     font-weight: 600;
-    color: #666;
-    padding: 8px 10px;
-    text-transform: uppercase;
+    color: #333;
     letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
+/* Block items in sidebar */
 .blocks-category {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 12px 15px;
+    padding: 10px 12px;
+    margin: 4px 8px;
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s;
     color: white;
     font-weight: 500;
-    font-size: 14px;
+    font-size: 13px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.blocks-category:first-of-type {
+    margin-top: 8px;
 }
 
 .blocks-category:hover {
-    transform: translateX(5px);
+    transform: translateX(3px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .blocks-category-icon {
-    font-size: 18px;
+    font-size: 16px;
 }
 
 .blocks-category-label {
     flex: 1;
 }
 
-/* Category Colors (matching screenshot) */
-.blocks-category.motion {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+/* Resize Handle */
+.blocks-sidebar-resize-handle {
+    width: 3px;
+    background: #ffffff;
+    cursor: ew-resize;
+    flex-shrink: 0;
+    transition: background 0.2s;
 }
 
-.blocks-category.motors {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+.blocks-sidebar-resize-handle:hover {
+    background: #00bbfe;
 }
 
-.blocks-category.sensors {
-    background: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+/* Collapsed state for blocks sidebar */
+.blocks-sidebar.collapsed {
+    width: 0 !important;
+    min-width: 0;
+    border-right: none;
+    overflow: hidden;
 }
 
-.blocks-category.control {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+.blocks-sidebar.collapsed>* {
+    display: none;
 }
 
-.blocks-category.operators {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-}
-
-.blocks-category.variables {
-    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-}
-
-/* Editor Area */
+/* ========================================
+   Editor Area with Tabs (Light Theme)
+   ======================================== */
 .blocks-editor-area {
     flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background: #ffffff;
 }
 
-/* Tabs Area */
-.blocks-tabs {
-    display: flex;
+/* Tabs Bar */
+.editor-tabs-bar {
     background: #e8e8e8;
-    border-bottom: 2px solid #d0d0d0;
+    border-top: 3px solid #ffffff;
+    flex-shrink: 0;
+    overflow-x: auto;
+}
+
+.editor-tabs-bar::-webkit-scrollbar {
+    height: 3px;
+}
+
+.editor-tabs-bar::-webkit-scrollbar-thumb {
+    background: #c0c0c0;
+}
+
+.editor-tabs {
+    display: flex;
+}
+
+/* Individual Tab */
+.editor-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    min-width: 80px;
+    max-width: 160px;
+    background: #e0e0e0;
+    border-right: 1px solid #d0d0d0;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.1s;
+    font-size: 12px;
+}
+
+.editor-tab:hover {
+    background: #d8d8d8;
+}
+
+.editor-tab.active {
+    background: #ffffff;
+    border-bottom: 3px solid #00bbfe;
+}
+
+.tab-icon {
+    font-size: 14px;
     flex-shrink: 0;
 }
 
-.blocks-tab {
-    padding: 10px 20px;
-    cursor: pointer;
+.tab-name {
+    flex: 1;
     font-size: 13px;
+    color: #666666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.editor-tab.active .tab-name {
+    color: #00bbfe;
     font-weight: 500;
-    color: #666;
-    border-bottom: 3px solid transparent;
-    transition: all 0.2s;
-    user-select: none;
 }
 
-.blocks-tab:hover {
-    background: #f0f0f0;
+.tab-close {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    color: #999999;
+    font-size: 14px;
+    opacity: 0;
+    transition: all 0.1s;
 }
 
-.blocks-tab.active {
-    color: #00bcd4;
-    border-bottom-color: #00bcd4;
-    background: white;
+.editor-tab:hover .tab-close,
+.editor-tab.active .tab-close {
+    opacity: 1;
 }
 
-/* Editor */
+.tab-close:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: #333333;
+}
+
+/* Empty tabs message */
+.editor-tabs:empty::after {
+    content: 'No files open';
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+    color: #999999;
+    font-size: 12px;
+    height: 35px;
+}
+
+/* Breadcrumb Bar */
+.editor-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 12px;
+    background: #f5f5f5;
+    min-height: 18px;
+    flex-shrink: 0;
+    overflow-x: auto;
+    font-size: 11px;
+}
+
+.breadcrumb-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #666666;
+    white-space: nowrap;
+}
+
+.breadcrumb-item:hover {
+    color: #00bbfe;
+    cursor: pointer;
+}
+
+.breadcrumb-separator {
+    color: #999999;
+    font-size: 10px;
+}
+
+.breadcrumb-icon {
+    font-size: 12px;
+}
+
+/* Editor Workspace */
 .blocks-editor {
     flex: 1;
     display: flex;
@@ -192,19 +311,27 @@
     overflow: auto;
 }
 
+/* Placeholder */
 .blocks-placeholder {
     text-align: center;
     color: #999;
 }
 
+.placeholder-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
 .blocks-placeholder h2 {
-    font-size: 24px;
-    font-weight: 300;
+    font-size: 20px;
+    font-weight: 400;
     margin: 0 0 10px 0;
-    color: #00bcd4;
+    color: #555;
 }
 
 .blocks-placeholder p {
     font-size: 14px;
     margin: 0;
+    color: #888;
 }

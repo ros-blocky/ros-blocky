@@ -1,0 +1,207 @@
+/**
+ * RTL (Right-to-Left) CSS Styles
+ * Styles for Arabic and other RTL languages
+ */
+
+/* ===========================================
+   Base RTL Styles
+   =========================================== */
+
+/* Flip flexbox direction for RTL */
+[dir="rtl"] .flex-row {
+    flex-direction: row-reverse;
+}
+
+/* Text alignment */
+[dir="rtl"] .text-left {
+    text-align: right;
+}
+
+[dir="rtl"] .text-right {
+    text-align: left;
+}
+
+/* ===========================================
+   Panel Adjustments
+   =========================================== */
+
+/* Project structure panel - move to right side */
+[dir="rtl"] .project-structure-panel {
+    order: 1;
+    border-left: 1px solid var(--border-color);
+    border-right: none;
+}
+
+[dir="rtl"] .main-content-area {
+    order: 0;
+}
+
+/* Resize handle position */
+[dir="rtl"] .resize-handle {
+    left: 0;
+    right: auto;
+    cursor: ew-resize;
+}
+
+/* ===========================================
+   Tree View / Package List
+   =========================================== */
+
+/* Indent direction for tree items */
+[dir="rtl"] .package-content,
+[dir="rtl"] .nodes-list,
+[dir="rtl"] .file-list {
+    padding-right: 16px;
+    padding-left: 0;
+}
+
+/* Collapse arrows - mirror horizontally */
+[dir="rtl"] .collapse-arrow,
+[dir="rtl"] .section-collapse-arrow {
+    transform: scaleX(-1);
+}
+
+[dir="rtl"] .collapse-arrow.expanded,
+[dir="rtl"] .section-collapse-arrow.expanded {
+    transform: scaleX(-1) rotate(90deg);
+}
+
+/* Package/node item layout */
+[dir="rtl"] .package-header,
+[dir="rtl"] .nodes-header,
+[dir="rtl"] .file-header,
+[dir="rtl"] .node-item,
+[dir="rtl"] .file-item {
+    flex-direction: row-reverse;
+}
+
+/* Add button position */
+[dir="rtl"] .section-add-btn {
+    margin-right: auto;
+    margin-left: 0;
+}
+
+/* ===========================================
+   Context Menu
+   =========================================== */
+
+[dir="rtl"] .context-menu {
+    text-align: right;
+}
+
+[dir="rtl"] .context-menu-item {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .context-menu-icon {
+    margin-left: 8px;
+    margin-right: 0;
+}
+
+/* ===========================================
+   Dialogs
+   =========================================== */
+
+[dir="rtl"] .dialog-content {
+    text-align: right;
+}
+
+[dir="rtl"] .dialog-buttons {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .dialog-input {
+    text-align: right;
+}
+
+/* ===========================================
+   Scrollbars
+   =========================================== */
+
+[dir="rtl"] ::-webkit-scrollbar {
+    /* Keep scrollbar behavior consistent in RTL */
+    direction: ltr;
+}
+
+/* ===========================================
+   Icons that need mirroring
+   =========================================== */
+
+[dir="rtl"] .icon-arrow-right,
+[dir="rtl"] .icon-chevron-right,
+[dir="rtl"] .icon-forward {
+    transform: scaleX(-1);
+}
+
+/* ===========================================
+   Form Elements
+   =========================================== */
+
+[dir="rtl"] label {
+    text-align: right;
+}
+
+[dir="rtl"] input[type="text"],
+[dir="rtl"] input[type="number"],
+[dir="rtl"] textarea {
+    text-align: right;
+}
+
+/* ===========================================
+   Header / Toolbar
+   =========================================== */
+
+[dir="rtl"] .header-actions {
+    flex-direction: row-reverse;
+}
+
+[dir="rtl"] .toolbar {
+    flex-direction: row-reverse;
+}
+
+/* ===========================================
+   Margins and Paddings (Logical Properties)
+   =========================================== */
+
+/* Use CSS logical properties for automatic RTL support */
+/* Example: margin-inline-start instead of margin-left */
+
+.ml-auto {
+    margin-inline-start: auto;
+}
+
+.mr-auto {
+    margin-inline-end: auto;
+}
+
+.pl-1 {
+    padding-inline-start: 4px;
+}
+
+.pl-2 {
+    padding-inline-start: 8px;
+}
+
+.pl-3 {
+    padding-inline-start: 12px;
+}
+
+.pl-4 {
+    padding-inline-start: 16px;
+}
+
+.pr-1 {
+    padding-inline-end: 4px;
+}
+
+.pr-2 {
+    padding-inline-end: 8px;
+}
+
+.pr-3 {
+    padding-inline-end: 12px;
+}
+
+.pr-4 {
+    padding-inline-end: 16px;
+}

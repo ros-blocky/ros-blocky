@@ -48,35 +48,28 @@ function setupResizeHandle() {
 
     let isResizing = false;
     let startX = 0;
-    let startBlocksWidth = 0;
     let startPackagesWidth = 0;
-    let lastExpandedWidth = 300; // Remember last width before collapse
+    let lastExpandedWidth = 300;
 
-    const COLLAPSE_THRESHOLD = 100; // Collapse when width goes below this
+    const COLLAPSE_THRESHOLD = 100;
     const MIN_WIDTH = 200;
     const MAX_WIDTH = 500;
 
     // Double-click to toggle collapse
     resizeHandle.addEventListener('dblclick', () => {
         if (packagesPanel.classList.contains('collapsed')) {
-            // Expand
             packagesPanel.classList.remove('collapsed');
             packagesPanel.style.width = `${lastExpandedWidth}px`;
-            blocksPanel.style.flex = '';  // Reset to CSS default
-            resizeHandle.style.display = '';
         } else {
-            // Collapse
             lastExpandedWidth = packagesPanel.offsetWidth;
             packagesPanel.classList.add('collapsed');
             packagesPanel.style.width = '0px';
-            blocksPanel.style.flex = '1';  // Expand blocks to fill space
         }
     });
 
     resizeHandle.addEventListener('mousedown', (e) => {
         isResizing = true;
         startX = e.clientX;
-        startBlocksWidth = blocksPanel.offsetWidth;
         startPackagesWidth = packagesPanel.classList.contains('collapsed') ? 0 : packagesPanel.offsetWidth;
         document.body.style.cursor = 'ew-resize';
         document.body.style.userSelect = 'none';
@@ -89,18 +82,11 @@ function setupResizeHandle() {
         const diff = e.clientX - startX;
         const newPackagesWidth = startPackagesWidth - diff;
 
-        // Check if should collapse (dragged to the right past threshold)
         if (newPackagesWidth < COLLAPSE_THRESHOLD) {
-            // Collapse the panel
             packagesPanel.classList.add('collapsed');
             packagesPanel.style.width = '0px';
-            blocksPanel.style.flex = '1';
         } else {
-            // Expand/resize normally
             packagesPanel.classList.remove('collapsed');
-            blocksPanel.style.flex = '1';  // Always fill remaining space
-
-            // Clamp packages width between MIN and MAX
             const clampedWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newPackagesWidth));
             packagesPanel.style.width = `${clampedWidth}px`;
             lastExpandedWidth = clampedWidth;

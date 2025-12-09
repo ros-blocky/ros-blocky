@@ -1,0 +1,100 @@
+{
+    "common": {
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "create": "Create",
+        "add": "Add",
+        "edit": "Edit",
+        "close": "Close",
+        "confirm": "Confirm",
+        "yes": "Yes",
+        "no": "No",
+        "ok": "OK",
+        "loading": "Loading...",
+        "error": "Error",
+        "success": "Success",
+        "warning": "Warning",
+        "info": "Info"
+    },
+    "packages": {
+        "title": "PACKAGES",
+        "create": "Create Package",
+        "addPackage": "Add Package",
+        "emptyState": "No packages",
+        "emptyStateHint": "Click the + button to create your first package",
+        "contextMenu": {
+            "addPackage": "➕ Add Package",
+            "addNode": "⚡ Add Node",
+            "addMeshes": "🦾 Add Meshes",
+            "addUrdf": "🤖 Add URDF",
+            "addConfig": "⚙️ Add Config",
+            "addLaunch": "🚀 Add Launch",
+            "deletePackage": "🗑️ Delete Package",
+            "deleteNode": "🗑️ Delete Node",
+            "deleteFile": "🗑️ Delete File",
+            "deleteFolder": "🗑️ Delete Folder"
+        },
+        "sections": {
+            "nodes": "NODES",
+            "meshes": "MESHES",
+            "urdf": "URDF",
+            "config": "CONFIG",
+            "launch": "LAUNCH"
+        }
+    },
+    "dialogs": {
+        "newPackage": "New Package",
+        "packageName": "Package Name:",
+        "packageNameHint": "Lowercase letters, numbers, and underscores only. Must start with a letter.",
+        "packageNamePlaceholder": "my_robot_package",
+        "confirmDelete": "Are you sure you want to delete",
+        "confirmDeleteAll": "Are you sure you want to delete all",
+        "enterNodeName": "Enter node name",
+        "enterFileName": "Enter file name",
+        "invalidName": "Invalid name. Use only lowercase letters, numbers, and underscores.",
+        "nameExists": "This name already exists.",
+        "confirmOverwrite": "File already exists. Do you want to overwrite it?"
+    },
+    "workspace": {
+        "title": "Workspace",
+        "blocks": "BLOCKS",
+        "urdfEditor": "URDF Editor",
+        "programming": "Programming",
+        "launchFiles": "Launch Files"
+    },
+    "blocks": {
+        "motion": "Motion",
+        "motors": "Motors",
+        "sensors": "Sensors",
+        "control": "Control",
+        "operators": "Operators",
+        "variables": "Variables"
+    },
+    "settings": {
+        "title": "Settings",
+        "language": "Language",
+        "theme": "Theme",
+        "general": "General",
+        "appearance": "Appearance",
+        "editor": "Editor"
+    },
+    "menu": {
+        "file": "File",
+        "edit": "Edit",
+        "view": "View",
+        "help": "Help",
+        "newProject": "New Project",
+        "openProject": "Open Project",
+        "saveProject": "Save Project",
+        "exit": "Exit"
+    },
+    "welcome": {
+        "title": "Welcome to ROS Block Code",
+        "subtitle": "A visual programming environment for ROS2 robotics",
+        "createProject": "Create New Project",
+        "openProject": "Open Existing Project",
+        "recentProjects": "Recent Projects",
+        "noRecent": "No recent projects"
+    }
+}

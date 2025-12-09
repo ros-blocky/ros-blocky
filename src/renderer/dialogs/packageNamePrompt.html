@@ -100,17 +100,20 @@
 </head>
 
 <body>
-    <div class="title-bar">New Package</div>
+    <div class="title-bar" data-i18n="dialogs.newPackage">New Package</div>
     <div class="content">
-        <label for="packageName">Package Name:</label>
-        <div class="hint">Lowercase letters, numbers, and underscores only. Must start with a letter.</div>
-        <input type="text" id="packageName" placeholder="my_robot_package" autofocus>
+        <label for="packageName" data-i18n="dialogs.packageName">Package Name:</label>
+        <div class="hint" data-i18n="dialogs.packageNameHint">Lowercase letters, numbers, and underscores only. Must
+            start with a letter.</div>
+        <input type="text" id="packageName" data-i18n-placeholder="dialogs.packageNamePlaceholder"
+            placeholder="my_robot_package" autofocus>
         <div class="error" id="error-msg"></div>
         <div class="buttons">
-            <button class="btn-cancel" id="cancel-btn">Cancel</button>
-            <button class="btn-create" id="create-btn">Create</button>
+            <button class="btn-cancel" id="cancel-btn" data-i18n="common.cancel">Cancel</button>
+            <button class="btn-create" id="create-btn" data-i18n="common.create">Create</button>
         </div>
     </div>
+    <script src="./scripts/dialogI18n.js"></script>
     <script src="./scripts/packageNamePrompt.js"></script>
 </body>
 

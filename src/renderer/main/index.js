@@ -2,8 +2,31 @@
  * Main renderer process JavaScript
  */
 
+// Import i18n module
+import { initI18n, t, updatePageTranslations } from '../i18n/index.js';
+import { createLanguageSwitcher, getLanguageSwitcherStyles } from '../i18n/language-switcher.js';
+
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Main window loaded');
+
+    // ========================================
+    // Initialize i18n (must be first)
+    // ========================================
+    await initI18n();
+
+    // Inject language switcher styles
+    const styleEl = document.createElement('style');
+    styleEl.textContent = getLanguageSwitcherStyles();
+    document.head.appendChild(styleEl);
+
+    // Import RTL styles
+    const rtlLink = document.createElement('link');
+    rtlLink.rel = 'stylesheet';
+    rtlLink.href = '../i18n/rtl-styles.css';
+    document.head.appendChild(rtlLink);
+
+    // Create language switcher in top bar
+    createLanguageSwitcher('language-switcher-container');
 
     // ========================================
     // UI Elements
@@ -50,6 +73,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (error) {
             console.error('Error resetting welcome buttons:', error);
         }
+
+        // Reapply translations when returning to welcome
+        updatePageTranslations();
     }
 
     // Helper function to update project name in top bar
@@ -76,6 +102,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             showIDE,
             showWelcome
         });
+
+        // Apply translations to dynamically loaded welcome HTML
+        updatePageTranslations();
     }
 
     // Load loading screen HTML
@@ -100,6 +129,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Initialize workspace
         const { initWorkspace } = await import('./pages/workspace/workspace.js');
         initWorkspace();
+
+        // Apply translations to dynamically loaded workspace HTML
+        updatePageTranslations();
     }
 
     // Listen for when dialogs are complete (name + folder selected)

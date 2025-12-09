@@ -2,16 +2,18 @@
 <div class="project-structure-panel">
     <!-- Header -->
     <div class="panel-header">
-        <h3 class="panel-title">PACKAGES</h3>
-        <button class="header-add-btn" id="header-add-package-btn" title="Create Package">+</button>
+        <h3 class="panel-title" data-i18n="packages.title">PACKAGES</h3>
+        <button class="header-add-btn" id="header-add-package-btn" data-i18n-title="packages.create"
+            title="Create Package">+</button>
     </div>
 
     <!-- Panel Content -->
     <div class="panel-content" id="explorer-panel-content">
         <!-- Empty State -->
         <div id="empty-state-container">
-            <div class="empty-state">No packages</div>
-            <button id="create-package-btn" class="create-package-btn">Add Package</button>
+            <div class="empty-state" data-i18n="packages.emptyState">No packages</div>
+            <button id="create-package-btn" class="create-package-btn" data-i18n="packages.addPackage">Add
+                Package</button>
         </div>
 
         <!-- Packages List -->
@@ -21,35 +23,35 @@
     <!-- Context Menu -->
     <div id="explorer-context-menu" class="context-menu hidden">
         <div class="context-menu-item" id="context-add-package">
-            <span>➕ Add Package</span>
+            <span data-i18n="packages.contextMenu.addPackage">➕ Add Package</span>
         </div>
         <div class="context-menu-item" id="context-add-node">
-            <span>⚡ Add Node</span>
+            <span data-i18n="packages.contextMenu.addNode">⚡ Add Node</span>
         </div>
         <div class="context-menu-item" id="context-add-meshes">
-            <span>🦾 Add Meshes</span>
+            <span data-i18n="packages.contextMenu.addMeshes">🦾 Add Meshes</span>
         </div>
         <div class="context-menu-item" id="context-add-urdf">
-            <span>🤖 Add URDF</span>
+            <span data-i18n="packages.contextMenu.addUrdf">🤖 Add URDF</span>
         </div>
         <div class="context-menu-item" id="context-add-config">
-            <span>⚙️ Add Config</span>
+            <span data-i18n="packages.contextMenu.addConfig">⚙️ Add Config</span>
         </div>
         <div class="context-menu-item" id="context-add-launch">
-            <span>🚀 Add Launch</span>
+            <span data-i18n="packages.contextMenu.addLaunch">🚀 Add Launch</span>
         </div>
         <div class="context-menu-divider"></div>
         <div class="context-menu-item danger" id="context-delete-package">
-            <span>🗑️ Delete Package</span>
+            <span data-i18n="packages.contextMenu.deletePackage">🗑️ Delete Package</span>
         </div>
         <div class="context-menu-item danger" id="context-delete-node">
-            <span>🗑️ Delete Node</span>
+            <span data-i18n="packages.contextMenu.deleteNode">🗑️ Delete Node</span>
         </div>
         <div class="context-menu-item danger" id="context-delete-file">
-            <span>🗑️ Delete File</span>
+            <span data-i18n="packages.contextMenu.deleteFile">🗑️ Delete File</span>
         </div>
         <div class="context-menu-item danger" id="context-delete-folder">
-            <span>🗑️ Delete Folder</span>
+            <span data-i18n="packages.contextMenu.deleteFolder">🗑️ Delete Folder</span>
         </div>
     </div>
 </div>

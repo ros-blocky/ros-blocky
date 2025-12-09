@@ -6,91 +6,89 @@
         <div class="blocks-icon-sidebar">
             <div class="icon-sidebar-top">
                 <button class="sidebar-icon-btn" title="Grid View">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                            d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z" />
-                    </svg>
+                    <span class="icon-emoji">⊞</span>
                 </button>
                 <button class="sidebar-icon-btn" title="Search">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                            d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
-                    </svg>
+                    <span class="icon-emoji">🔍</span>
                 </button>
                 <button class="sidebar-icon-btn active" title="Blocks">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                            d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" />
-                    </svg>
+                    <span class="icon-emoji">📊</span>
                 </button>
                 <button class="sidebar-icon-btn" title="Run">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M8 5v14l11-7z" />
-                    </svg>
+                    <span class="icon-emoji">▶️</span>
                 </button>
             </div>
             <div class="icon-sidebar-bottom">
-                <button class="sidebar-icon-btn" title="Settings">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                        <path
-                            d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-                    </svg>
+                <button class="sidebar-icon-btn" title="Favorites">
+                    <span class="icon-emoji">⭐</span>
                 </button>
             </div>
         </div>
 
-        <!-- Main Blocks Area -->
-        <div class="blocks-main">
-            <!-- Blocks Sidebar -->
-            <div class="blocks-sidebar">
-                <div class="blocks-sidebar-header">Blocks</div>
+        <!-- Block Palette Sidebar -->
+        <div class="blocks-sidebar">
+            <div class="blocks-sidebar-header" data-i18n="workspace.blocks">BLOCKS</div>
 
-                <div class="blocks-category motion">
-                    <div class="blocks-category-icon">🤖</div>
-                    <div class="blocks-category-label">Motion</div>
-                </div>
+            <!-- Motion Category -->
+            <div class="blocks-category motion">
+                <span class="blocks-category-icon">🤖</span>
+                <span class="blocks-category-label" data-i18n="blocks.motion">Motion</span>
+            </div>
 
-                <div class="blocks-category motors">
-                    <div class="blocks-category-icon">⚙️</div>
-                    <div class="blocks-category-label">Motors</div>
-                </div>
+            <!-- Motors Category -->
+            <div class="blocks-category motors">
+                <span class="blocks-category-icon">⚙️</span>
+                <span class="blocks-category-label" data-i18n="blocks.motors">Motors</span>
+            </div>
 
-                <div class="blocks-category sensors">
-                    <div class="blocks-category-icon">📡</div>
-                    <div class="blocks-category-label">Sensors</div>
-                </div>
+            <!-- Sensors Category -->
+            <div class="blocks-category sensors">
+                <span class="blocks-category-icon">📡</span>
+                <span class="blocks-category-label" data-i18n="blocks.sensors">Sensors</span>
+            </div>
 
-                <div class="blocks-category control">
-                    <div class="blocks-category-icon">🎮</div>
-                    <div class="blocks-category-label">Control</div>
-                </div>
+            <!-- Control Category -->
+            <div class="blocks-category control">
+                <span class="blocks-category-icon">🎮</span>
+                <span class="blocks-category-label" data-i18n="blocks.control">Control</span>
+            </div>
 
-                <div class="blocks-category operators">
-                    <div class="blocks-category-icon">➕</div>
-                    <div class="blocks-category-label">Operators</div>
-                </div>
+            <!-- Operators Category -->
+            <div class="blocks-category operators">
+                <span class="blocks-category-icon">➕</span>
+                <span class="blocks-category-label" data-i18n="blocks.operators">Operators</span>
+            </div>
 
-                <div class="blocks-category variables">
-                    <div class="blocks-category-icon">📊</div>
-                    <div class="blocks-category-label">Variables</div>
+            <!-- Variables Category -->
+            <div class="blocks-category variables">
+                <span class="blocks-category-icon">📊</span>
+                <span class="blocks-category-label" data-i18n="blocks.variables">Variables</span>
+            </div>
+        </div>
+
+        <!-- Resize Handle -->
+        <div class="blocks-sidebar-resize-handle"></div>
+
+        <!-- Editor Area -->
+        <div class="blocks-editor-area">
+            <!-- Tabs Bar (on top, RTL) -->
+            <div class="editor-tabs-bar" dir="rtl">
+                <div class="editor-tabs" id="editor-tabs">
+                    <!-- Dynamic file tabs inserted here by JS -->
                 </div>
             </div>
 
-            <!-- Editor Area with Tabs -->
-            <div class="blocks-editor-area">
-                <!-- Tabs -->
-                <div class="blocks-tabs">
-                    <div class="blocks-tab active">URDF Editor</div>
-                    <div class="blocks-tab">Programming</div>
-                    <div class="blocks-tab">Launch Files</div>
-                </div>
+            <!-- Breadcrumb (below tabs, RTL) -->
+            <div class="editor-breadcrumb" id="editor-breadcrumb" dir="rtl">
+                <!-- Breadcrumb inserted here by JS -->
+            </div>
 
-                <!-- Editor -->
-                <div class="blocks-editor">
-                    <div class="blocks-placeholder">
-                        <h2>URDF Editor</h2>
-                        <p>Design your robot's structure here</p>
-                    </div>
+            <!-- Editor Workspace -->
+            <div class="blocks-editor" id="blocks-editor">
+                <div class="blocks-placeholder" id="editor-placeholder">
+                    <div class="placeholder-icon">📂</div>
+                    <h2 data-i18n="blocks.selectFile">Select a File</h2>
+                    <p data-i18n="blocks.clickToOpen">Click on a file in the packages panel to open it</p>
                 </div>
             </div>
         </div>
