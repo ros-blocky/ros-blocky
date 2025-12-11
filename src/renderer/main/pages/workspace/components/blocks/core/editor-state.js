@@ -44,9 +44,65 @@ export function setActiveFile(file) {
 
 /**
  * Set the active category (called when user clicks an icon in sidebar)
+ * Clicking the same category toggles flyout visibility
  * @param {string} category - Category ID
  */
 export function setActiveCategory(category) {
+    const flyout = window.blocksMainWorkspace?.getFlyout();
+    const flyoutSvg = flyout?.svgGroup_;
+
+    // Check if flyout is currently collapsed
+    const isCollapsed = flyoutSvg?.style.display === 'none';
+
+    // If clicking the same category
+    if (state.activeCategory === category) {
+        // Toggle flyout visibility
+        if (isCollapsed) {
+            // Show the flyout
+            if (flyoutSvg) {
+                flyoutSvg.style.display = '';
+                if (flyoutSvg.parentElement) {
+                    flyoutSvg.parentElement.classList.remove('collapsed');
+                }
+            }
+            // Update toggle button if exists
+            const toggleBtn = document.querySelector('.flyout-toggle-btn');
+            if (toggleBtn) {
+                toggleBtn.innerHTML = '◀';
+                toggleBtn.title = 'Collapse palette';
+                const flyoutWidth = flyout?.getWidth ? flyout.getWidth() : 180;
+                toggleBtn.style.left = `${flyoutWidth}px`;
+                toggleBtn.classList.remove('collapsed');
+            }
+            if (window.blocksMainWorkspace) {
+                Blockly.svgResize(window.blocksMainWorkspace);
+            }
+            console.log('[EditorState] Flyout expanded for:', category);
+        } else {
+            // Hide the flyout
+            if (flyoutSvg) {
+                flyoutSvg.style.display = 'none';
+                if (flyoutSvg.parentElement) {
+                    flyoutSvg.parentElement.classList.add('collapsed');
+                }
+            }
+            // Update toggle button if exists
+            const toggleBtn = document.querySelector('.flyout-toggle-btn');
+            if (toggleBtn) {
+                toggleBtn.innerHTML = '▶';
+                toggleBtn.title = 'Expand palette';
+                toggleBtn.style.left = '0px';
+                toggleBtn.classList.add('collapsed');
+            }
+            if (window.blocksMainWorkspace) {
+                Blockly.svgResize(window.blocksMainWorkspace);
+            }
+            console.log('[EditorState] Flyout collapsed for:', category);
+        }
+        return;
+    }
+
+    // New category selected
     state.activeCategory = category;
 
     // Notify listeners
@@ -63,6 +119,27 @@ export function setActiveCategory(category) {
                 const itemName = item.getName ? item.getName().toLowerCase() : '';
                 if (itemName === category || itemName.includes(category)) {
                     toolbox.setSelectedItem(item);
+
+                    // Ensure flyout is visible when switching categories
+                    if (flyoutSvg && flyoutSvg.style.display === 'none') {
+                        flyoutSvg.style.display = '';
+                        if (flyoutSvg.parentElement) {
+                            flyoutSvg.parentElement.classList.remove('collapsed');
+                        }
+                        const toggleBtn = document.querySelector('.flyout-toggle-btn');
+                        if (toggleBtn) {
+                            toggleBtn.innerHTML = '◀';
+                            toggleBtn.title = 'Collapse palette';
+                            const flyoutWidth = flyout?.getWidth ? flyout.getWidth() : 180;
+                            toggleBtn.style.left = `${flyoutWidth}px`;
+                            toggleBtn.classList.remove('collapsed');
+                        }
+                    }
+
+                    // Keep flyout always open and interactive
+                    if (flyout && flyout.setAutoClose) {
+                        flyout.setAutoClose(false);
+                    }
                     break;
                 }
             }
@@ -70,6 +147,15 @@ export function setActiveCategory(category) {
     }
 
     console.log('[EditorState] Active category set:', category);
+}
+
+/**
+ * Sync the active category state without triggering toolbox
+ * Used when blocks.js auto-selects to keep state in sync
+ * @param {string} category - Category ID
+ */
+export function syncActiveCategory(category) {
+    state.activeCategory = category;
 }
 
 /**

@@ -149,12 +149,8 @@ function renderIconsFromRegistry(editorType) {
         });
     });
 
-    // Auto-select first category with delay to ensure block-palette is ready
-    if (categories.length > 0) {
-        setTimeout(() => {
-            setActiveCategory(categories[0].id);
-        }, 50);
-    }
+    // NOTE: Auto-select is handled by blocks.js createBlocklyWorkspace()
+    // Don't call setActiveCategory here to avoid double-selection conflict
 
     console.log('[IconSidebar] Rendered icons for:', editorType, `(${categories.length} categories)`);
 }

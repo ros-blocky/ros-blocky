@@ -5,7 +5,7 @@
  */
 
 // Import core modules
-import { setActiveFile, clearActiveFile, onFileChange, hasActiveFile } from './core/editor-state.js';
+import { setActiveFile, clearActiveFile, onFileChange, hasActiveFile, syncActiveCategory } from './core/editor-state.js';
 import { getEditorForFile, hasEditorForFile } from './core/editor-registry.js';
 import { initIconSidebar, showSidebar, hideSidebar } from './core/icon-sidebar.js';
 import { initBlockPalette, showPalette, hidePalette, resizeFlyout } from './core/block-palette.js';
@@ -422,6 +422,43 @@ export function getMainWorkspace() {
     return mainWorkspace;
 }
 
+// Track if custom flyout has been registered
+let customFlyoutRegistered = false;
+
+/**
+ * Register a custom flyout class that maintains a fixed scale
+ * This prevents the flyout from zooming when the workspace zoom controls are used
+ */
+function registerFixedScaleFlyout() {
+    if (customFlyoutRegistered || typeof Blockly === 'undefined') {
+        return;
+    }
+
+    // Create a custom flyout class that returns a fixed scale
+    class FixedScaleFlyout extends Blockly.VerticalFlyout {
+        /**
+         * Override getFlyoutScale to return a constant value
+         * instead of the workspace's scale
+         * @returns {number} Fixed scale value for the flyout
+         */
+        getFlyoutScale() {
+            // Return a fixed scale of 0.9 regardless of workspace zoom
+            return 0.9;
+        }
+    }
+
+    // Register the custom flyout
+    Blockly.registry.register(
+        Blockly.registry.Type.FLYOUTS_VERTICAL_TOOLBOX,
+        'fixedScaleFlyout',
+        FixedScaleFlyout,
+        true  // Allow overwriting if already registered
+    );
+
+    customFlyoutRegistered = true;
+    console.log('[Blocks] Fixed-scale flyout registered');
+}
+
 /**
  * Create main Blockly workspace with toolbox
  * @param {string} fileType - Type of file being edited
@@ -445,15 +482,24 @@ function createBlocklyWorkspace(fileType) {
         return;
     }
 
+    // Register our custom fixed-scale flyout
+    registerFixedScaleFlyout();
+
     // Generate toolbox from URDF categories
     const toolboxXml = generateToolboxXml(fileType);
 
     // Inject Blockly workspace with always-open flyout for native drag-drop behavior
+    // Using our custom fixed-scale flyout to prevent block palette from zooming
     mainWorkspace = Blockly.inject(container, {
         toolbox: toolboxXml,
         renderer: 'zelos',
         toolboxPosition: 'start',  // Put toolbox on the left
         horizontalLayout: false,   // Vertical toolbox
+        media: './pages/workspace/components/blocks/blockly-media/',  // Local media for offline use
+        plugins: {
+            // Use our custom flyout that maintains fixed scale
+            flyoutsVerticalToolbox: 'fixedScaleFlyout'
+        },
         grid: {
             spacing: 20,
             length: 3,
@@ -477,28 +523,36 @@ function createBlocklyWorkspace(fileType) {
         sounds: false
     });
 
+    // Store on window immediately so other modules can access it
+    window.blocksMainWorkspace = mainWorkspace;
+
     // Auto-select first category to show flyout immediately
     setTimeout(() => {
         const toolbox = mainWorkspace.getToolbox();
         if (toolbox) {
             const items = toolbox.getToolboxItems();
             if (items && items.length > 0) {
+                // Select item twice - first clears any bad state, second activates
+                toolbox.clearSelection();
                 toolbox.setSelectedItem(items[0]);
 
-                // Keep flyout always open and interactive (don't close after drag)
+                // Sync state so duplicate click check works
+                const firstCategoryName = items[0].getName ? items[0].getName().toLowerCase() : 'structure';
+                syncActiveCategory(firstCategoryName);
+
+                // Keep flyout always open and interactive
                 const flyout = mainWorkspace.getFlyout();
                 if (flyout && flyout.setAutoClose) {
                     flyout.setAutoClose(false);
                 }
 
-                // Force resize to ensure flyout is properly rendered
+                // Force resize
                 Blockly.svgResize(mainWorkspace);
+
+                console.log('[Blocks] Flyout activated for first category:', firstCategoryName);
             }
         }
-    }, 200);
-
-    // Store on window for block-palette access (avoids circular imports)
-    window.blocksMainWorkspace = mainWorkspace;
+    }, 100);
 
     // Handle window resize
     const resizeHandler = () => {
@@ -511,10 +565,11 @@ function createBlocklyWorkspace(fileType) {
     // Initial resize after a short delay
     setTimeout(() => {
         Blockly.svgResize(mainWorkspace);
-    }, 100);
+    }, 50);
 
     console.log('[Blocks] Main Blockly workspace created');
 }
+
 
 /**
  * Generate toolbox XML from categories

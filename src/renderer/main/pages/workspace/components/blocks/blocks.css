@@ -121,16 +121,10 @@
 }
 
 /* ========================================
-   Blocks Sidebar (matching packages panel)
+   Blocks Sidebar (OLD - now hidden, using Blockly's native flyout)
    ======================================== */
 .blocks-sidebar {
-    width: 200px;
-    background: #f7f7f7;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    overflow-y: auto;
-    transition: width 0.2s ease, opacity 0.2s ease;
+    display: none !important;
 }
 
 /* Hidden state for blocks sidebar */
@@ -222,7 +216,12 @@
 
 /* Style the always-visible flyout as a permanent block panel */
 .blocklyFlyout {
-    display: block !important;
+    display: block;
+}
+
+/* Allow flyout to be hidden when collapsed */
+.blocklyFlyout.collapsed {
+    display: none !important;
 }
 
 .blocklyFlyoutBackground {
@@ -234,6 +233,7 @@
 .blocklyFlyout>.blocklyFlyoutBackground {
     filter: drop-shadow(2px 0 4px rgba(0, 0, 0, 0.1));
 }
+
 
 .blocks-category-icon {
     font-size: 16px;
