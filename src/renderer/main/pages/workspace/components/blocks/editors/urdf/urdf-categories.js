@@ -13,7 +13,7 @@ export const URDF_CATEGORIES = [
         icon: 'assets/icons/structure.svg',
         iconType: 'image',
         label: 'Structure',
-        color: '#667eea',
+        color: '#4c97ff', // Match block color
         description: 'Robot structure elements - links and joints',
         blocks: [
             'urdf_robot',
@@ -28,7 +28,7 @@ export const URDF_CATEGORIES = [
         icon: 'assets/icons/visual.svg',
         iconType: 'image',
         label: 'Visual',
-        color: '#764ba2',
+        color: '#FFAB19', // Match block color
         description: 'Visual and collision elements',
         blocks: [
             'urdf_visual',
@@ -44,7 +44,7 @@ export const URDF_CATEGORIES = [
         icon: 'assets/icons/properties.svg',
         iconType: 'image',
         label: 'Properties',
-        color: '#11998e',
+        color: '#40BF4A', // Match block color
         description: 'Physical properties and transforms',
         blocks: [
             'urdf_mass',
@@ -59,7 +59,7 @@ export const URDF_CATEGORIES = [
         icon: 'assets/icons/shapes.svg',
         iconType: 'image',
         label: 'Shapes',
-        color: '#ee0979',
+        color: '#ee0979', // Match block color
         description: 'Geometry primitives and meshes',
         blocks: [
             'urdf_box',

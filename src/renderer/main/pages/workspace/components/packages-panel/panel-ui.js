@@ -44,6 +44,11 @@ export function setupPanelResize() {
             panel.classList.remove('collapsed');
             panel.style.width = newWidth >= 200 ? `${newWidth}px` : '200px';
         }
+
+        // Trigger Blockly resize during drag
+        if (window.blocksMainWorkspace && typeof Blockly !== 'undefined') {
+            Blockly.svgResize(window.blocksMainWorkspace);
+        }
     });
 
     document.addEventListener('mouseup', () => {
@@ -51,6 +56,13 @@ export function setupPanelResize() {
             isResizing = false;
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
+
+            // Trigger final Blockly resize after drag ends
+            if (window.blocksMainWorkspace && typeof Blockly !== 'undefined') {
+                setTimeout(() => {
+                    Blockly.svgResize(window.blocksMainWorkspace);
+                }, 50);
+            }
         }
     });
 }

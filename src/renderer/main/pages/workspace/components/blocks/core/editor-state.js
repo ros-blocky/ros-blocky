@@ -74,6 +74,9 @@ export function setActiveCategory(category) {
                 toggleBtn.style.left = `${flyoutWidth}px`;
                 toggleBtn.classList.remove('collapsed');
             }
+            // Update flyout margins for tabs/breadcrumb
+            updateFlyoutMargins(true);
+
             if (window.blocksMainWorkspace) {
                 Blockly.svgResize(window.blocksMainWorkspace);
             }
@@ -94,6 +97,9 @@ export function setActiveCategory(category) {
                 toggleBtn.style.left = '0px';
                 toggleBtn.classList.add('collapsed');
             }
+            // Update flyout margins for tabs/breadcrumb (collapsed)
+            updateFlyoutMargins(false);
+
             if (window.blocksMainWorkspace) {
                 Blockly.svgResize(window.blocksMainWorkspace);
             }
@@ -140,6 +146,10 @@ export function setActiveCategory(category) {
                     if (flyout && flyout.setAutoClose) {
                         flyout.setAutoClose(false);
                     }
+
+                    // Update flyout margins for tabs/breadcrumb
+                    updateFlyoutMargins(true);
+
                     break;
                 }
             }
@@ -164,6 +174,14 @@ export function syncActiveCategory(category) {
  */
 export function getState() {
     return { ...state };
+}
+
+/**
+ * Get the current active category
+ * @returns {string|null} Current active category ID or null
+ */
+export function getActiveCategory() {
+    return state.activeCategory;
 }
 
 /**
@@ -234,4 +252,36 @@ export function hasActiveFile() {
  */
 export function getActiveFileType() {
     return state.activeEditor;
+}
+
+/**
+ * Update the flyout margins CSS variable for tabs and breadcrumb
+ * Called when flyout is shown/hidden to dynamically adjust the layout
+ * @param {boolean} isVisible - Whether the flyout is visible
+ */
+export function updateFlyoutMargins(isVisible) {
+    const editorArea = document.querySelector('.blocks-editor-area');
+    if (!editorArea) return;
+
+    if (isVisible) {
+        // Get the actual flyout width from Blockly
+        const flyout = window.blocksMainWorkspace?.getFlyout();
+        const flyoutWidth = flyout?.getWidth ? flyout.getWidth() : 180;
+        editorArea.style.setProperty('--flyout-width', `${flyoutWidth}px`);
+
+        // Also update the header position and width
+        const header = document.querySelector('.flyout-category-header');
+        if (header) {
+            header.style.width = `${flyoutWidth}px`;
+            header.classList.remove('hidden');
+        }
+    } else {
+        editorArea.style.setProperty('--flyout-width', '0px');
+
+        // Hide the header when flyout is collapsed
+        const header = document.querySelector('.flyout-category-header');
+        if (header) {
+            header.classList.add('hidden');
+        }
+    }
 }

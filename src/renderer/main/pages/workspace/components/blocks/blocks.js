@@ -5,13 +5,17 @@
  */
 
 // Import core modules
-import { setActiveFile, clearActiveFile, onFileChange, hasActiveFile, syncActiveCategory } from './core/editor-state.js';
+import { setActiveFile, clearActiveFile, onFileChange, hasActiveFile, syncActiveCategory, onCategoryChange, updateFlyoutMargins } from './core/editor-state.js';
 import { getEditorForFile, hasEditorForFile } from './core/editor-registry.js';
 import { initIconSidebar, showSidebar, hideSidebar } from './core/icon-sidebar.js';
 import { initBlockPalette, showPalette, hidePalette, resizeFlyout } from './core/block-palette.js';
 
 // Import URDF editor (auto-registers with registry)
 import { initUrdfEditor, getUrdfCategories } from './editors/urdf/urdf-editor.js';
+import { getCategoryById } from './editors/urdf/urdf-categories.js';
+
+// Import i18n for translations
+import { t, onLanguageChange } from '../../../../../i18n/index.js';
 
 // State
 let initialized = false;
@@ -52,6 +56,32 @@ export function initBlocks() {
     initIconSidebar('blocks-icon-sidebar');
     initBlockPalette('blocks-sidebar');
 
+    // Create the flyout category header
+    createFlyoutHeader();
+
+    // Listen for category changes to update the header
+    onCategoryChange((categoryId) => {
+        updateFlyoutHeader(categoryId);
+    });
+
+    // Listen for language changes to update the header translation
+    onLanguageChange(() => {
+        // Get current category from state and refresh header
+        const header = document.querySelector('.flyout-category-header');
+        if (header && !header.classList.contains('hidden')) {
+            const currentText = header.querySelector('.header-text');
+            if (currentText) {
+                // Re-trigger header update by getting current category
+                import('./core/editor-state.js').then(({ getActiveCategory }) => {
+                    const currentCategory = getActiveCategory();
+                    if (currentCategory) {
+                        updateFlyoutHeader(currentCategory);
+                    }
+                });
+            }
+        }
+    });
+
     // Setup sidebar resize
     setupSidebarResize();
 
@@ -63,6 +93,101 @@ export function initBlocks() {
 
     initialized = true;
     console.log('[Blocks] Component initialized');
+}
+
+/**
+ * Create the flyout category header element
+ */
+function createFlyoutHeader() {
+    // Check if header already exists
+    if (document.querySelector('.flyout-category-header')) {
+        return;
+    }
+
+    // Create header element
+    const header = document.createElement('div');
+    header.className = 'flyout-category-header hidden';
+    header.innerHTML = `
+        <img class="header-icon" src="" alt="">
+        <span class="header-text">BLOCKS</span>
+    `;
+
+    // Add to the blocks container
+    const blocksContainer = document.querySelector('.blocks-top-content');
+    if (blocksContainer) {
+        blocksContainer.appendChild(header);
+    }
+}
+
+/**
+ * Update the flyout header with the current category
+ * @param {string} categoryId - The category ID
+ */
+function updateFlyoutHeader(categoryId) {
+    const header = document.querySelector('.flyout-category-header');
+    if (!header) return;
+
+    if (!categoryId) {
+        header.classList.add('hidden');
+        return;
+    }
+
+    // Get category info
+    const category = getCategoryById(categoryId);
+    if (!category) {
+        header.classList.add('hidden');
+        return;
+    }
+
+    // Update header content
+    const icon = header.querySelector('.header-icon');
+    const text = header.querySelector('.header-text');
+
+    if (icon) {
+        icon.src = category.icon;
+        icon.alt = category.label;
+    }
+    if (text) {
+        // Use translated category name from i18n
+        const translationKey = `blocks.urdf.${categoryId}`;
+        text.textContent = t(translationKey) || category.label;
+    }
+
+    // Update header background color based on category
+    header.style.background = `linear-gradient(135deg, ${category.color} 0%, ${adjustColor(category.color, -20)} 100%)`;
+
+    // Update header width based on flyout width
+    const flyout = window.blocksMainWorkspace?.getFlyout();
+    if (flyout) {
+        const flyoutWidth = flyout.getWidth ? flyout.getWidth() : 180;
+        header.style.width = `${flyoutWidth}px`;
+    }
+
+    header.classList.remove('hidden');
+}
+
+/**
+ * Adjust color brightness
+ * @param {string} hex - Hex color
+ * @param {number} amount - Amount to adjust (-100 to 100)
+ * @returns {string} Adjusted hex color
+ */
+function adjustColor(hex, amount) {
+    // Remove # if present
+    hex = hex.replace('#', '');
+
+    // Parse RGB
+    let r = parseInt(hex.substring(0, 2), 16);
+    let g = parseInt(hex.substring(2, 4), 16);
+    let b = parseInt(hex.substring(4, 6), 16);
+
+    // Adjust
+    r = Math.max(0, Math.min(255, r + amount));
+    g = Math.max(0, Math.min(255, g + amount));
+    b = Math.max(0, Math.min(255, b + amount));
+
+    // Convert back to hex
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
 /**
@@ -442,8 +567,8 @@ function registerFixedScaleFlyout() {
          * @returns {number} Fixed scale value for the flyout
          */
         getFlyoutScale() {
-            // Return a fixed scale of 0.9 regardless of workspace zoom
-            return 0.9;
+            // Return a fixed scale of 0.7 regardless of workspace zoom
+            return 0.7;
         }
     }
 
@@ -540,11 +665,17 @@ function createBlocklyWorkspace(fileType) {
                 const firstCategoryName = items[0].getName ? items[0].getName().toLowerCase() : 'structure';
                 syncActiveCategory(firstCategoryName);
 
+                // Update the flyout header to show the first category
+                updateFlyoutHeader(firstCategoryName);
+
                 // Keep flyout always open and interactive
                 const flyout = mainWorkspace.getFlyout();
                 if (flyout && flyout.setAutoClose) {
                     flyout.setAutoClose(false);
                 }
+
+                // Update flyout margins for tabs/breadcrumb
+                updateFlyoutMargins(true);
 
                 // Force resize
                 Blockly.svgResize(mainWorkspace);

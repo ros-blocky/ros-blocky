@@ -55,6 +55,13 @@ function setupResizeHandle() {
     const MIN_WIDTH = 200;
     const MAX_WIDTH = 500;
 
+    // Helper function to trigger Blockly resize
+    const triggerBlocklyResize = () => {
+        if (window.blocksMainWorkspace && typeof Blockly !== 'undefined') {
+            Blockly.svgResize(window.blocksMainWorkspace);
+        }
+    };
+
     // Double-click to toggle collapse
     resizeHandle.addEventListener('dblclick', () => {
         if (packagesPanel.classList.contains('collapsed')) {
@@ -65,6 +72,8 @@ function setupResizeHandle() {
             packagesPanel.classList.add('collapsed');
             packagesPanel.style.width = '0px';
         }
+        // Trigger Blockly resize after collapse/expand
+        setTimeout(triggerBlocklyResize, 50);
     });
 
     resizeHandle.addEventListener('mousedown', (e) => {
@@ -91,6 +100,9 @@ function setupResizeHandle() {
             packagesPanel.style.width = `${clampedWidth}px`;
             lastExpandedWidth = clampedWidth;
         }
+
+        // Trigger Blockly resize during drag
+        triggerBlocklyResize();
     });
 
     document.addEventListener('mouseup', () => {
@@ -98,6 +110,10 @@ function setupResizeHandle() {
             isResizing = false;
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
+
+            // Trigger final Blockly resize after drag ends
+            setTimeout(triggerBlocklyResize, 50);
         }
     });
 }
+
