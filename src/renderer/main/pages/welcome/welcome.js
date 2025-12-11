@@ -2,6 +2,8 @@
  * Welcome Screen Logic
  */
 
+import { t } from '../../../i18n/index.js';
+
 // Store reference to parent functions
 let updateProjectNameFn = null;
 let showIDEFn = null;
@@ -27,7 +29,7 @@ export function initWelcomeScreen(parentFunctions) {
             // Disable BOTH buttons during creation
             createProjectBtn.disabled = true;
             openProjectBtn.disabled = true;
-            createProjectBtn.textContent = 'Creating Project...';
+            createProjectBtn.textContent = t('welcome.creatingProject');
 
             try {
                 // Call IPC - dialogs will show, then loading screen will appear via event
@@ -68,7 +70,7 @@ export function initWelcomeScreen(parentFunctions) {
             // Disable BOTH buttons during opening
             createProjectBtn.disabled = true;
             openProjectBtn.disabled = true;
-            openProjectBtn.textContent = 'Opening Project...';
+            openProjectBtn.textContent = t('welcome.openingProject');
 
             try {
                 // Call IPC - dialog will show, then loading screen will appear via event

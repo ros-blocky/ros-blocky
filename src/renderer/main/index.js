@@ -45,6 +45,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (welcomeScreen) welcomeScreen.classList.add('hidden');
         if (loadingScreen) loadingScreen.classList.add('hidden');
         if (workspace) workspace.classList.remove('hidden');
+
+        // Reapply translations when showing workspace
+        updatePageTranslations();
     }
 
     // Helper function to show loading screen
@@ -139,9 +142,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.electronAPI.onProjectDialogsComplete((type) => {
             // Show loading screen when dialogs are done
             if (type === 'Creating') {
-                showLoading('Creating Project...', 'Building your ROS2 workspace with colcon...');
+                showLoading(t('welcome.creatingProject'), t('welcome.loadingWorkspace'));
             } else if (type === 'Opening') {
-                showLoading('Opening Project...', 'Loading your ROS2 workspace...');
+                showLoading(t('welcome.openingProject'), t('welcome.loadingWorkspace'));
             }
         });
     }

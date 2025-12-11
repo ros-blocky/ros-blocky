@@ -64,12 +64,20 @@
         "launchFiles": "ملفات الإطلاق"
     },
     "blocks": {
+        "selectFile": "اختر ملفاً",
+        "clickToOpen": "انقر على ملف في لوحة الحزم لفتحه",
         "motion": "الحركة",
         "motors": "المحركات",
         "sensors": "المستشعرات",
         "control": "التحكم",
         "operators": "العمليات",
-        "variables": "المتغيرات"
+        "variables": "المتغيرات",
+        "urdf": {
+            "structure": "البنية",
+            "visual": "المظهر",
+            "properties": "الخصائص",
+            "shapes": "الأشكال"
+        }
     },
     "settings": {
         "title": "الإعدادات",
@@ -94,6 +102,9 @@
         "subtitle": "بيئة برمجة مرئية لروبوتات ROS2",
         "createProject": "إنشاء مشروع جديد",
         "openProject": "فتح مشروع موجود",
+        "creatingProject": "جاري إنشاء المشروع...",
+        "openingProject": "جاري فتح المشروع...",
+        "loadingWorkspace": "جاري تحميل مساحة عمل ROS2...",
         "recentProjects": "المشاريع الأخيرة",
         "noRecent": "لا توجد مشاريع حديثة"
     }

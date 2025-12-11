@@ -11,7 +11,7 @@ import { initIconSidebar, showSidebar, hideSidebar } from './core/icon-sidebar.j
 import { initBlockPalette, showPalette, hidePalette, resizeFlyout } from './core/block-palette.js';
 
 // Import URDF editor (auto-registers with registry)
-import { initUrdfEditor } from './editors/urdf/urdf-editor.js';
+import { initUrdfEditor, getUrdfCategories } from './editors/urdf/urdf-editor.js';
 
 // State
 let initialized = false;
@@ -164,6 +164,9 @@ function handleFileSelected(event) {
     updateUIState(true);
     renderTabs();
     renderBreadcrumb();
+
+    // Create Blockly workspace for the file type
+    createBlocklyWorkspace(fileInfo.type);
 }
 
 /**
@@ -409,4 +412,148 @@ export function getActiveFile() {
  */
 export function getOpenFiles() {
     return [...openFiles];
+}
+
+/**
+ * Get the main Blockly workspace
+ * @returns {Blockly.Workspace|null} The main workspace or null
+ */
+export function getMainWorkspace() {
+    return mainWorkspace;
+}
+
+/**
+ * Create main Blockly workspace with toolbox
+ * @param {string} fileType - Type of file being edited
+ */
+function createBlocklyWorkspace(fileType) {
+    const container = document.getElementById('blockly-workspace');
+    if (!container) {
+        console.error('[Blocks] Workspace container not found');
+        return;
+    }
+
+    // Dispose existing workspace if any
+    if (mainWorkspace) {
+        mainWorkspace.dispose();
+        mainWorkspace = null;
+    }
+
+    // Check if Blockly is available
+    if (typeof Blockly === 'undefined') {
+        console.error('[Blocks] Blockly not loaded');
+        return;
+    }
+
+    // Generate toolbox from URDF categories
+    const toolboxXml = generateToolboxXml(fileType);
+
+    // Inject Blockly workspace with always-open flyout for native drag-drop behavior
+    mainWorkspace = Blockly.inject(container, {
+        toolbox: toolboxXml,
+        renderer: 'zelos',
+        toolboxPosition: 'start',  // Put toolbox on the left
+        horizontalLayout: false,   // Vertical toolbox
+        grid: {
+            spacing: 20,
+            length: 3,
+            colour: '#ccc',
+            snap: true
+        },
+        zoom: {
+            controls: true,
+            wheel: true,
+            startScale: 0.9,
+            maxScale: 3,
+            minScale: 0.3,
+            scaleSpeed: 1.2
+        },
+        move: {
+            scrollbars: true,
+            drag: true,
+            wheel: true
+        },
+        trashcan: true,
+        sounds: false
+    });
+
+    // Auto-select first category to show flyout immediately
+    setTimeout(() => {
+        const toolbox = mainWorkspace.getToolbox();
+        if (toolbox) {
+            const items = toolbox.getToolboxItems();
+            if (items && items.length > 0) {
+                toolbox.setSelectedItem(items[0]);
+
+                // Keep flyout always open and interactive (don't close after drag)
+                const flyout = mainWorkspace.getFlyout();
+                if (flyout && flyout.setAutoClose) {
+                    flyout.setAutoClose(false);
+                }
+
+                // Force resize to ensure flyout is properly rendered
+                Blockly.svgResize(mainWorkspace);
+            }
+        }
+    }, 200);
+
+    // Store on window for block-palette access (avoids circular imports)
+    window.blocksMainWorkspace = mainWorkspace;
+
+    // Handle window resize
+    const resizeHandler = () => {
+        if (mainWorkspace) {
+            Blockly.svgResize(mainWorkspace);
+        }
+    };
+    window.addEventListener('resize', resizeHandler);
+
+    // Initial resize after a short delay
+    setTimeout(() => {
+        Blockly.svgResize(mainWorkspace);
+    }, 100);
+
+    console.log('[Blocks] Main Blockly workspace created');
+}
+
+/**
+ * Generate toolbox XML from categories
+ * @param {string} fileType - Type of file being edited
+ * @returns {string} Toolbox XML string
+ */
+function generateToolboxXml(fileType) {
+    let categories = [];
+
+    // Get categories based on file type
+    if (fileType === 'urdf' || fileType === 'xacro') {
+        categories = getUrdfCategories();
+    }
+
+    if (categories.length === 0) {
+        return '<xml id="toolbox"></xml>';
+    }
+
+    const categoriesXml = categories.map(category => {
+        const blocksXml = category.blocks.map(blockType =>
+            `<block type="${blockType}"></block>`
+        ).join('');
+
+        return `<category name="${category.label}" colour="${category.color}">
+            ${blocksXml}
+        </category>`;
+    }).join('');
+
+    return `<xml id="toolbox" style="display: none">
+        ${categoriesXml}
+    </xml>`;
+}
+
+/**
+ * Dispose the main workspace
+ */
+function disposeWorkspace() {
+    if (mainWorkspace) {
+        mainWorkspace.dispose();
+        mainWorkspace = null;
+    }
 }

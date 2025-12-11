@@ -18,9 +18,9 @@ export const URDF_CATEGORIES = [
         blocks: [
             'urdf_robot',
             'urdf_link',
-            'urdf_joint_fixed',
-            'urdf_joint_revolute',
-            'urdf_joint_continuous'
+            'urdf_joint',
+            'urdf_parent',
+            'urdf_child'
         ]
     },
     {
@@ -33,6 +33,8 @@ export const URDF_CATEGORIES = [
         blocks: [
             'urdf_visual',
             'urdf_collision',
+            'urdf_inertial',
+            'urdf_geometry',
             'urdf_material',
             'urdf_color'
         ]
@@ -45,7 +47,6 @@ export const URDF_CATEGORIES = [
         color: '#11998e',
         description: 'Physical properties and transforms',
         blocks: [
-            'urdf_inertial',
             'urdf_mass',
             'urdf_inertia',
             'urdf_origin',

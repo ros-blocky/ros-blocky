@@ -16,7 +16,7 @@
 
 /* Icon Sidebar (Cyan with simple icons) */
 .blocks-icon-sidebar {
-    width: 64px;
+    width: 72px;
     background: #00bbfe;
     display: flex;
     flex-direction: column;
@@ -103,7 +103,7 @@
 
 /* Sidebar icon label text */
 .sidebar-icon-label {
-    font-size: 7px;
+    font-size: 9px;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.2px;
@@ -166,13 +166,9 @@
     text-transform: uppercase;
 }
 
-/* Blockly Flyout Container (sidebar) */
+/* Blockly Flyout Container (old custom sidebar - now hidden, using native Blockly flyout) */
 .blockly-flyout-container {
-    flex: 1;
-    min-height: 200px;
-    background: #f7f7f7;
-    overflow: hidden;
-    padding: 10px;
+    display: none !important;
 }
 
 /* Blockly Workspace Container (main editor) */
@@ -196,6 +192,47 @@
 /* Make flyout background transparent */
 .blockly-flyout-container svg {
     background: transparent !important;
+}
+
+/* Enable pointer events on flyout blocks for our custom drag */
+.blockly-flyout-container .blocklyDraggable {
+    pointer-events: all !important;
+    cursor: grab !important;
+}
+
+.blockly-flyout-container .blocklyDraggable:active {
+    cursor: grabbing !important;
+}
+
+/* Hide Blockly's category text labels - we use our custom icon sidebar */
+.blocklyToolboxDiv .blocklyTreeRow,
+.blocklyToolboxDiv .blocklyTreeLabel,
+.blocklyToolboxDiv .blocklyTreeIcon,
+.blocklyToolboxDiv .blocklyToolboxContents {
+    display: none !important;
+}
+
+/* Hide the toolbox category container completely */
+.blocklyToolboxDiv {
+    width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+}
+
+/* Style the always-visible flyout as a permanent block panel */
+.blocklyFlyout {
+    display: block !important;
+}
+
+.blocklyFlyoutBackground {
+    fill: #f7f7f7 !important;
+    fill-opacity: 1 !important;
+}
+
+/* Add slight shadow to flyout for depth */
+.blocklyFlyout>.blocklyFlyoutBackground {
+    filter: drop-shadow(2px 0 4px rgba(0, 0, 0, 0.1));
 }
 
 .blocks-category-icon {

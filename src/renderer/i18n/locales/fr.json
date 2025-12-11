@@ -71,7 +71,13 @@
         "sensors": "Capteurs",
         "control": "Contrôle",
         "operators": "Opérateurs",
-        "variables": "Variables"
+        "variables": "Variables",
+        "urdf": {
+            "structure": "Structure",
+            "visual": "Visuel",
+            "properties": "Propriétés",
+            "shapes": "Formes"
+        }
     },
     "settings": {
         "title": "Paramètres",
@@ -96,6 +102,9 @@
         "subtitle": "Un environnement de programmation visuelle pour la robotique ROS2",
         "createProject": "Créer un nouveau projet",
         "openProject": "Ouvrir un projet existant",
+        "creatingProject": "Création du projet...",
+        "openingProject": "Ouverture du projet...",
+        "loadingWorkspace": "Chargement de votre espace de travail ROS2...",
         "recentProjects": "Projets récents",
         "noRecent": "Aucun projet récent"
     }

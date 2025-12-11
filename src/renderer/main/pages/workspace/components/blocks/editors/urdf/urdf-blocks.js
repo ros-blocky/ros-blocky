@@ -26,12 +26,12 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_robot'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('🤖 Robot')
+                .appendField('Robot')
+                .appendField('name')
                 .appendField(new Blockly.FieldTextInput('my_robot', validateName), 'NAME');
             this.appendStatementInput('CONTENT')
-                .setCheck(null)
-                .appendField('contains');
-            this.setColour('#00bbfe');
+                .setCheck(null);
+            this.setColour('#4c97ff');
             this.setTooltip('URDF Robot definition - the root element');
             this.setHelpUrl('http://wiki.ros.org/urdf/XML/robot');
         }
@@ -40,79 +40,82 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_link'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('🔗 Link')
+                .appendField('Link')
+                .appendField('name')
                 .appendField(new Blockly.FieldTextInput('link_name', validateName), 'NAME');
             this.appendStatementInput('CONTENT')
-                .setCheck(null)
-                .appendField('contains');
+                .setCheck(null);
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#667eea');
+            this.setColour('#4c97ff');
             this.setTooltip('Define a URDF link element');
             this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
     };
 
-    Blockly.Blocks['urdf_joint_fixed'] = {
+    // Link reference block for connecting to Joint parent/child inputs
+    Blockly.Blocks['urdf_link_ref'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('🔒 Fixed Joint')
-                .appendField(new Blockly.FieldTextInput('joint_name', validateName), 'NAME');
+                .appendField('Link')
+                .appendField(new Blockly.FieldTextInput('link_name', validateName), 'NAME');
+            this.setOutput(true, 'Link');
+            this.setColour('#4c97ff');
+            this.setTooltip('Reference to a link');
+        }
+    };
+
+    // Unified Joint block with type dropdown
+    Blockly.Blocks['urdf_joint'] = {
+        init: function () {
             this.appendDummyInput()
-                .appendField('parent')
-                .appendField(new Blockly.FieldTextInput('parent_link', validateName), 'PARENT');
-            this.appendDummyInput()
-                .appendField('child')
-                .appendField(new Blockly.FieldTextInput('child_link', validateName), 'CHILD');
-            this.appendStatementInput('ORIGIN')
-                .appendField('origin');
+                .appendField('Joint')
+                .appendField('name')
+                .appendField(new Blockly.FieldTextInput('joint_name', validateName), 'NAME')
+                .appendField('type')
+                .appendField(new Blockly.FieldDropdown([
+                    ['Fixed', 'fixed'],
+                    ['Revolute', 'revolute'],
+                    ['Continuous', 'continuous'],
+                    ['Prismatic', 'prismatic'],
+                    ['Floating', 'floating'],
+                    ['Planar', 'planar']
+                ]), 'TYPE');
+            this.appendStatementInput('CONTENT')
+                .setCheck(null);
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#11998e');
-            this.setTooltip('Fixed joint - no movement allowed');
+            this.setColour('#4c97ff');
+            this.setTooltip('URDF Joint - connects two links');
             this.setHelpUrl('http://wiki.ros.org/urdf/XML/joint');
         }
     };
 
-    Blockly.Blocks['urdf_joint_revolute'] = {
+    // Parent link reference block
+    Blockly.Blocks['urdf_parent'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('🔄 Revolute Joint')
-                .appendField(new Blockly.FieldTextInput('joint_name', validateName), 'NAME');
-            this.appendDummyInput()
                 .appendField('parent')
-                .appendField(new Blockly.FieldTextInput('parent_link', validateName), 'PARENT');
-            this.appendDummyInput()
-                .appendField('child')
-                .appendField(new Blockly.FieldTextInput('child_link', validateName), 'CHILD');
-            this.appendStatementInput('CONTENT')
-                .appendField('properties');
+                .appendField('link')
+                .appendField(new Blockly.FieldTextInput('link_name', validateName), 'NAME');
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#38ef7d');
-            this.setTooltip('Revolute joint - rotates around an axis with limits');
-            this.setHelpUrl('http://wiki.ros.org/urdf/XML/joint');
+            this.setColour('#4c97ff');
+            this.setTooltip('Parent link reference');
         }
     };
 
-    Blockly.Blocks['urdf_joint_continuous'] = {
+    // Child link reference block
+    Blockly.Blocks['urdf_child'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('♾️ Continuous Joint')
-                .appendField(new Blockly.FieldTextInput('joint_name', validateName), 'NAME');
-            this.appendDummyInput()
-                .appendField('parent')
-                .appendField(new Blockly.FieldTextInput('parent_link', validateName), 'PARENT');
-            this.appendDummyInput()
                 .appendField('child')
-                .appendField(new Blockly.FieldTextInput('child_link', validateName), 'CHILD');
-            this.appendStatementInput('CONTENT')
-                .appendField('properties');
+                .appendField('link')
+                .appendField(new Blockly.FieldTextInput('link_name', validateName), 'NAME');
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#10b981');
-            this.setTooltip('Continuous joint - rotates continuously without limits');
-            this.setHelpUrl('http://wiki.ros.org/urdf/XML/joint');
+            this.setColour('#4c97ff');
+            this.setTooltip('Child link reference');
         }
     };
 
@@ -123,13 +126,12 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_visual'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('👁️ Visual');
+                .appendField('Visual');
             this.appendStatementInput('CONTENT')
-                .setCheck(null)
-                .appendField('contains');
+                .setCheck(null);
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#764ba2');
+            this.setColour('#FFAB19');
             this.setTooltip('Visual representation of a link');
             this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
@@ -138,13 +140,12 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_collision'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('💥 Collision');
+                .appendField('Collision');
             this.appendStatementInput('CONTENT')
-                .setCheck(null)
-                .appendField('contains');
+                .setCheck(null);
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#8b5cf6');
+            this.setColour('#FFAB19');
             this.setTooltip('Collision geometry of a link');
             this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
@@ -153,13 +154,13 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_material'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('🎨 Material')
+                .appendField('Material')
                 .appendField(new Blockly.FieldTextInput('material_name', validateName), 'NAME');
             this.appendStatementInput('COLOR')
                 .appendField('color');
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#f093fb');
+            this.setColour('#FFAB19');
             this.setTooltip('Material definition');
             this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
@@ -168,15 +169,28 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_color'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('🌈 Color RGBA')
+                .appendField('Color RGBA')
                 .appendField('R').appendField(new Blockly.FieldNumber(1, 0, 1, 0.1), 'R')
                 .appendField('G').appendField(new Blockly.FieldNumber(0, 0, 1, 0.1), 'G')
                 .appendField('B').appendField(new Blockly.FieldNumber(0, 0, 1, 0.1), 'B')
                 .appendField('A').appendField(new Blockly.FieldNumber(1, 0, 1, 0.1), 'A');
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#f5576c');
+            this.setColour('#FFAB19');
             this.setTooltip('RGBA color values (0-1)');
+        }
+    };
+
+    Blockly.Blocks['urdf_geometry'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('Geometry');
+            this.appendStatementInput('CONTENT')
+                .setCheck(null);
+            this.setPreviousStatement(true, null);
+            this.setNextStatement(true, null);
+            this.setColour('#FFAB19');
+            this.setTooltip('Geometry container - add a shape inside');
         }
     };
 
@@ -187,12 +201,12 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_inertial'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('⚖️ Inertial');
+                .appendField('Inertial');
             this.appendStatementInput('CONTENT')
                 .setCheck(null);
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#a78bfa');
+            this.setColour('#FFAB19');
             this.setTooltip('Inertial properties of a link');
             this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
@@ -201,12 +215,12 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_mass'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('⚖️ Mass')
+                .appendField('Mass')
                 .appendField(new Blockly.FieldNumber(1, 0), 'VALUE')
                 .appendField('kg');
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#4facfe');
+            this.setColour('#40BF4A');
             this.setTooltip('Mass in kilograms');
         }
     };
@@ -214,18 +228,16 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_inertia'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('🌀 Inertia Matrix');
-            this.appendDummyInput()
+                .appendField('Inertia')
                 .appendField('ixx').appendField(new Blockly.FieldNumber(1), 'IXX')
                 .appendField('ixy').appendField(new Blockly.FieldNumber(0), 'IXY')
-                .appendField('ixz').appendField(new Blockly.FieldNumber(0), 'IXZ');
-            this.appendDummyInput()
+                .appendField('ixz').appendField(new Blockly.FieldNumber(0), 'IXZ')
                 .appendField('iyy').appendField(new Blockly.FieldNumber(1), 'IYY')
                 .appendField('iyz').appendField(new Blockly.FieldNumber(0), 'IYZ')
                 .appendField('izz').appendField(new Blockly.FieldNumber(1), 'IZZ');
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#00f2fe');
+            this.setColour('#40BF4A');
             this.setTooltip('Inertia tensor');
         }
     };
@@ -233,20 +245,18 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_origin'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('📍 Origin');
-            this.appendDummyInput()
+                .appendField('Origin')
                 .appendField('xyz')
                 .appendField(new Blockly.FieldNumber(0), 'X')
                 .appendField(new Blockly.FieldNumber(0), 'Y')
-                .appendField(new Blockly.FieldNumber(0), 'Z');
-            this.appendDummyInput()
+                .appendField(new Blockly.FieldNumber(0), 'Z')
                 .appendField('rpy')
                 .appendField(new Blockly.FieldNumber(0), 'ROLL')
                 .appendField(new Blockly.FieldNumber(0), 'PITCH')
                 .appendField(new Blockly.FieldNumber(0), 'YAW');
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#22d3ee');
+            this.setColour('#40BF4A');
             this.setTooltip('Origin position (xyz) and orientation (roll, pitch, yaw)');
         }
     };
@@ -254,13 +264,13 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_axis'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('➡️ Axis')
+                .appendField('Axis')
                 .appendField('x').appendField(new Blockly.FieldNumber(0, -1, 1), 'X')
                 .appendField('y').appendField(new Blockly.FieldNumber(0, -1, 1), 'Y')
                 .appendField('z').appendField(new Blockly.FieldNumber(1, -1, 1), 'Z');
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#34d399');
+            this.setColour('#40BF4A');
             this.setTooltip('Joint rotation axis');
         }
     };
@@ -268,16 +278,14 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_limit'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('🚧 Limit');
-            this.appendDummyInput()
+                .appendField('Limit')
                 .appendField('lower').appendField(new Blockly.FieldNumber(-3.14), 'LOWER')
-                .appendField('upper').appendField(new Blockly.FieldNumber(3.14), 'UPPER');
-            this.appendDummyInput()
+                .appendField('upper').appendField(new Blockly.FieldNumber(3.14), 'UPPER')
                 .appendField('effort').appendField(new Blockly.FieldNumber(100), 'EFFORT')
                 .appendField('velocity').appendField(new Blockly.FieldNumber(1), 'VELOCITY');
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#6ee7b7');
+            this.setColour('#40BF4A');
             this.setTooltip('Joint limits');
         }
     };
@@ -289,7 +297,7 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_box'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('📦 Box')
+                .appendField('Box')
                 .appendField('x').appendField(new Blockly.FieldNumber(1, 0), 'X')
                 .appendField('y').appendField(new Blockly.FieldNumber(1, 0), 'Y')
                 .appendField('z').appendField(new Blockly.FieldNumber(1, 0), 'Z');
@@ -303,12 +311,12 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_cylinder'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('🛢️ Cylinder')
+                .appendField('Cylinder')
                 .appendField('radius').appendField(new Blockly.FieldNumber(0.5, 0), 'RADIUS')
                 .appendField('length').appendField(new Blockly.FieldNumber(1, 0), 'LENGTH');
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#ff6a00');
+            this.setColour('#ee0979');
             this.setTooltip('Cylinder geometry');
         }
     };
@@ -316,11 +324,11 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_sphere'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('🔴 Sphere')
+                .appendField('Sphere')
                 .appendField('radius').appendField(new Blockly.FieldNumber(0.5, 0), 'RADIUS');
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#f97316');
+            this.setColour('#ee0979');
             this.setTooltip('Sphere geometry');
         }
     };
@@ -328,17 +336,17 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_mesh'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('🦾 Mesh')
-                .appendField(new Blockly.FieldTextInput('package://...', validateMeshPath), 'FILENAME');
-            this.appendDummyInput()
+                .appendField('Mesh')
+                .appendField('filename')
+                .appendField(new Blockly.FieldTextInput('mesh.stl'), 'FILENAME')
                 .appendField('scale')
                 .appendField(new Blockly.FieldNumber(1, 0), 'SCALE_X')
                 .appendField(new Blockly.FieldNumber(1, 0), 'SCALE_Y')
                 .appendField(new Blockly.FieldNumber(1, 0), 'SCALE_Z');
             this.setPreviousStatement(true, null);
             this.setNextStatement(true, null);
-            this.setColour('#fb923c');
-            this.setTooltip('Mesh geometry from file');
+            this.setColour('#ee0979');
+            this.setTooltip('Mesh geometry - enter filename from meshes folder');
         }
     };
 
@@ -384,9 +392,9 @@ function validateMeshPath(newValue) {
 export function getAllUrdfBlockTypes() {
     return [
         // Structure
-        'urdf_robot', 'urdf_link', 'urdf_joint_fixed', 'urdf_joint_revolute', 'urdf_joint_continuous',
+        'urdf_robot', 'urdf_link', 'urdf_link_ref', 'urdf_joint', 'urdf_parent', 'urdf_child',
         // Visual
-        'urdf_visual', 'urdf_collision', 'urdf_material', 'urdf_color',
+        'urdf_visual', 'urdf_collision', 'urdf_geometry', 'urdf_material', 'urdf_color',
         // Properties
         'urdf_inertial', 'urdf_mass', 'urdf_inertia', 'urdf_origin', 'urdf_axis', 'urdf_limit',
         // Shapes

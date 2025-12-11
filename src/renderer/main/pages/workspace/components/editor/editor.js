@@ -1,11 +1,14 @@
 /**
  * Editor Component - VS Code Style File Tabs
- * Manages file tabs, breadcrumbs, and the editing workspace
+ * Manages file tabs, breadcrumbs, and the editing workspace with Blockly
  */
+
+import { initUrdfEditor, getUrdfCategories } from '../blocks/editors/urdf/urdf-editor.js';
 
 let initialized = false;
 let openFiles = []; // Array of {fileName, filePath, packageName, type}
 let activeFile = null;
+let mainWorkspace = null; // Main Blockly workspace
 
 // File type icons (using Unicode for simplicity)
 const FILE_ICONS = {
@@ -226,14 +229,18 @@ function getFileIcon(fileName) {
  */
 function showEditorForFile(file) {
     const placeholder = document.getElementById('editor-placeholder');
-    const workspace = document.getElementById('editor-workspace');
+    const workspaceContainer = document.getElementById('editor-workspace');
 
     if (placeholder) {
         placeholder.style.display = 'none';
     }
 
-    // For now, just log - Blockly integration comes later
     console.log('[Editor] Showing editor for:', file.fileName, 'type:', file.type);
+
+    // For URDF files, create Blockly workspace
+    if (file.type === 'urdf' || file.fileName.endsWith('.urdf') || file.fileName.endsWith('.xacro')) {
+        createBlocklyWorkspace(workspaceContainer);
+    }
 
     // Dispatch event for blocks component to update
     window.dispatchEvent(new CustomEvent('editorFileChanged', {
@@ -242,9 +249,119 @@ function showEditorForFile(file) {
 }
 
 /**
+ * Create Blockly workspace with toolbox
+ * @param {HTMLElement} container - Container element for workspace
+ */
+function createBlocklyWorkspace(container) {
+    // Dispose existing workspace if any
+    if (mainWorkspace) {
+        mainWorkspace.dispose();
+        mainWorkspace = null;
+    }
+
+    // Check if Blockly is available
+    if (typeof Blockly === 'undefined') {
+        console.error('[Editor] Blockly not loaded');
+        return;
+    }
+
+    // Initialize URDF editor (registers blocks)
+    initUrdfEditor(Blockly);
+
+    // Generate toolbox from URDF categories
+    const toolboxXml = generateToolboxXml();
+
+    // Create or get workspace div
+    let workspaceDiv = container.querySelector('#blockly-main-workspace');
+    if (!workspaceDiv) {
+        workspaceDiv = document.createElement('div');
+        workspaceDiv.id = 'blockly-main-workspace';
+        workspaceDiv.style.width = '100%';
+        workspaceDiv.style.height = '100%';
+        workspaceDiv.style.position = 'absolute';
+        workspaceDiv.style.top = '0';
+        workspaceDiv.style.left = '0';
+        container.appendChild(workspaceDiv);
+    }
+
+    // Inject Blockly workspace
+    mainWorkspace = Blockly.inject(workspaceDiv, {
+        toolbox: toolboxXml,
+        renderer: 'zelos',
+        grid: {
+            spacing: 20,
+            length: 3,
+            colour: '#ccc',
+            snap: true
+        },
+        zoom: {
+            controls: true,
+            wheel: true,
+            startScale: 0.9,
+            maxScale: 3,
+            minScale: 0.3,
+            scaleSpeed: 1.2
+        },
+        move: {
+            scrollbars: true,
+            drag: true,
+            wheel: true
+        },
+        trashcan: true,
+        sounds: false
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        if (mainWorkspace) {
+            Blockly.svgResize(mainWorkspace);
+        }
+    });
+
+    // Initial resize
+    Blockly.svgResize(mainWorkspace);
+
+    console.log('[Editor] Blockly workspace created');
+}
+
+/**
+ * Generate toolbox XML from URDF categories
+ * @returns {string} Toolbox XML string
+ */
+function generateToolboxXml() {
+    const categories = getUrdfCategories();
+
+    const categoriesXml = categories.map(category => {
+        const blocksXml = category.blocks.map(blockType =>
+            `<block type="${blockType}"></block>`
+        ).join('');
+
+        return `<category name="${category.label}" colour="${category.color}">
+            ${blocksXml}
+        </category>`;
+    }).join('');
+
+    return `<xml id="toolbox" style="display: none">
+        ${categoriesXml}
+    </xml>`;
+}
+
+/**
  * Show placeholder when no file is open
  */
 function showPlaceholder() {
+    // Dispose Blockly workspace
+    if (mainWorkspace) {
+        mainWorkspace.dispose();
+        mainWorkspace = null;
+    }
+
+    // Remove workspace div
+    const workspaceDiv = document.getElementById('blockly-main-workspace');
+    if (workspaceDiv) {
+        workspaceDiv.remove();
+    }
+
     const placeholder = document.getElementById('editor-placeholder');
     if (placeholder) {
         placeholder.style.display = 'flex';
@@ -255,6 +372,12 @@ function showPlaceholder() {
  * Reset the editor component
  */
 export function resetEditor() {
+    // Dispose Blockly workspace
+    if (mainWorkspace) {
+        mainWorkspace.dispose();
+        mainWorkspace = null;
+    }
+
     openFiles = [];
     activeFile = null;
     initialized = false;

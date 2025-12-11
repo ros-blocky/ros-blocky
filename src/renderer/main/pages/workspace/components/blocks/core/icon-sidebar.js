@@ -6,6 +6,7 @@
 
 import { getState, setActiveCategory, onEditorChange, onCategoryChange, hasActiveFile } from './editor-state.js';
 import { getEditorById } from './editor-registry.js';
+import { t, onLanguageChange } from '../../../../../../i18n/index.js';
 
 let sidebarElement = null;
 let sidebarContainer = null;
@@ -45,6 +46,13 @@ export function initIconSidebar(containerId) {
     // Listen for category changes to update active state
     onCategoryChange((category) => {
         updateActiveState(category);
+    });
+
+    // Listen for language changes to re-render with translated labels
+    onLanguageChange(() => {
+        if (currentEditorType) {
+            renderIconsFromRegistry(currentEditorType);
+        }
     });
 
     // Initially hide if no file is open
@@ -97,19 +105,25 @@ function renderIconsFromRegistry(editorType) {
 
     const categories = editorConfig.categories;
 
+
     // Build category icons - support both emoji and image types
     const iconsHtml = categories.map((cat, index) => {
         const iconContent = cat.iconType === 'image'
             ? `<img src="${sanitizeAttr(cat.icon)}" class="sidebar-icon-img" alt="${sanitizeAttr(cat.label)}">`
             : `<span class="icon-emoji">${cat.icon}</span>`;
 
+        // Try to get translated label, fallback to original label
+        const translationKey = `blocks.urdf.${cat.id}`;
+        const translated = t(translationKey);
+        const translatedLabel = (translated && translated !== translationKey) ? translated : cat.label;
+
         return `
             <button class="sidebar-icon-btn ${index === 0 ? 'active' : ''}" 
                     data-category="${sanitizeAttr(cat.id)}"
-                    title="${sanitizeAttr(cat.label)}"
+                    title="${sanitizeAttr(translatedLabel)}"
                     style="--icon-color: ${cat.color}">
                 ${iconContent}
-                <span class="sidebar-icon-label">${sanitizeAttr(cat.label)}</span>
+                <span class="sidebar-icon-label">${sanitizeAttr(translatedLabel)}</span>
             </button>
         `;
     }).join('');

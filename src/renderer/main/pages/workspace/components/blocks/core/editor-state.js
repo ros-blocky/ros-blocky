@@ -52,6 +52,23 @@ export function setActiveCategory(category) {
     // Notify listeners
     listeners.categoryChange.forEach(cb => cb(category));
 
+    // Trigger Blockly's native toolbox flyout if workspace is available
+    if (window.blocksMainWorkspace) {
+        const toolbox = window.blocksMainWorkspace.getToolbox();
+        if (toolbox) {
+            // Find the category by name/ID and select it
+            const toolboxItems = toolbox.getToolboxItems();
+            for (const item of toolboxItems) {
+                // Match by lowercase name (Structure, Visual, etc.)
+                const itemName = item.getName ? item.getName().toLowerCase() : '';
+                if (itemName === category || itemName.includes(category)) {
+                    toolbox.setSelectedItem(item);
+                    break;
+                }
+            }
+        }
+    }
+
     console.log('[EditorState] Active category set:', category);
 }
 
