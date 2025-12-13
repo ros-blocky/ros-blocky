@@ -347,6 +347,55 @@
     margin-left: var(--flyout-width, 0px);
     /* Dynamic margin based on flyout */
     transition: margin-left 0.2s ease;
+
+    /* Flex layout for tabs and actions */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    /* Tabs on one side, actions on other */
+    padding-left: 5px;
+    /* Space for actions */
+}
+
+/* Actions area in tabs bar */
+.editor-actions {
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+}
+
+.editor-action-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #444;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.editor-action-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: #000;
+}
+
+.editor-action-btn:active {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.action-icon {
+    width: 20px;
+    height: 20px;
+    filter: invert(30%) sepia(10%) saturate(500%) hue-rotate(180deg);
+    transition: filter 0.2s;
+}
+
+.editor-action-btn:hover .action-icon {
+    filter: invert(45%) sepia(80%) saturate(2000%) hue-rotate(170deg) brightness(100%);
 }
 
 .editor-tabs-bar::-webkit-scrollbar {
@@ -521,4 +570,56 @@
     margin: 0;
     color: #888;
     max-width: 300px;
+}
+
+/* ========================================
+   Warning Toast
+   ======================================== */
+.warning-toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ff9800;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 10000;
+    animation: toast-slide-up 0.3s ease;
+}
+
+.warning-toast.error-toast {
+    background: #d32f2f;
+    /* Red for errors */
+}
+
+.warning-toast.fade-out {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.warning-icon {
+    font-size: 18px;
+}
+
+.warning-message {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+@keyframes toast-slide-up {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
 }

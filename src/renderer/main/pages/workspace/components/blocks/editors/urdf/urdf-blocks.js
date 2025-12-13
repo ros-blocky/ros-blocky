@@ -10,6 +10,12 @@
  */
 
 import { sanitizeInput } from '../../core/editor-registry.js';
+import { t } from '../../../../../../../i18n/index.js';
+
+// Helper to get block labels
+const L = (key) => t(`blocks.urdf.labels.${key}`);
+const T = (key) => t(`blocks.urdf.tooltips.${key}`);
+const JT = (key) => t(`blocks.urdf.jointTypes.${key}`);
 
 /**
  * Register all URDF blocks with Blockly
@@ -19,6 +25,39 @@ export function registerUrdfBlocks(Blockly) {
     console.log('[URDF Blocks] Registering block definitions...');
 
     // ========================================
+    // PROCEDURES CATEGORY
+    // ========================================
+
+    // Define Procedure block - container for reusable blocks
+    Blockly.Blocks['urdf_define_procedure'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField(L('defineProcedure'))
+                .appendField(new Blockly.FieldTextInput('my_component', validateName), 'NAME');
+            this.appendStatementInput('CONTENT')
+                // Allow any top-level URDF commands inside procedures
+                .setCheck(['LINK', 'JOINT', 'CALL']);
+            this.setColour('#9966FF'); // Purple for procedures
+            this.setTooltip(T('defineProcedure'));
+            this.setDeletable(true);
+            this.setMovable(true);
+        }
+    };
+
+    // Call Procedure block - references a defined procedure
+    Blockly.Blocks['urdf_call_procedure'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField(L('callProcedure'))
+                .appendField(new Blockly.FieldTextInput('my_component', validateName), 'NAME');
+            this.setPreviousStatement(true, ['LINK', 'JOINT', 'CALL']);
+            this.setNextStatement(true, ['LINK', 'JOINT', 'CALL']);
+            this.setColour('#9966FF'); // Purple for procedures
+            this.setTooltip(T('callProcedure'));
+        }
+    };
+
+    // ========================================
     // STRUCTURE CATEGORY
     // ========================================
 
@@ -26,13 +65,14 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_robot'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Robot')
-                .appendField('name')
+                .appendField(L('robot'))
+                .appendField(L('robotName'))
                 .appendField(new Blockly.FieldTextInput('my_robot', validateName), 'NAME');
             this.appendStatementInput('CONTENT')
-                .setCheck(null);
+                // Robot can contain Links, Joints, and Procedure Calls
+                .setCheck(['LINK', 'JOINT', 'CALL']);
             this.setColour('#4c97ff');
-            this.setTooltip('URDF Robot definition - the root element');
+            this.setTooltip(T('robot'));
             this.setHelpUrl('http://wiki.ros.org/urdf/XML/robot');
         }
     };
@@ -40,28 +80,29 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_link'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Link')
-                .appendField('name')
+                .appendField(L('link'))
+                .appendField(L('linkName'))
                 .appendField(new Blockly.FieldTextInput('link_name', validateName), 'NAME');
             this.appendStatementInput('CONTENT')
-                .setCheck(null);
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+                // Link can contain Visual, Collision, Inertial
+                .setCheck(['VISUAL', 'COLLISION', 'INERTIAL']);
+            this.setPreviousStatement(true, ['LINK', 'JOINT', 'CALL']);
+            this.setNextStatement(true, ['LINK', 'JOINT', 'CALL']);
             this.setColour('#4c97ff');
-            this.setTooltip('Define a URDF link element');
+            this.setTooltip(T('link'));
             this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
     };
 
-    // Link reference block for connecting to Joint parent/child inputs
+    // Link reference block (No changes needed, output is specific)
     Blockly.Blocks['urdf_link_ref'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Link')
+                .appendField(L('link'))
                 .appendField(new Blockly.FieldTextInput('link_name', validateName), 'NAME');
             this.setOutput(true, 'Link');
             this.setColour('#4c97ff');
-            this.setTooltip('Reference to a link');
+            this.setTooltip(T('link'));
         }
     };
 
@@ -69,24 +110,25 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_joint'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Joint')
-                .appendField('name')
+                .appendField(L('joint'))
+                .appendField(L('jointName'))
                 .appendField(new Blockly.FieldTextInput('joint_name', validateName), 'NAME')
-                .appendField('type')
+                .appendField(L('jointType'))
                 .appendField(new Blockly.FieldDropdown([
-                    ['Fixed', 'fixed'],
-                    ['Revolute', 'revolute'],
-                    ['Continuous', 'continuous'],
-                    ['Prismatic', 'prismatic'],
-                    ['Floating', 'floating'],
-                    ['Planar', 'planar']
+                    [JT('fixed'), 'fixed'],
+                    [JT('revolute'), 'revolute'],
+                    [JT('continuous'), 'continuous'],
+                    [JT('prismatic'), 'prismatic'],
+                    [JT('floating'), 'floating'],
+                    [JT('planar'), 'planar']
                 ]), 'TYPE');
             this.appendStatementInput('CONTENT')
-                .setCheck(null);
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+                // Joint can contain Parent, Child, Origin, Axis, Limit
+                .setCheck(['PARENT', 'CHILD', 'ORIGIN', 'AXIS', 'LIMIT']);
+            this.setPreviousStatement(true, ['LINK', 'JOINT', 'CALL']);
+            this.setNextStatement(true, ['LINK', 'JOINT', 'CALL']);
             this.setColour('#4c97ff');
-            this.setTooltip('URDF Joint - connects two links');
+            this.setTooltip(T('joint'));
             this.setHelpUrl('http://wiki.ros.org/urdf/XML/joint');
         }
     };
@@ -95,13 +137,13 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_parent'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('parent')
-                .appendField('link')
+                .appendField(L('parent'))
+                .appendField(L('link'))
                 .appendField(new Blockly.FieldTextInput('link_name', validateName), 'NAME');
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.setPreviousStatement(true, ['PARENT', 'CHILD', 'ORIGIN', 'AXIS', 'LIMIT']);
+            this.setNextStatement(true, ['PARENT', 'CHILD', 'ORIGIN', 'AXIS', 'LIMIT']);
             this.setColour('#4c97ff');
-            this.setTooltip('Parent link reference');
+            this.setTooltip(T('parent'));
         }
     };
 
@@ -109,13 +151,13 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_child'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('child')
-                .appendField('link')
+                .appendField(L('child'))
+                .appendField(L('link'))
                 .appendField(new Blockly.FieldTextInput('link_name', validateName), 'NAME');
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.setPreviousStatement(true, ['PARENT', 'CHILD', 'ORIGIN', 'AXIS', 'LIMIT']);
+            this.setNextStatement(true, ['PARENT', 'CHILD', 'ORIGIN', 'AXIS', 'LIMIT']);
             this.setColour('#4c97ff');
-            this.setTooltip('Child link reference');
+            this.setTooltip(T('child'));
         }
     };
 
@@ -126,13 +168,14 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_visual'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Visual');
+                .appendField(L('visual'));
             this.appendStatementInput('CONTENT')
-                .setCheck(null);
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+                // Visual can contain Geometry, Material, Origin
+                .setCheck(['GEOMETRY', 'MATERIAL', 'ORIGIN']);
+            this.setPreviousStatement(true, ['VISUAL', 'COLLISION', 'INERTIAL']);
+            this.setNextStatement(true, ['VISUAL', 'COLLISION', 'INERTIAL']);
             this.setColour('#FFAB19');
-            this.setTooltip('Visual representation of a link');
+            this.setTooltip(T('visual'));
             this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
     };
@@ -140,13 +183,14 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_collision'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Collision');
+                .appendField(L('collision'));
             this.appendStatementInput('CONTENT')
-                .setCheck(null);
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+                // Collision can contain Geometry, Origin
+                .setCheck(['GEOMETRY', 'ORIGIN']);
+            this.setPreviousStatement(true, ['VISUAL', 'COLLISION', 'INERTIAL']);
+            this.setNextStatement(true, ['VISUAL', 'COLLISION', 'INERTIAL']);
             this.setColour('#FFAB19');
-            this.setTooltip('Collision geometry of a link');
+            this.setTooltip(T('collision'));
             this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
     };
@@ -154,14 +198,15 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_material'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Material')
+                .appendField(L('material'))
                 .appendField(new Blockly.FieldTextInput('material_name', validateName), 'NAME');
             this.appendStatementInput('COLOR')
-                .appendField('color');
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+                .appendField(L('color'))
+                .setCheck('COLOR');
+            this.setPreviousStatement(true, ['GEOMETRY', 'MATERIAL', 'ORIGIN']);
+            this.setNextStatement(true, ['GEOMETRY', 'MATERIAL', 'ORIGIN']);
             this.setColour('#FFAB19');
-            this.setTooltip('Material definition');
+            this.setTooltip(T('material'));
             this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
     };
@@ -169,28 +214,29 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_color'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Color RGBA')
+                .appendField(L('color'))
                 .appendField('R').appendField(new Blockly.FieldNumber(1, 0, 1, 0.1), 'R')
                 .appendField('G').appendField(new Blockly.FieldNumber(0, 0, 1, 0.1), 'G')
                 .appendField('B').appendField(new Blockly.FieldNumber(0, 0, 1, 0.1), 'B')
                 .appendField('A').appendField(new Blockly.FieldNumber(1, 0, 1, 0.1), 'A');
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.setPreviousStatement(true, 'COLOR');
+            this.setNextStatement(true, 'COLOR');
             this.setColour('#FFAB19');
-            this.setTooltip('RGBA color values (0-1)');
+            this.setTooltip(T('color'));
         }
     };
 
     Blockly.Blocks['urdf_geometry'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Geometry');
+                .appendField(L('geometry'));
             this.appendStatementInput('CONTENT')
-                .setCheck(null);
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+                // Geometry contains SHAPES
+                .setCheck(['SHAPE']);
+            this.setPreviousStatement(true, ['GEOMETRY', 'MATERIAL', 'ORIGIN']);
+            this.setNextStatement(true, ['GEOMETRY', 'MATERIAL', 'ORIGIN']);
             this.setColour('#FFAB19');
-            this.setTooltip('Geometry container - add a shape inside');
+            this.setTooltip(T('geometry'));
         }
     };
 
@@ -201,13 +247,13 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_inertial'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Inertial');
+                .appendField(L('inertial'));
             this.appendStatementInput('CONTENT')
-                .setCheck(null);
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+                .setCheck(['MASS', 'INERTIA', 'ORIGIN']);
+            this.setPreviousStatement(true, ['VISUAL', 'COLLISION', 'INERTIAL']);
+            this.setNextStatement(true, ['VISUAL', 'COLLISION', 'INERTIAL']);
             this.setColour('#FFAB19');
-            this.setTooltip('Inertial properties of a link');
+            this.setTooltip(T('inertial'));
             this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
     };
@@ -215,78 +261,79 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_mass'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Mass')
+                .appendField(L('mass'))
                 .appendField(new Blockly.FieldNumber(1, 0), 'VALUE')
-                .appendField('kg');
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+                .appendField(L('massUnit'));
+            this.setPreviousStatement(true, ['MASS', 'INERTIA', 'ORIGIN']);
+            this.setNextStatement(true, ['MASS', 'INERTIA', 'ORIGIN']);
             this.setColour('#40BF4A');
-            this.setTooltip('Mass in kilograms');
+            this.setTooltip(T('mass'));
         }
     };
 
     Blockly.Blocks['urdf_inertia'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Inertia')
+                .appendField(L('inertia'))
                 .appendField('ixx').appendField(new Blockly.FieldNumber(1), 'IXX')
                 .appendField('ixy').appendField(new Blockly.FieldNumber(0), 'IXY')
                 .appendField('ixz').appendField(new Blockly.FieldNumber(0), 'IXZ')
                 .appendField('iyy').appendField(new Blockly.FieldNumber(1), 'IYY')
                 .appendField('iyz').appendField(new Blockly.FieldNumber(0), 'IYZ')
                 .appendField('izz').appendField(new Blockly.FieldNumber(1), 'IZZ');
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.setPreviousStatement(true, ['MASS', 'INERTIA', 'ORIGIN']);
+            this.setNextStatement(true, ['MASS', 'INERTIA', 'ORIGIN']);
             this.setColour('#40BF4A');
-            this.setTooltip('Inertia tensor');
+            this.setTooltip(T('inertia'));
         }
     };
 
     Blockly.Blocks['urdf_origin'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Origin')
-                .appendField('xyz')
+                .appendField(L('origin'))
+                .appendField(L('originXyz'))
                 .appendField(new Blockly.FieldNumber(0), 'X')
                 .appendField(new Blockly.FieldNumber(0), 'Y')
                 .appendField(new Blockly.FieldNumber(0), 'Z')
-                .appendField('rpy')
+                .appendField(L('originRpy'))
                 .appendField(new Blockly.FieldNumber(0), 'ROLL')
                 .appendField(new Blockly.FieldNumber(0), 'PITCH')
                 .appendField(new Blockly.FieldNumber(0), 'YAW');
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            // Origins appear in many places: Joints, Visuals, Collisions, Inertials
+            this.setPreviousStatement(true, ['GEOMETRY', 'MATERIAL', 'ORIGIN', 'MASS', 'INERTIA', 'PARENT', 'CHILD', 'AXIS', 'LIMIT']);
+            this.setNextStatement(true, ['GEOMETRY', 'MATERIAL', 'ORIGIN', 'MASS', 'INERTIA', 'PARENT', 'CHILD', 'AXIS', 'LIMIT']);
             this.setColour('#40BF4A');
-            this.setTooltip('Origin position (xyz) and orientation (roll, pitch, yaw)');
+            this.setTooltip(T('origin'));
         }
     };
 
     Blockly.Blocks['urdf_axis'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Axis')
+                .appendField(L('axis'))
                 .appendField('x').appendField(new Blockly.FieldNumber(0, -1, 1), 'X')
                 .appendField('y').appendField(new Blockly.FieldNumber(0, -1, 1), 'Y')
                 .appendField('z').appendField(new Blockly.FieldNumber(1, -1, 1), 'Z');
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.setPreviousStatement(true, ['PARENT', 'CHILD', 'ORIGIN', 'AXIS', 'LIMIT']);
+            this.setNextStatement(true, ['PARENT', 'CHILD', 'ORIGIN', 'AXIS', 'LIMIT']);
             this.setColour('#40BF4A');
-            this.setTooltip('Joint rotation axis');
+            this.setTooltip(T('axis'));
         }
     };
 
     Blockly.Blocks['urdf_limit'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Limit')
-                .appendField('lower').appendField(new Blockly.FieldNumber(-3.14), 'LOWER')
-                .appendField('upper').appendField(new Blockly.FieldNumber(3.14), 'UPPER')
-                .appendField('effort').appendField(new Blockly.FieldNumber(100), 'EFFORT')
-                .appendField('velocity').appendField(new Blockly.FieldNumber(1), 'VELOCITY');
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+                .appendField(L('limit'))
+                .appendField(L('limitLower')).appendField(new Blockly.FieldNumber(-3.14), 'LOWER')
+                .appendField(L('limitUpper')).appendField(new Blockly.FieldNumber(3.14), 'UPPER')
+                .appendField(L('limitEffort')).appendField(new Blockly.FieldNumber(100), 'EFFORT')
+                .appendField(L('limitVelocity')).appendField(new Blockly.FieldNumber(1), 'VELOCITY');
+            this.setPreviousStatement(true, ['PARENT', 'CHILD', 'ORIGIN', 'AXIS', 'LIMIT']);
+            this.setNextStatement(true, ['PARENT', 'CHILD', 'ORIGIN', 'AXIS', 'LIMIT']);
             this.setColour('#40BF4A');
-            this.setTooltip('Joint limits');
+            this.setTooltip(T('limit'));
         }
     };
 
@@ -297,56 +344,56 @@ export function registerUrdfBlocks(Blockly) {
     Blockly.Blocks['urdf_box'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Box')
+                .appendField(L('box'))
                 .appendField('x').appendField(new Blockly.FieldNumber(1, 0), 'X')
                 .appendField('y').appendField(new Blockly.FieldNumber(1, 0), 'Y')
                 .appendField('z').appendField(new Blockly.FieldNumber(1, 0), 'Z');
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.setPreviousStatement(true, ['SHAPE']);
+            this.setNextStatement(true, ['SHAPE']);
             this.setColour('#ee0979');
-            this.setTooltip('Box geometry with size x, y, z');
+            this.setTooltip(T('box'));
         }
     };
 
     Blockly.Blocks['urdf_cylinder'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Cylinder')
-                .appendField('radius').appendField(new Blockly.FieldNumber(0.5, 0), 'RADIUS')
-                .appendField('length').appendField(new Blockly.FieldNumber(1, 0), 'LENGTH');
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+                .appendField(L('cylinder'))
+                .appendField(L('cylinderRadius')).appendField(new Blockly.FieldNumber(0.5, 0), 'RADIUS')
+                .appendField(L('cylinderLength')).appendField(new Blockly.FieldNumber(1, 0), 'LENGTH');
+            this.setPreviousStatement(true, ['SHAPE']);
+            this.setNextStatement(true, ['SHAPE']);
             this.setColour('#ee0979');
-            this.setTooltip('Cylinder geometry');
+            this.setTooltip(T('cylinder'));
         }
     };
 
     Blockly.Blocks['urdf_sphere'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Sphere')
-                .appendField('radius').appendField(new Blockly.FieldNumber(0.5, 0), 'RADIUS');
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+                .appendField(L('sphere'))
+                .appendField(L('sphereRadius')).appendField(new Blockly.FieldNumber(0.5, 0), 'RADIUS');
+            this.setPreviousStatement(true, ['SHAPE']);
+            this.setNextStatement(true, ['SHAPE']);
             this.setColour('#ee0979');
-            this.setTooltip('Sphere geometry');
+            this.setTooltip(T('sphere'));
         }
     };
 
     Blockly.Blocks['urdf_mesh'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('Mesh')
-                .appendField('filename')
+                .appendField(L('mesh'))
+                .appendField(L('meshFilename'))
                 .appendField(new Blockly.FieldTextInput('mesh.stl'), 'FILENAME')
-                .appendField('scale')
+                .appendField(L('meshScale'))
                 .appendField(new Blockly.FieldNumber(1, 0), 'SCALE_X')
                 .appendField(new Blockly.FieldNumber(1, 0), 'SCALE_Y')
                 .appendField(new Blockly.FieldNumber(1, 0), 'SCALE_Z');
-            this.setPreviousStatement(true, null);
-            this.setNextStatement(true, null);
+            this.setPreviousStatement(true, ['SHAPE']);
+            this.setNextStatement(true, ['SHAPE']);
             this.setColour('#ee0979');
-            this.setTooltip('Mesh geometry - enter filename from meshes folder');
+            this.setTooltip(T('mesh'));
         }
     };
 
@@ -391,6 +438,8 @@ function validateMeshPath(newValue) {
  */
 export function getAllUrdfBlockTypes() {
     return [
+        // Procedures
+        'urdf_define_procedure', 'urdf_call_procedure',
         // Structure
         'urdf_robot', 'urdf_link', 'urdf_link_ref', 'urdf_joint', 'urdf_parent', 'urdf_child',
         // Visual

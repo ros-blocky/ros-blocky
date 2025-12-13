@@ -46,6 +46,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (loadingScreen) loadingScreen.classList.add('hidden');
         if (workspace) workspace.classList.remove('hidden');
 
+        // Show RViz button in workspace
+        const rvizBtn = document.getElementById('rviz-btn');
+        if (rvizBtn) rvizBtn.classList.remove('hidden');
+
         // Reapply translations when showing workspace
         updatePageTranslations();
     }
@@ -68,6 +72,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (welcomeScreen) welcomeScreen.classList.remove('hidden');
         if (loadingScreen) loadingScreen.classList.add('hidden');
         if (workspace) workspace.classList.add('hidden');
+
+        // Hide toolbar buttons on welcome screen
+        const saveBtn = document.getElementById('editor-save-btn');
+        const undoBtn = document.getElementById('editor-undo-btn');
+        const redoBtn = document.getElementById('editor-redo-btn');
+        const rvizBtn = document.getElementById('rviz-btn');
+        if (saveBtn) saveBtn.classList.add('hidden');
+        if (undoBtn) undoBtn.classList.add('hidden');
+        if (redoBtn) redoBtn.classList.add('hidden');
+        if (rvizBtn) rvizBtn.classList.add('hidden');
 
         // Re-enable and reset welcome screen buttons using the module's function
         try {

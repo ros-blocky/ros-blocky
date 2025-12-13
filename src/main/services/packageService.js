@@ -20,6 +20,14 @@ class PackageService {
     }
 
     /**
+     * Get the current project path
+     * @returns {string|null}
+     */
+    getProjectPath() {
+        return this.currentProjectPath;
+    }
+
+    /**
      * Prompt user for package name
      * @returns {Promise<string|null>}
      */
@@ -823,6 +831,124 @@ if __name__ == '__main__':
             return files.filter(f => f.endsWith('.xacro') || f.endsWith('.urdf'));
         } catch {
             return [];
+        }
+    }
+
+    /**
+     * Save URDF file content
+     * @param {string} packageName - Package name
+     * @param {string} fileName - File name (e.g. robot.urdf)
+     * @param {string} content - File content
+     * @returns {Promise<{success: boolean, message: string}>}
+     */
+    async saveUrdfFile(packageName, fileName, content) {
+        try {
+            if (!this.currentProjectPath) {
+                return {
+                    success: false,
+                    message: 'No project is currently loaded.'
+                };
+            }
+
+            const urdfPath = path.join(this.currentProjectPath, 'src', packageName, 'urdf', fileName);
+
+            // Write content to file
+            await fs.writeFile(urdfPath, content, 'utf8');
+
+            return {
+                success: true,
+                message: `File "${fileName}" saved successfully.`
+            };
+        } catch (error) {
+            console.error('Error saving URDF file:', error);
+            return {
+                success: false,
+                message: `Error saving file: ${error.message}`
+            };
+        }
+    }
+
+    /**
+     * Save block state to a sidecar .blocks file
+     * @param {string} packageName - Package name
+     * @param {string} fileName - Original file name (e.g. robot.urdf)
+     * @param {string} blockXml - Blockly XML serialization
+     * @returns {Promise<{success: boolean, message: string}>}
+     */
+    async saveBlockState(packageName, fileName, blockXml) {
+        try {
+            if (!this.currentProjectPath) {
+                return {
+                    success: false,
+                    message: 'No project is currently loaded.'
+                };
+            }
+
+            // Create .blocks sidecar file path
+            const blocksFileName = `${fileName}.blocks`;
+            const blocksPath = path.join(this.currentProjectPath, 'src', packageName, 'urdf', blocksFileName);
+
+            // Write block state to file
+            await fs.writeFile(blocksPath, blockXml, 'utf8');
+
+            console.log(`[PackageService] Block state saved to ${blocksFileName}`);
+            return {
+                success: true,
+                message: `Block state saved successfully.`
+            };
+        } catch (error) {
+            console.error('Error saving block state:', error);
+            return {
+                success: false,
+                message: `Error saving block state: ${error.message}`
+            };
+        }
+    }
+
+    /**
+     * Load block state from a sidecar .blocks file
+     * @param {string} packageName - Package name
+     * @param {string} fileName - Original file name (e.g. robot.urdf)
+     * @returns {Promise<{success: boolean, blockXml?: string, message?: string}>}
+     */
+    async loadBlockState(packageName, fileName) {
+        try {
+            if (!this.currentProjectPath) {
+                return {
+                    success: false,
+                    message: 'No project is currently loaded.'
+                };
+            }
+
+            // Create .blocks sidecar file path
+            const blocksFileName = `${fileName}.blocks`;
+            const blocksPath = path.join(this.currentProjectPath, 'src', packageName, 'urdf', blocksFileName);
+
+            // Check if file exists
+            try {
+                await fs.access(blocksPath);
+            } catch {
+                // File doesn't exist - this is normal for new files
+                return {
+                    success: false,
+                    message: 'No block state file found.'
+                };
+            }
+
+            // Read block state from file
+            const blockXml = await fs.readFile(blocksPath, 'utf8');
+
+            console.log(`[PackageService] Block state loaded from ${blocksFileName}`);
+            return {
+                success: true,
+                blockXml: blockXml
+            };
+        } catch (error) {
+            console.error('Error loading block state:', error);
+            return {
+                success: false,
+                message: `Error loading block state: ${error.message}`
+            };
         }
     }
 

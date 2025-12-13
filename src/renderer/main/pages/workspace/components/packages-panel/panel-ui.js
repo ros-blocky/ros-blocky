@@ -276,10 +276,27 @@ function setupNodesSection(packageItem, packageName, nodes) {
             const nodeItem = document.createElement('div');
             nodeItem.className = 'node-item';
             nodeItem.dataset.nodeName = nodeName;
+            nodeItem.dataset.packageName = packageName;
             nodeItem.innerHTML = `
+                <button class="run-btn" title="Run Node">
+                    <svg viewBox="0 0 24 24" fill="currentColor" class="run-icon"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                </button>
                 <img class="node-icon" src="assets/icons/file-icon.svg" alt="file">
                 <span class="node-name">${nodeName}</span>
             `;
+
+            // Run button click handler
+            const runBtn = nodeItem.querySelector('.run-btn');
+            runBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                console.log('[PackagesPanel] Running node:', nodeName, 'from package:', packageName);
+                if (window.electronAPI && window.electronAPI.runNode) {
+                    await window.electronAPI.runNode(packageName, nodeName);
+                } else {
+                    console.warn('[PackagesPanel] runNode API not available');
+                }
+            });
+
             nodesList.appendChild(nodeItem);
         });
     } else {
@@ -318,16 +335,72 @@ function setupFileSection(packageItem, packageName, type, files) {
 
     // Populate files
     if (files.length > 0) {
+        // Only urdf and launch files get run buttons
+        const isRunnable = (type === 'urdf' || type === 'launch');
+
         files.forEach(fileName => {
             const fileItem = document.createElement('div');
             fileItem.className = 'file-item';
             fileItem.dataset.fileName = fileName;
             fileItem.dataset.fileType = type;
             fileItem.dataset.packageName = packageName;
+
+            // Build HTML with or without run button
+            const runBtnHtml = isRunnable ? `
+                <button class="run-btn" title="Run ${type === 'urdf' ? 'robot_state_publisher' : 'launch file'}">
+                    <svg viewBox="0 0 24 24" fill="currentColor" class="run-icon"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                </button>
+            ` : '';
+
             fileItem.innerHTML = `
+                ${runBtnHtml}
                 <img class="file-icon" src="${fileIconPath}" alt="file">
                 <span class="file-name">${fileName}</span>
             `;
+
+            // Run button click handler (for URDF and launch files)
+            if (isRunnable) {
+                const runBtn = fileItem.querySelector('.run-btn');
+                const processKey = `${type}:${packageName}/${fileName}`;
+
+                // Set processKey on button immediately so listener can find it
+                runBtn.dataset.processKey = processKey;
+
+                runBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+
+                    // Check if already running - if so, stop it
+                    if (runBtn.classList.contains('running')) {
+                        console.log(`[PackagesPanel] Stopping ${type}:`, fileName);
+                        if (window.electronAPI && window.electronAPI.stopRosProcess) {
+                            await window.electronAPI.stopRosProcess(processKey);
+                        }
+                        return;
+                    }
+
+                    console.log(`[PackagesPanel] Running ${type}:`, fileName, 'from package:', packageName);
+
+                    // Show loading state
+                    runBtn.classList.add('loading');
+                    runBtn.innerHTML = `<span class="run-spinner"></span>`;
+
+                    if (type === 'urdf') {
+                        if (window.electronAPI && window.electronAPI.runUrdf) {
+                            await window.electronAPI.runUrdf(packageName, fileName);
+                        } else {
+                            console.warn('[PackagesPanel] runUrdf API not available');
+                        }
+                    } else if (type === 'launch') {
+                        if (window.electronAPI && window.electronAPI.runLaunch) {
+                            await window.electronAPI.runLaunch(packageName, fileName);
+                        } else {
+                            console.warn('[PackagesPanel] runLaunch API not available');
+                        }
+                    }
+                });
+            }
+
+
 
             // Click handler to select file
             fileItem.addEventListener('click', (e) => {

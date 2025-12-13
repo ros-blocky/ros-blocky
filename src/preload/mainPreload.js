@@ -35,6 +35,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   promptUrdfName: (packageName) => ipcRenderer.invoke('prompt-urdf-name', packageName),
   createUrdf: (packageName, urdfName) => ipcRenderer.invoke('create-urdf', packageName, urdfName),
   listPackageUrdfs: (packageName) => ipcRenderer.invoke('list-package-urdfs', packageName),
+  saveUrdfFile: (packageName, fileName, content) => ipcRenderer.invoke('save-urdf-file', packageName, fileName, content),
+  saveBlockState: (packageName, fileName, blockXml) => ipcRenderer.invoke('save-block-state', packageName, fileName, blockXml),
+  loadBlockState: (packageName, fileName) => ipcRenderer.invoke('load-block-state', packageName, fileName),
 
   // Config management
   promptConfigName: (packageName) => ipcRenderer.invoke('prompt-config-name', packageName),
@@ -59,5 +62,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Mesh operations
   importMeshFiles: (packageName) => ipcRenderer.invoke('import-mesh-files', packageName),
-  listPackageMeshes: (packageName) => ipcRenderer.invoke('list-package-meshes', packageName)
+  listPackageMeshes: (packageName) => ipcRenderer.invoke('list-package-meshes', packageName),
+
+  // Run operations (execute ROS commands)
+  runNode: (packageName, nodeName) => ipcRenderer.invoke('run-node', packageName, nodeName),
+  runUrdf: (packageName, fileName) => ipcRenderer.invoke('run-urdf', packageName, fileName),
+  runLaunch: (packageName, fileName) => ipcRenderer.invoke('run-launch', packageName, fileName),
+  runRviz: () => ipcRenderer.invoke('run-rviz'),
+
+  // Process control
+  stopRosProcess: (processKey) => ipcRenderer.invoke('stop-ros-process', processKey),
+  isRosRunning: (processKey) => ipcRenderer.invoke('is-ros-running', processKey),
+
+  // ROS output listener
+  onRosOutput: (callback) => ipcRenderer.on('ros-output', (event, data) => callback(data)),
+  removeRosOutputListener: () => ipcRenderer.removeAllListeners('ros-output')
 });

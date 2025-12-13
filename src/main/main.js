@@ -27,3 +27,10 @@ app.whenReady().then(() => {
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
 });
+
+// Clean up all ROS processes before quitting
+app.on('before-quit', () => {
+  console.log('[Main] App quitting, stopping all ROS processes...');
+  const rosService = require('./services/rosService');
+  rosService.stopAllProcesses();
+});

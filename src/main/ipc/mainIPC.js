@@ -93,6 +93,27 @@ function registerProjectIPC() {
         return await packageService.listPackageUrdfs(packageName);
     });
 
+    /**
+     * Handle save-urdf-file IPC request
+     */
+    ipcMain.handle('save-urdf-file', async (event, packageName, fileName, content) => {
+        return await packageService.saveUrdfFile(packageName, fileName, content);
+    });
+
+    /**
+     * Handle save-block-state IPC request (saves .blocks sidecar file)
+     */
+    ipcMain.handle('save-block-state', async (event, packageName, fileName, blockXml) => {
+        return await packageService.saveBlockState(packageName, fileName, blockXml);
+    });
+
+    /**
+     * Handle load-block-state IPC request (loads .blocks sidecar file)
+     */
+    ipcMain.handle('load-block-state', async (event, packageName, fileName) => {
+        return await packageService.loadBlockState(packageName, fileName);
+    });
+
     // ========== Config Operations ==========
 
     /**
@@ -193,6 +214,61 @@ function registerProjectIPC() {
     ipcMain.handle('list-package-meshes', async (event, packageName) => {
         return await packageService.listPackageMeshes(packageName);
     });
+
+    // ========== Run Operations ==========
+
+    // Initialize ROS service with packageService
+    const rosService = require('../services/rosService');
+    rosService.init(packageService);
+
+    /**
+     * Handle run-node IPC request
+     * Runs a Python node using ros2 run in a background process
+     */
+    ipcMain.handle('run-node', async (event, packageName, nodeName) => {
+        return await rosService.runNode(packageName, nodeName);
+    });
+
+    /**
+     * Handle run-urdf IPC request
+     * Runs robot_state_publisher with the URDF file
+     */
+    ipcMain.handle('run-urdf', async (event, packageName, fileName) => {
+        return await rosService.runRobotPublisher(packageName, fileName);
+    });
+
+    /**
+     * Handle run-launch IPC request
+     * Runs ros2 launch with the launch file
+     */
+    ipcMain.handle('run-launch', async (event, packageName, fileName) => {
+        return await rosService.runLaunch(packageName, fileName);
+    });
+
+    /**
+     * Handle stop-ros-process IPC request
+     * Stops a running ROS process
+     */
+    ipcMain.handle('stop-ros-process', async (event, processKey) => {
+        return rosService.stopProcess(processKey);
+    });
+
+    /**
+     * Handle is-ros-running IPC request
+     * Checks if a ROS process is running
+     */
+    ipcMain.handle('is-ros-running', async (event, processKey) => {
+        return rosService.isProcessRunning(processKey);
+    });
+
+    /**
+     * Handle run-rviz IPC request
+     * Runs RViz2 visualization tool
+     */
+    ipcMain.handle('run-rviz', async (event) => {
+        return await rosService.runRviz();
+    });
 }
 
 module.exports = { registerProjectIPC };
+

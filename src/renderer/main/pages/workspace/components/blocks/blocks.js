@@ -11,7 +11,8 @@ import { initIconSidebar, showSidebar, hideSidebar } from './core/icon-sidebar.j
 import { initBlockPalette, showPalette, hidePalette, resizeFlyout } from './core/block-palette.js';
 
 // Import URDF editor (auto-registers with registry)
-import { initUrdfEditor, getUrdfCategories } from './editors/urdf/urdf-editor.js';
+import { initUrdfEditor, getUrdfCategories, generateUrdfCode, hasOrphanBlocks, getSkippedBlocks, validateUrdf, enableRealtimeValidation } from './editors/urdf/urdf-editor.js';
+import { registerUrdfBlocks } from './editors/urdf/urdf-blocks.js';
 import { getCategoryById } from './editors/urdf/urdf-categories.js';
 
 // Import i18n for translations
@@ -64,21 +65,57 @@ export function initBlocks() {
         updateFlyoutHeader(categoryId);
     });
 
-    // Listen for language changes to update the header translation
+    // Listen for language changes to update blocks and header
     onLanguageChange(() => {
-        // Get current category from state and refresh header
+        console.log('[Blocks] Language changed, updating blocks...');
+
+        // Update flyout header translation
         const header = document.querySelector('.flyout-category-header');
         if (header && !header.classList.contains('hidden')) {
-            const currentText = header.querySelector('.header-text');
-            if (currentText) {
-                // Re-trigger header update by getting current category
-                import('./core/editor-state.js').then(({ getActiveCategory }) => {
-                    const currentCategory = getActiveCategory();
-                    if (currentCategory) {
-                        updateFlyoutHeader(currentCategory);
+            import('./core/editor-state.js').then(({ getActiveCategory }) => {
+                const currentCategory = getActiveCategory();
+                if (currentCategory) {
+                    updateFlyoutHeader(currentCategory);
+                }
+            });
+        }
+
+        // If a file is open, recreate the workspace to update block translations
+        if (activeFile && mainWorkspace) {
+            console.log('[Blocks] Recreating workspace for language update...');
+
+            // Save current state BEFORE disposing
+            const currentXml = Blockly.Xml.workspaceToDom(mainWorkspace);
+            const xmlText = Blockly.Xml.domToText(currentXml);
+            const savedFileType = activeFile.type;
+
+            // Re-register blocks with new translations
+            registerUrdfBlocks(Blockly);
+            console.log('[Blocks] Re-registered blocks with new language');
+
+            // Recreate workspace (this disposes the old one)
+            createBlocklyWorkspace(savedFileType);
+
+            // Wait for workspace to be ready, then restore blocks
+            setTimeout(() => {
+                if (mainWorkspace) {
+                    try {
+                        // Clear any blocks that might have been loaded from file
+                        mainWorkspace.clear();
+
+                        // Restore the blocks we saved
+                        const newDom = Blockly.utils.xml.textToDom(xmlText);
+                        Blockly.Xml.domToWorkspace(newDom, mainWorkspace);
+
+                        // Clear undo/redo history
+                        mainWorkspace.clearUndo();
+
+                        console.log('[Blocks] Restored blocks after language change');
+                    } catch (e) {
+                        console.warn('[Blocks] Could not restore blocks after language change:', e);
                     }
-                });
-            }
+                }
+            }, 300);
         }
     });
 
@@ -88,11 +125,225 @@ export function initBlocks() {
     // Listen for file selection events from packages panel
     window.addEventListener('fileSelected', handleFileSelected);
 
+    // Setup keyboard shortcuts (Ctrl+S to save)
+    setupKeyboardShortcuts();
+
+    // Setup toolbar buttons
+    setupToolbar();
+
     // Set initial state (no file open)
     updateUIState(false);
 
     initialized = true;
     console.log('[Blocks] Component initialized');
+}
+
+/**
+ * Setup toolbar buttons
+ */
+function setupToolbar() {
+    const saveBtn = document.getElementById('editor-save-btn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', async () => {
+            await saveCurrentFile();
+        });
+    }
+
+    const undoBtn = document.getElementById('editor-undo-btn');
+    if (undoBtn) {
+        undoBtn.addEventListener('click', () => {
+            if (mainWorkspace) {
+                mainWorkspace.undo(false); // false = undo
+            }
+        });
+    }
+
+    const redoBtn = document.getElementById('editor-redo-btn');
+    if (redoBtn) {
+        redoBtn.addEventListener('click', () => {
+            if (mainWorkspace) {
+                mainWorkspace.undo(true); // true = redo
+            }
+        });
+    }
+
+    // RViz button - launches RViz2 visualization tool
+    const rvizBtn = document.getElementById('rviz-btn');
+    if (rvizBtn) {
+        rvizBtn.addEventListener('click', async () => {
+            try {
+                console.log('[Blocks] Launching RViz2...');
+                const result = await window.electronAPI.runRviz();
+                if (result.success) {
+                    console.log('[Blocks] RViz2 launched successfully, PID:', result.pid);
+                } else {
+                    console.error('[Blocks] Failed to launch RViz2:', result.error);
+                    if (result.isRunning) {
+                        showWarningToast('RViz2 is already running');
+                    } else {
+                        showErrorToast('Failed to launch RViz2: ' + result.error);
+                    }
+                }
+            } catch (error) {
+                console.error('[Blocks] Error launching RViz2:', error);
+                showErrorToast('Error launching RViz2');
+            }
+        });
+    }
+}
+
+/**
+ * Setup keyboard shortcuts for the editor
+ */
+function setupKeyboardShortcuts() {
+    document.addEventListener('keydown', async (e) => {
+        // Ctrl+S or Cmd+S to save
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            await saveCurrentFile();
+        }
+    });
+}
+
+/**
+ * Save the current file by generating URDF code from workspace
+ */
+async function saveCurrentFile() {
+    if (!activeFile || !mainWorkspace) {
+        console.log('[Blocks] No active file to save');
+        return;
+    }
+
+    try {
+        console.log('[Blocks] Saving file:', activeFile.fileName);
+
+        // Validate Workspace First
+        const validation = validateUrdf(mainWorkspace);
+
+        if (validation.errors.length > 0) {
+            console.error('[Blocks] Validation errors:', validation.errors);
+            // Show the first error in the toast
+            showErrorToast(`Error: ${validation.errors[0]}`);
+            return; // STOP SAVE
+        }
+
+        // Generate URDF code from workspace
+        const urdfCode = generateUrdfCode(mainWorkspace);
+
+        // Check for orphan blocks (blocks outside Robot)
+        if (hasOrphanBlocks()) {
+            const skipped = getSkippedBlocks();
+            showWarningToast(`Warning: ${skipped.length} block(s) outside Robot were not saved`);
+        }
+
+        if (!urdfCode) {
+            console.warn('[Blocks] No code generated - workspace may be empty');
+            showWarningToast('No Robot block found - nothing to save');
+            return;
+        }
+
+        // Save URDF file
+        const urdfResult = await window.electronAPI.saveUrdfFile(
+            activeFile.packageName,
+            activeFile.fileName,
+            urdfCode
+        );
+
+        // Serialize block state to XML
+        const blockXml = Blockly.Xml.domToText(
+            Blockly.Xml.workspaceToDom(mainWorkspace)
+        );
+
+        // Save block state sidecar file
+        const blockResult = await window.electronAPI.saveBlockState(
+            activeFile.packageName,
+            activeFile.fileName,
+            blockXml
+        );
+
+        if (urdfResult.success && blockResult.success) {
+            console.log('[Blocks] File and block state saved successfully');
+            showSaveIndicator();
+        } else {
+            if (!urdfResult.success) {
+                console.error('[Blocks] Failed to save URDF:', urdfResult.message);
+            }
+            if (!blockResult.success) {
+                console.error('[Blocks] Failed to save block state:', blockResult.message);
+            }
+        }
+    } catch (error) {
+        console.error('[Blocks] Error saving file:', error);
+    }
+}
+
+/**
+ * Show a warning toast message
+ * @param {string} message - Warning message to display
+ */
+function showWarningToast(message) {
+    // Remove existing toast if any
+    const existingToast = document.querySelector('.warning-toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'warning-toast';
+    toast.innerHTML = `
+        <span class="warning-icon">⚠️</span>
+        <span class="warning-message">${message}</span>
+    `;
+    document.body.appendChild(toast);
+
+    // Auto-remove after 4 seconds
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+/**
+ * Show an error toast message (red)
+ * @param {string} message - Error message to display
+ */
+function showErrorToast(message) {
+    // Remove existing toast if any
+    const existingToast = document.querySelector('.warning-toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'warning-toast error-toast'; // Re-use class + modifier
+    toast.innerHTML = `
+        <span class="warning-icon">❌</span>
+        <span class="warning-message">${message}</span>
+    `;
+    document.body.appendChild(toast);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+/**
+ * Show a brief save indicator
+ */
+function showSaveIndicator() {
+    // Find active tab and add saved indicator
+    const activeTab = document.querySelector('.editor-tab.active .tab-title');
+    if (activeTab) {
+        const originalText = activeTab.textContent;
+        activeTab.textContent = '✓ Saved';
+        setTimeout(() => {
+            activeTab.textContent = originalText;
+        }, 1500);
+    }
 }
 
 /**
@@ -200,6 +451,7 @@ function updateUIState(hasFile) {
     const resizeHandle = document.querySelector('.blocks-sidebar-resize-handle');
     const placeholder = document.getElementById('editor-placeholder');
     const workspace = document.getElementById('blockly-workspace');
+    const saveBtn = document.getElementById('editor-save-btn');
 
     if (hasFile) {
         // State 2: File is open - show everything
@@ -221,6 +473,15 @@ function updateUIState(hasFile) {
         if (workspace) {
             workspace.classList.add('active');
         }
+        if (saveBtn) {
+            saveBtn.classList.remove('hidden');
+            saveBtn.disabled = false;
+        }
+        // Show undo/redo buttons
+        const undoBtn = document.getElementById('editor-undo-btn');
+        const redoBtn = document.getElementById('editor-redo-btn');
+        if (undoBtn) undoBtn.classList.remove('hidden');
+        if (redoBtn) redoBtn.classList.remove('hidden');
     } else {
         // State 1: No file open - hide sidebar elements
         if (iconSidebar) {
@@ -241,6 +502,15 @@ function updateUIState(hasFile) {
         if (workspace) {
             workspace.classList.remove('active');
         }
+        if (saveBtn) {
+            saveBtn.classList.add('hidden');
+            saveBtn.disabled = true;
+        }
+        // Hide undo/redo buttons
+        const undoBtn = document.getElementById('editor-undo-btn');
+        const redoBtn = document.getElementById('editor-redo-btn');
+        if (undoBtn) undoBtn.classList.add('hidden');
+        if (redoBtn) redoBtn.classList.add('hidden');
     }
 }
 
@@ -427,7 +697,16 @@ function renderTabs() {
             if (e.target.classList.contains('tab-close')) return;
 
             const index = parseInt(tab.dataset.index);
-            activeFile = openFiles[index];
+            const newFile = openFiles[index];
+
+            // Skip if already active
+            if (activeFile &&
+                newFile.fileName === activeFile.fileName &&
+                newFile.packageName === activeFile.packageName) {
+                return;
+            }
+
+            activeFile = newFile;
 
             // Update editor state
             setActiveFile({
@@ -438,6 +717,9 @@ function renderTabs() {
 
             renderTabs();
             renderBreadcrumb();
+
+            // Reload the workspace with the new file's blocks
+            createBlocklyWorkspace(activeFile.type);
         });
     });
 
@@ -677,6 +959,9 @@ function createBlocklyWorkspace(fileType) {
                 // Update flyout margins for tabs/breadcrumb
                 updateFlyoutMargins(true);
 
+                // Enable real-time visual validation
+                enableRealtimeValidation(mainWorkspace);
+
                 // Force resize
                 Blockly.svgResize(mainWorkspace);
 
@@ -698,7 +983,48 @@ function createBlocklyWorkspace(fileType) {
         Blockly.svgResize(mainWorkspace);
     }, 50);
 
+    // Load saved block state if it exists
+    loadBlocksFromFile();
+
     console.log('[Blocks] Main Blockly workspace created');
+}
+
+/**
+ * Load blocks from sidecar file if it exists
+ */
+async function loadBlocksFromFile() {
+    if (!activeFile || !mainWorkspace) {
+        return;
+    }
+
+    try {
+        console.log('[Blocks] Checking for saved block state...');
+
+        const result = await window.electronAPI.loadBlockState(
+            activeFile.packageName,
+            activeFile.fileName
+        );
+
+        if (result.success && result.blockXml) {
+            console.log('[Blocks] Loading saved block state...');
+
+            // Clear current workspace
+            mainWorkspace.clear();
+
+            // Parse and load the XML
+            const dom = Blockly.utils.xml.textToDom(result.blockXml);
+            Blockly.Xml.domToWorkspace(dom, mainWorkspace);
+
+            // Clear undo stack so loaded blocks can't be undone all at once
+            mainWorkspace.clearUndo();
+
+            console.log('[Blocks] Block state loaded successfully');
+        } else {
+            console.log('[Blocks] No saved block state found, starting fresh');
+        }
+    } catch (error) {
+        console.error('[Blocks] Error loading block state:', error);
+    }
 }
 
 

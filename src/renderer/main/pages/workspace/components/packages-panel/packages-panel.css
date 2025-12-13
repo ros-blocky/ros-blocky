@@ -358,6 +358,91 @@
     color: #444;
 }
 
+/* Run Button Styles */
+.run-btn {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    border: none;
+    background: transparent;
+    color: #00bbfe;
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.2s;
+    padding: 0;
+    margin-right: 2px;
+}
+
+.run-icon {
+    width: 12px;
+    height: 12px;
+}
+
+.node-item:hover .run-btn,
+.file-item:hover .run-btn {
+    opacity: 1;
+}
+
+.run-btn:hover {
+    color: #0090cc;
+    transform: scale(1.1);
+}
+
+.run-btn:active {
+    transform: scale(0.95);
+}
+
+/* Loading state - blue spinner */
+.run-btn.loading {
+    opacity: 1;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.run-btn .run-spinner {
+    width: 10px;
+    height: 10px;
+    min-width: 10px;
+    min-height: 10px;
+    border: 2px solid rgba(0, 187, 254, 0.3);
+    border-top-color: #00bbfe;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    box-sizing: border-box;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Running state - red stop icon */
+.run-btn.running {
+    opacity: 1;
+    color: #f44336;
+}
+
+.run-btn.running:hover {
+    color: #d32f2f;
+}
+
+.stop-icon {
+    width: 12px;
+    height: 12px;
+}
+
+/* Hide other URDF run buttons while one is running */
+.run-btn.hidden-while-running {
+    display: none !important;
+}
+
 .no-files {
     padding: 5px 12px;
     font-size: 12px;

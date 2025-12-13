@@ -67,6 +67,18 @@ export const URDF_CATEGORIES = [
             'urdf_sphere',
             'urdf_mesh'
         ]
+    },
+    {
+        id: 'procedures',
+        icon: 'assets/icons/procedures.svg',
+        iconType: 'image',
+        label: 'Procedures',
+        color: '#9966FF', // Purple for procedures
+        description: 'Reusable block groups',
+        blocks: [
+            'urdf_define_procedure',
+            'urdf_call_procedure'
+        ]
     }
 ];
 

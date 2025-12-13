@@ -8,6 +8,8 @@ import { registerEditor } from '../../core/editor-registry.js';
 import { registerUrdfBlocks, getAllUrdfBlockTypes } from './urdf-blocks.js';
 import { URDF_CATEGORIES, getCategoryById, getBlocksForCategory } from './urdf-categories.js';
 import { createUrdfTheme, getUrdfThemeName } from './urdf-theme.js';
+import { initUrdfGenerator, generateUrdfCode as generateCode, hasOrphanBlocks, getSkippedBlocks } from './urdf-generator.js';
+import { validateUrdf } from './urdf-validator.js';
 
 // Track initialization state
 let initialized = false;
@@ -75,6 +77,9 @@ export function initUrdfEditor(Blockly) {
     // Register blocks
     URDF_EDITOR_CONFIG.registerBlocks(blocklyInstance);
 
+    // Initialize code generator
+    initUrdfGenerator(blocklyInstance);
+
     // Create theme
     URDF_EDITOR_CONFIG.getTheme(blocklyInstance);
 
@@ -90,6 +95,9 @@ export function initUrdfEditor(Blockly) {
 
     return success;
 }
+
+// Re-export generateUrdfCode for external use
+export { generateCode as generateUrdfCode };
 
 /**
  * Get URDF editor configuration
@@ -125,6 +133,56 @@ export function isUrdfEditorInitialized() {
 }
 
 /**
+ * Enable real-time validation on a workspace
+ * @param {Blockly.Workspace} workspace - The workspace to validate
+ */
+export function enableRealtimeValidation(workspace) {
+    if (!workspace) return;
+
+    // Debounce timer
+    let validationTimer = null;
+
+    // Change listener
+    const onChange = (event) => {
+        // Skip UI events (clicks, scrolling, etc.)
+        if (event.type === Blockly.Events.UI) return;
+
+        // Start/Restart timer
+        if (validationTimer) clearTimeout(validationTimer);
+
+        validationTimer = setTimeout(() => {
+            // Run validation
+            const result = validateUrdf(workspace);
+
+            // Clear existing warnings first
+            const allBlocks = workspace.getAllBlocks(false);
+            for (const block of allBlocks) {
+                // Only clear if it was set by us (Standard Blockly warning)
+                // We assume all warnings on URDF blocks are ours for now
+                if (block.type.startsWith('urdf_')) {
+                    block.setWarningText(null);
+                }
+            }
+
+            // Apply new warnings/errors
+            if (result.blockErrors) {
+                for (const [blockId, msg] of result.blockErrors) {
+                    const block = workspace.getBlockById(blockId);
+                    if (block) {
+                        block.setWarningText(msg);
+                    }
+                }
+            }
+        }, 800); // 800ms debounce
+    };
+
+    workspace.addChangeListener(onChange);
+
+    // Run once immediately
+    onChange({ type: 'create' }); // Dummy event to trigger
+}
+
+/**
  * Get the URDF theme
  * @returns {Object|null} Theme object or null if not initialized
  */
@@ -134,3 +192,6 @@ export function getUrdfTheme() {
 
 // Export config for external use
 export { URDF_CATEGORIES };
+
+// Re-export orphan block detection functions
+export { hasOrphanBlocks, getSkippedBlocks, validateUrdf };

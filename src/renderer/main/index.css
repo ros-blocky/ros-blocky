@@ -64,6 +64,55 @@ body {
     letter-spacing: 0.5px;
 }
 
+/* Toolbar Buttons in Top Bar */
+.toolbar-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.9);
+    transition: background-color 0.2s, color 0.2s;
+    -webkit-app-region: no-drag;
+}
+
+.toolbar-icon {
+    width: 18px;
+    height: 18px;
+    /* Use currentColor to inherit color from button */
+    stroke: currentColor;
+}
+
+.toolbar-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.toolbar-btn:active {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.toolbar-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* RViz Button Styles */
+.rviz-btn {
+    padding: 2px 6px;
+    margin-right: 8px;
+}
+
+.rviz-icon {
+    height: 16px;
+    width: auto;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+}
+
 .top-bar-center {
     position: absolute;
     left: 50%;
