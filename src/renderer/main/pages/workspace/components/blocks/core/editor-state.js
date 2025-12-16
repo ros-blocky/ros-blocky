@@ -121,9 +121,11 @@ export function setActiveCategory(category) {
             // Find the category by name/ID and select it
             const toolboxItems = toolbox.getToolboxItems();
             for (const item of toolboxItems) {
-                // Match by lowercase name (Structure, Visual, etc.)
-                const itemName = item.getName ? item.getName().toLowerCase() : '';
-                if (itemName === category || itemName.includes(category)) {
+                // Match by normalized name (remove spaces, special chars, lowercase)
+                const itemName = item.getName ? item.getName().toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+                const normalizedCategory = category.toLowerCase().replace(/[^a-z0-9]/g, '');
+                // Use startsWith to handle cases like 'math' matching 'mathlogic' (Math & Logic)
+                if (itemName === normalizedCategory || itemName.startsWith(normalizedCategory)) {
                     toolbox.setSelectedItem(item);
 
                     // Ensure flyout is visible when switching categories

@@ -15,7 +15,12 @@ function cancel() {
     window.dialogAPI.sendDeletePackageConfirmed(null);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize translations
+    if (window.dialogI18n) {
+        await window.dialogI18n.init();
+    }
+
     const confirmInput = document.getElementById('confirmInput');
     const deleteBtn = document.getElementById('delete-btn');
     const cancelBtn = document.getElementById('cancel-btn');

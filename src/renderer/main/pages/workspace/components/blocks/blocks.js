@@ -15,6 +15,10 @@ import { initUrdfEditor, getUrdfCategories, generateUrdfCode, hasOrphanBlocks, g
 import { registerUrdfBlocks } from './editors/urdf/urdf-blocks.js';
 import { getCategoryById } from './editors/urdf/urdf-categories.js';
 
+// Import Node editor (auto-registers with registry)
+import { initNodeEditor, getNodeCategories, generateNodeCode, validateNode, enableRealtimeValidation as enableNodeValidation } from './editors/nodes/node-editor.js';
+import { getCategoryById as getNodeCategoryById } from './editors/nodes/node-categories.js';
+
 // Import i18n for translations
 import { t, onLanguageChange } from '../../../../../i18n/index.js';
 
@@ -46,9 +50,10 @@ export function initBlocks() {
 
     console.log('[Blocks] Initializing...');
 
-    // Initialize URDF editor (registers blocks and categories)
+    // Initialize editors (register blocks and categories)
     if (typeof Blockly !== 'undefined') {
         initUrdfEditor(Blockly);
+        initNodeEditor(Blockly);
     } else {
         console.warn('[Blocks] Blockly not loaded, editor features disabled');
     }
@@ -125,11 +130,46 @@ export function initBlocks() {
     // Listen for file selection events from packages panel
     window.addEventListener('fileSelected', handleFileSelected);
 
+    // Listen for save before run requests (from URDF run button)
+    window.addEventListener('saveBeforeRun', async (event) => {
+        const { packageName, fileName } = event.detail;
+        console.log('[Blocks] Save before run requested for:', fileName);
+
+        // Check if the file being run is the active file
+        if (activeFile && activeFile.fileName === fileName && activeFile.packageName === packageName) {
+            await saveCurrentFile();
+        }
+
+        // Dispatch completion event
+        window.dispatchEvent(new CustomEvent('saveComplete', {
+            detail: { success: true, fileName }
+        }));
+    });
+
     // Setup keyboard shortcuts (Ctrl+S to save)
     setupKeyboardShortcuts();
 
     // Setup toolbar buttons
     setupToolbar();
+
+    // Listen for build completion to show toast
+    if (window.electronAPI && window.electronAPI.onBuildResult) {
+        window.electronAPI.onBuildResult((result) => {
+            if (result.success) {
+                if (result.target === 'all') {
+                    showSuccessToast('All packages built successfully');
+                } else {
+                    showSuccessToast(`Package "${result.target}" built successfully`);
+                }
+            } else {
+                if (result.target === 'all') {
+                    showErrorToast('Build failed: ' + (result.error || 'Unknown error'));
+                } else {
+                    showErrorToast(`Build failed for "${result.target}": ` + (result.error || 'Unknown error'));
+                }
+            }
+        });
+    }
 
     // Set initial state (no file open)
     updateUIState(false);
@@ -190,6 +230,54 @@ function setupToolbar() {
             }
         });
     }
+
+    // Joint State Publisher GUI button - launches joint_state_publisher_gui
+    const jspGuiBtn = document.getElementById('jsp-gui-btn');
+    if (jspGuiBtn) {
+        jspGuiBtn.addEventListener('click', async () => {
+            try {
+                console.log('[Blocks] Launching Joint State Publisher GUI...');
+                const result = await window.electronAPI.runJointStatePublisherGui();
+                if (result.success) {
+                    console.log('[Blocks] JSP GUI launched successfully, PID:', result.pid);
+                } else {
+                    console.error('[Blocks] Failed to launch JSP GUI:', result.error);
+                    if (result.isRunning) {
+                        showWarningToast('Joint State Publisher GUI is already running');
+                    } else {
+                        showErrorToast('Failed to launch JSP GUI: ' + result.error);
+                    }
+                }
+            } catch (error) {
+                console.error('[Blocks] Error launching JSP GUI:', error);
+                showErrorToast('Error launching Joint State Publisher GUI');
+            }
+        });
+    }
+
+    // TurtleSim button - launches turtlesim_node
+    const turtlesimBtn = document.getElementById('turtlesim-btn');
+    if (turtlesimBtn) {
+        turtlesimBtn.addEventListener('click', async () => {
+            try {
+                console.log('[Blocks] Launching TurtleSim...');
+                const result = await window.electronAPI.runTurtlesim();
+                if (result.success) {
+                    console.log('[Blocks] TurtleSim launched successfully, PID:', result.pid);
+                } else {
+                    console.error('[Blocks] Failed to launch TurtleSim:', result.error);
+                    if (result.isRunning) {
+                        showWarningToast('TurtleSim is already running');
+                    } else {
+                        showErrorToast('Failed to launch TurtleSim: ' + result.error);
+                    }
+                }
+            } catch (error) {
+                console.error('[Blocks] Error launching TurtleSim:', error);
+                showErrorToast('Error launching TurtleSim');
+            }
+        });
+    }
 }
 
 /**
@@ -206,7 +294,7 @@ function setupKeyboardShortcuts() {
 }
 
 /**
- * Save the current file by generating URDF code from workspace
+ * Save the current file by generating code from workspace
  */
 async function saveCurrentFile() {
     if (!activeFile || !mainWorkspace) {
@@ -215,61 +303,105 @@ async function saveCurrentFile() {
     }
 
     try {
-        console.log('[Blocks] Saving file:', activeFile.fileName);
+        console.log('[Blocks] Saving file:', activeFile.fileName, 'type:', activeFile.type);
 
-        // Validate Workspace First
-        const validation = validateUrdf(mainWorkspace);
+        // Handle based on file type
+        if (activeFile.type === 'node') {
+            // SAVE NODE FILE - No validation for now
+            const pythonCode = generateNodeCode(mainWorkspace, window.nodeGenerator);
 
-        if (validation.errors.length > 0) {
-            console.error('[Blocks] Validation errors:', validation.errors);
-            // Show the first error in the toast
-            showErrorToast(`Error: ${validation.errors[0]}`);
-            return; // STOP SAVE
-        }
-
-        // Generate URDF code from workspace
-        const urdfCode = generateUrdfCode(mainWorkspace);
-
-        // Check for orphan blocks (blocks outside Robot)
-        if (hasOrphanBlocks()) {
-            const skipped = getSkippedBlocks();
-            showWarningToast(`Warning: ${skipped.length} block(s) outside Robot were not saved`);
-        }
-
-        if (!urdfCode) {
-            console.warn('[Blocks] No code generated - workspace may be empty');
-            showWarningToast('No Robot block found - nothing to save');
-            return;
-        }
-
-        // Save URDF file
-        const urdfResult = await window.electronAPI.saveUrdfFile(
-            activeFile.packageName,
-            activeFile.fileName,
-            urdfCode
-        );
-
-        // Serialize block state to XML
-        const blockXml = Blockly.Xml.domToText(
-            Blockly.Xml.workspaceToDom(mainWorkspace)
-        );
-
-        // Save block state sidecar file
-        const blockResult = await window.electronAPI.saveBlockState(
-            activeFile.packageName,
-            activeFile.fileName,
-            blockXml
-        );
-
-        if (urdfResult.success && blockResult.success) {
-            console.log('[Blocks] File and block state saved successfully');
-            showSaveIndicator();
-        } else {
-            if (!urdfResult.success) {
-                console.error('[Blocks] Failed to save URDF:', urdfResult.message);
+            if (!pythonCode) {
+                console.warn('[Blocks] No code generated - workspace may be empty');
+                showWarningToast('No Node block found - nothing to save');
+                return;
             }
-            if (!blockResult.success) {
-                console.error('[Blocks] Failed to save block state:', blockResult.message);
+
+            // Save Python file
+            const nodeResult = await window.electronAPI.saveNodeFile(
+                activeFile.packageName,
+                activeFile.fileName,
+                pythonCode
+            );
+
+            // Serialize block state to XML
+            const blockXml = Blockly.Xml.domToText(
+                Blockly.Xml.workspaceToDom(mainWorkspace)
+            );
+
+            // Save block state sidecar file
+            const blockResult = await window.electronAPI.saveNodeBlockState(
+                activeFile.packageName,
+                activeFile.fileName,
+                blockXml
+            );
+
+            if (nodeResult.success && blockResult.success) {
+                console.log('[Blocks] Node file and block state saved successfully');
+                showSaveIndicator();
+            } else {
+                if (!nodeResult.success) {
+                    console.error('[Blocks] Failed to save Node:', nodeResult.message);
+                    showErrorToast('Failed to save Node file');
+                }
+                if (!blockResult.success) {
+                    console.error('[Blocks] Failed to save block state:', blockResult.message);
+                }
+            }
+        } else {
+            // SAVE URDF FILE
+            // Validate Workspace First
+            const validation = validateUrdf(mainWorkspace);
+
+            if (validation.errors.length > 0) {
+                console.error('[Blocks] Validation errors:', validation.errors);
+                showErrorToast(`Error: ${validation.errors[0]}`);
+                return; // STOP SAVE
+            }
+
+            // Generate URDF code from workspace with actual package name for mesh paths
+            const urdfCode = generateUrdfCode(mainWorkspace, activeFile.packageName);
+
+            // Check for orphan blocks (blocks outside Robot)
+            if (hasOrphanBlocks()) {
+                const skipped = getSkippedBlocks();
+                showWarningToast(`Warning: ${skipped.length} block(s) outside Robot were not saved`);
+            }
+
+            if (!urdfCode) {
+                console.warn('[Blocks] No code generated - workspace may be empty');
+                showWarningToast('No Robot block found - nothing to save');
+                return;
+            }
+
+            // Save URDF file
+            const urdfResult = await window.electronAPI.saveUrdfFile(
+                activeFile.packageName,
+                activeFile.fileName,
+                urdfCode
+            );
+
+            // Serialize block state to XML
+            const blockXml = Blockly.Xml.domToText(
+                Blockly.Xml.workspaceToDom(mainWorkspace)
+            );
+
+            // Save block state sidecar file
+            const blockResult = await window.electronAPI.saveBlockState(
+                activeFile.packageName,
+                activeFile.fileName,
+                blockXml
+            );
+
+            if (urdfResult.success && blockResult.success) {
+                console.log('[Blocks] File and block state saved successfully');
+                showSaveIndicator();
+            } else {
+                if (!urdfResult.success) {
+                    console.error('[Blocks] Failed to save URDF:', urdfResult.message);
+                }
+                if (!blockResult.success) {
+                    console.error('[Blocks] Failed to save block state:', blockResult.message);
+                }
             }
         }
     } catch (error) {
@@ -332,18 +464,38 @@ function showErrorToast(message) {
 }
 
 /**
+ * Show a success toast message (green)
+ * @param {string} message - Success message to display
+ */
+function showSuccessToast(message) {
+    // Remove existing toast if any
+    const existingToast = document.querySelector('.warning-toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'warning-toast success-toast';
+    toast.innerHTML = `
+        <span class="warning-icon">✓</span>
+        <span class="warning-message">${message}</span>
+    `;
+    document.body.appendChild(toast);
+
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+/**
  * Show a brief save indicator
  */
 function showSaveIndicator() {
-    // Find active tab and add saved indicator
-    const activeTab = document.querySelector('.editor-tab.active .tab-title');
-    if (activeTab) {
-        const originalText = activeTab.textContent;
-        activeTab.textContent = '✓ Saved';
-        setTimeout(() => {
-            activeTab.textContent = originalText;
-        }, 1500);
-    }
+    // Show success toast
+    showSuccessToast('File saved successfully');
 }
 
 /**
@@ -383,8 +535,19 @@ function updateFlyoutHeader(categoryId) {
         return;
     }
 
-    // Get category info
-    const category = getCategoryById(categoryId);
+    // Get category info based on active file type
+    const fileType = activeFile?.type || 'urdf';
+    let category = null;
+    let editorType = 'urdf';
+
+    if (fileType === 'node') {
+        category = getNodeCategoryById(categoryId);
+        editorType = 'node';
+    } else {
+        category = getCategoryById(categoryId);
+        editorType = 'urdf';
+    }
+
     if (!category) {
         header.classList.add('hidden');
         return;
@@ -399,8 +562,8 @@ function updateFlyoutHeader(categoryId) {
         icon.alt = category.label;
     }
     if (text) {
-        // Use translated category name from i18n
-        const translationKey = `blocks.urdf.${categoryId}`;
+        // Use translated category name from i18n (dynamic based on editor type)
+        const translationKey = `blocks.${editorType}.${categoryId}`;
         text.textContent = t(translationKey) || category.label;
     }
 
@@ -959,8 +1122,14 @@ function createBlocklyWorkspace(fileType) {
                 // Update flyout margins for tabs/breadcrumb
                 updateFlyoutMargins(true);
 
-                // Enable real-time visual validation
-                enableRealtimeValidation(mainWorkspace);
+                // Enable real-time visual validation based on file type
+                if (fileType === 'urdf' || fileType === 'xacro') {
+                    enableRealtimeValidation(mainWorkspace);
+                }
+                // Node validation DISABLED FOR TESTING
+                // else if (fileType === 'node') {
+                //     enableNodeValidation(mainWorkspace);
+                // }
 
                 // Force resize
                 Blockly.svgResize(mainWorkspace);
@@ -998,12 +1167,22 @@ async function loadBlocksFromFile() {
     }
 
     try {
-        console.log('[Blocks] Checking for saved block state...');
+        console.log('[Blocks] Checking for saved block state...', activeFile.type);
 
-        const result = await window.electronAPI.loadBlockState(
-            activeFile.packageName,
-            activeFile.fileName
-        );
+        let result;
+
+        // Use appropriate loader based on file type
+        if (activeFile.type === 'node') {
+            result = await window.electronAPI.loadNodeBlockState(
+                activeFile.packageName,
+                activeFile.fileName
+            );
+        } else {
+            result = await window.electronAPI.loadBlockState(
+                activeFile.packageName,
+                activeFile.fileName
+            );
+        }
 
         if (result.success && result.blockXml) {
             console.log('[Blocks] Loading saved block state...');
@@ -1039,6 +1218,8 @@ function generateToolboxXml(fileType) {
     // Get categories based on file type
     if (fileType === 'urdf' || fileType === 'xacro') {
         categories = getUrdfCategories();
+    } else if (fileType === 'node') {
+        categories = getNodeCategories();
     }
 
     if (categories.length === 0) {

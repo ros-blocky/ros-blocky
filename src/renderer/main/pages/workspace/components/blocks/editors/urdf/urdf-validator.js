@@ -52,8 +52,16 @@ export function validateUrdf(workspace) {
     }
 
     // 2. Collect Valid Names (Links & Joints)
-    // We need to traverse inside the robot block
-    const allBlocks = robotBlock.getDescendants(false);
+    // We need to traverse inside the robot block AND inside procedure definitions
+    let allBlocks = robotBlock.getDescendants(false);
+
+    // Also collect blocks from all procedure definitions
+    for (const block of topBlocks) {
+        if (block.type === 'urdf_define_procedure') {
+            const procBlocks = block.getDescendants(false);
+            allBlocks = allBlocks.concat(procBlocks);
+        }
+    }
 
     // First Pass: Collect Definitions
     for (const block of allBlocks) {
@@ -88,8 +96,11 @@ export function validateUrdf(workspace) {
         if (type === 'urdf_joint') {
             let hasParent = false;
             let hasChild = false;
+            let hasLimit = false;
+            let hasAxis = false;
             let parentLink = null;
             let childLink = null;
+            const jointType = block.getFieldValue('TYPE');
 
             // Iterate children in the CONTENT input
             const input = block.getInput('CONTENT');
@@ -104,12 +115,30 @@ export function validateUrdf(workspace) {
                         hasChild = true;
                         childLink = child.getFieldValue('NAME');
                     }
+                    if (child.type === 'urdf_limit') {
+                        hasLimit = true;
+                    }
+                    if (child.type === 'urdf_axis') {
+                        hasAxis = true;
+                    }
                     child = child.getNextBlock();
                 }
             }
 
             if (!hasParent) addError(`Joint '${name}' is missing a Parent link.`, block.id);
             else if (!hasChild) addError(`Joint '${name}' is missing a Child link.`, block.id);
+
+            // Revolute and prismatic joints require both Limit and Axis blocks
+            // Continuous joints only require Axis (no limits needed for infinite rotation)
+            const requiresLimit = ['revolute', 'prismatic'].includes(jointType);
+            const requiresAxis = ['revolute', 'continuous', 'prismatic'].includes(jointType);
+
+            if (requiresLimit && !hasLimit) {
+                addError(`${jointType.charAt(0).toUpperCase() + jointType.slice(1)} joint '${name}' requires a Limit block.`, block.id);
+            }
+            if (requiresAxis && !hasAxis) {
+                addError(`${jointType.charAt(0).toUpperCase() + jointType.slice(1)} joint '${name}' requires an Axis block.`, block.id);
+            }
 
             // Check References
             if (parentLink && !definedLinks.has(parentLink)) {

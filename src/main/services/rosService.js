@@ -18,9 +18,6 @@ const runningProcesses = new Map();
 // Pixi workspace path (where pixi.toml is located)
 const PIXI_WS_PATH = 'C:\\pixi_ws';
 
-// ROS2 environment setup script path
-const ROS2_SETUP_SCRIPT = 'ros2-windows\\local_setup.bat';
-
 /**
  * Initialize the ROS service with dependencies
  * @param {Object} pkgService - The package service instance
@@ -40,7 +37,6 @@ function init(pkgService) {
 async function runNode(packageName, nodeName) {
     const nodeNameWithoutExt = nodeName.replace(/\.py$/, '');
     const commands = [
-        `call ${ROS2_SETUP_SCRIPT}`,
         `ros2 run ${packageName} ${nodeNameWithoutExt}`
     ];
 
@@ -64,7 +60,6 @@ async function runRobotPublisher(packageName, fileName) {
 
     // Commands to run inside pixi shell
     const commands = [
-        `call ${ROS2_SETUP_SCRIPT}`,
         `python -c "import subprocess; result=subprocess.run(['ros2', 'run', 'xacro', 'xacro', r'${xacroPath}'], capture_output=True, text=True); subprocess.run(['ros2', 'run', 'robot_state_publisher', 'robot_state_publisher', '--ros-args', '-p', f'robot_description:={result.stdout}'])"`
     ];
 
@@ -79,7 +74,6 @@ async function runRobotPublisher(packageName, fileName) {
  */
 async function runLaunch(packageName, fileName) {
     const commands = [
-        `call ${ROS2_SETUP_SCRIPT}`,
         `ros2 launch ${packageName} ${fileName}`
     ];
 
@@ -92,11 +86,182 @@ async function runLaunch(packageName, fileName) {
  */
 async function runRviz() {
     const commands = [
-        `call ${ROS2_SETUP_SCRIPT}`,
         `ros2 run rviz2 rviz2`
     ];
 
     return await executeInPixiShell(commands, 'rviz2');
+}
+
+/**
+ * Run Joint State Publisher GUI
+ * @returns {Promise<Object>} Result with success status and PID
+ */
+async function runJointStatePublisherGui() {
+    const commands = [
+        `ros2 run joint_state_publisher_gui joint_state_publisher_gui`
+    ];
+
+    return await executeInPixiShell(commands, 'joint_state_publisher_gui');
+}
+
+/**
+ * Run TurtleSim node
+ * @returns {Promise<Object>} Result with success status and PID
+ */
+async function runTurtlesim() {
+    const commands = [
+        `ros2 run turtlesim turtlesim_node`
+    ];
+
+    return await executeInPixiShell(commands, 'turtlesim');
+}
+
+/**
+ * Build all packages in the workspace using colcon build
+ * @param {Function} onStatus - Callback for status updates
+ * @returns {Promise<Object>} Result with success status
+ */
+async function buildAllPackages(onStatus) {
+    const projectPath = getProjectPath();
+    if (!projectPath) {
+        return { success: false, error: 'No project loaded' };
+    }
+
+    try {
+        if (onStatus) onStatus('Starting colcon build...');
+
+        // Run colcon build in the project directory
+        const result = await runColconBuild(projectPath, null, onStatus);
+        return result;
+    } catch (error) {
+        console.error('[ROS Service] Build all packages error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Build a single package using colcon build --packages-select
+ * @param {string} packageName - Name of the package to build
+ * @param {Function} onStatus - Callback for status updates
+ * @returns {Promise<Object>} Result with success status
+ */
+async function buildPackage(packageName, onStatus) {
+    const projectPath = getProjectPath();
+    if (!projectPath) {
+        return { success: false, error: 'No project loaded' };
+    }
+
+    try {
+        if (onStatus) onStatus(`Building package "${packageName}"...`);
+
+        // Run colcon build with --packages-select
+        const result = await runColconBuild(projectPath, packageName, onStatus);
+        return result;
+    } catch (error) {
+        console.error(`[ROS Service] Build package ${packageName} error:`, error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Run colcon build command
+ * @param {string} projectPath - Path to the project
+ * @param {string|null} packageName - Package name for --packages-select, or null for all
+ * @param {Function} onStatus - Callback for status updates
+ * @returns {Promise<Object>} Result with success status
+ */
+async function runColconBuild(projectPath, packageName, onStatus) {
+    return new Promise((resolve) => {
+        // Build the colcon command
+        let colconCmd = 'colcon build';
+        if (packageName) {
+            colconCmd += ` --packages-select ${packageName}`;
+        }
+
+        console.log(`[ROS Service] Running: ${colconCmd} in ${projectPath}`);
+
+        // Create temp files for commands - run colcon in project directory
+        const tempDir = os.tmpdir();
+        const commandsFile = path.join(tempDir, `build_cmds_${Date.now()}.txt`);
+        const commandsContent = [
+            `cd /d "${projectPath}"`,
+            colconCmd
+        ].join('\n') + '\n';
+
+        fs.writeFileSync(commandsFile, commandsContent, { encoding: 'utf8' });
+
+        // Create batch file that pipes commands to pixi shell
+        const tempBatch = path.join(tempDir, `build_run_${Date.now()}.bat`);
+        const batchContent = `@echo off
+cd /d ${PIXI_WS_PATH}
+type "${commandsFile}" | pixi shell
+`;
+        fs.writeFileSync(tempBatch, batchContent, { encoding: 'utf8' });
+
+        // Spawn the build process
+        const child = spawn('cmd', ['/c', tempBatch], {
+            cwd: PIXI_WS_PATH,
+            windowsHide: true,
+            stdio: ['ignore', 'pipe', 'pipe']
+        });
+
+        let output = '';
+        let hasError = false;
+
+        child.stdout.on('data', (data) => {
+            const text = data.toString();
+            output += text;
+            console.log('[Build Output]', text);
+
+            // Update status with meaningful lines
+            const lines = text.split('\n').filter(l => l.trim());
+            if (lines.length > 0 && onStatus) {
+                const lastLine = lines[lines.length - 1].trim();
+                if (lastLine) {
+                    onStatus(lastLine);
+                }
+            }
+        });
+
+        child.stderr.on('data', (data) => {
+            const text = data.toString();
+            output += text;
+            console.error('[Build Error]', text);
+
+            // Only flag as error for actual build failures, not warnings
+            // Check for specific failure patterns that indicate real errors
+            const lowerText = text.toLowerCase();
+            if (lowerText.includes('fatal error') ||
+                lowerText.includes('cmake error') ||
+                lowerText.includes('failed to build') ||
+                lowerText.includes('colcon build failed')) {
+                hasError = true;
+            }
+        });
+
+        child.on('close', (code) => {
+            console.log(`[ROS Service] Build completed with code: ${code}`);
+
+            // Clean up temp files
+            try {
+                fs.unlinkSync(commandsFile);
+                fs.unlinkSync(tempBatch);
+            } catch (e) { /* ignore */ }
+
+            // Success is based primarily on exit code (0 = success)
+            // hasError is only for critical build failures
+            if (code === 0) {
+                resolve({ success: true, output });
+            } else {
+                resolve({ success: false, error: `Build failed with code ${code}`, output });
+            }
+        });
+
+        child.on('error', (error) => {
+            console.error('[ROS Service] Build process error:', error);
+            resolve({ success: false, error: error.message });
+        });
+    });
 }
 
 /**
@@ -106,42 +271,52 @@ async function runRviz() {
  */
 function stopProcess(processKey) {
     const proc = runningProcesses.get(processKey);
+
+    // Check if this is a URDF process - we need to kill robot_state_publisher regardless
+    const isUrdfProcess = processKey && processKey.startsWith('urdf:');
+
     if (proc) {
         try {
             console.log(`[ROS Runner] Stopping process: ${processKey}, PID: ${proc.pid}`);
 
             // Kill the process tree on Windows
-            const kill1 = spawn('taskkill', ['/pid', proc.pid.toString(), '/f', '/t'], {
-                shell: true,
-                windowsHide: true
-            });
-
-            // Also kill robot_state_publisher by name (it might have spawned separately)
-            const kill2 = spawn('taskkill', ['/im', 'robot_state_publisher.exe', '/f'], {
-                shell: true,
-                windowsHide: true
-            });
-
-            // Also kill python processes that might be running xacro
-            const kill3 = spawn('taskkill', ['/im', 'python.exe', '/f', '/fi', 'WINDOWTITLE eq pixi*'], {
+            spawn('taskkill', ['/pid', proc.pid.toString(), '/f', '/t'], {
                 shell: true,
                 windowsHide: true
             });
 
             runningProcesses.delete(processKey);
-
-            // Notify renderer that process stopped
-            sendToRenderer('status', 'stopped', processKey);
-
-            console.log(`[ROS Runner] Stopped process: ${processKey}`);
-            return true;
         } catch (error) {
-            console.error(`[ROS Runner] Error stopping process:`, error);
-            return false;
+            console.error(`[ROS Runner] Error stopping process by PID:`, error);
         }
+    } else {
+        console.log(`[ROS Runner] Process not found in map: ${processKey}`);
     }
-    console.log(`[ROS Runner] Process not found: ${processKey}`);
-    return false;
+
+    // For URDF processes, ALWAYS try to kill robot_state_publisher by name
+    // This handles cases where the process exited but robot_state_publisher is still running
+    if (isUrdfProcess) {
+        console.log(`[ROS Runner] Killing robot_state_publisher and related processes...`);
+
+        // Kill robot_state_publisher by name
+        spawn('taskkill', ['/im', 'robot_state_publisher.exe', '/f'], {
+            shell: true,
+            windowsHide: true
+        });
+
+        // Kill python processes that might be running xacro
+        spawn('taskkill', ['/im', 'python.exe', '/f', '/fi', 'WINDOWTITLE eq pixi*'], {
+            shell: true,
+            windowsHide: true
+        });
+    }
+
+    // ALWAYS notify renderer that process stopped (even if not found in map)
+    // This ensures the button state is reset
+    sendToRenderer('status', 'stopped', processKey);
+    console.log(`[ROS Runner] Stopped process: ${processKey}`);
+
+    return true;
 }
 
 /**
@@ -244,10 +419,24 @@ async function executeInPixiShell(commands, processKey) {
         console.log(`[ROS Runner] Commands:`, commands);
         console.log(`[ROS Runner] Process key: ${processKey}`);
 
+        // Build the full command list with workspace sourcing
+        const installDir = path.join(projectPath, 'install');
+        const localSetupScript = path.join(installDir, 'local_setup.bat');
+
+        // Prepare commands - add workspace sourcing if install directory exists
+        let fullCommands = [...commands];
+        if (fs.existsSync(localSetupScript)) {
+            // Add workspace sourcing at the beginning, before the actual command
+            fullCommands.splice(0, 0, `call "${localSetupScript}"`);
+            console.log(`[ROS Runner] Added workspace sourcing: ${localSetupScript}`);
+        } else {
+            console.log(`[ROS Runner] No workspace install found, skipping sourcing`);
+        }
+
         // Create temp files for commands
         const tempDir = os.tmpdir();
         const commandsFile = path.join(tempDir, `ros_cmds_${Date.now()}.txt`);
-        const commandsContent = commands.join('\n') + '\n';
+        const commandsContent = fullCommands.join('\n') + '\n';
         fs.writeFileSync(commandsFile, commandsContent, { encoding: 'utf8' });
 
         // Create batch file that pipes commands to pixi shell
@@ -339,6 +528,10 @@ module.exports = {
     runRobotPublisher,
     runLaunch,
     runRviz,
+    runJointStatePublisherGui,
+    runTurtlesim,
+    buildAllPackages,
+    buildPackage,
     stopProcess,
     stopAllProcesses,
     isProcessRunning

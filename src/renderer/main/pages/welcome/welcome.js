@@ -49,7 +49,10 @@ export function initWelcomeScreen(parentFunctions) {
                     // Hide loading and show welcome again
                     if (showWelcomeFn) showWelcomeFn();
 
-                    alert(`Failed to create project: ${result.message}`);
+                    // Only show alert for real errors, not for user cancellations
+                    if (!result.message.toLowerCase().includes('cancelled')) {
+                        alert(`Failed to create project: ${result.message}`);
+                    }
                 }
             } catch (error) {
                 console.error('Error creating project:', error);
@@ -72,9 +75,19 @@ export function initWelcomeScreen(parentFunctions) {
             openProjectBtn.disabled = true;
             openProjectBtn.textContent = t('welcome.openingProject');
 
+            // Set a timeout to prevent hanging indefinitely
+            const timeoutId = setTimeout(() => {
+                console.error('Project opening timed out after 30 seconds');
+                if (showWelcomeFn) showWelcomeFn();
+                alert('Project opening timed out. Please try again.');
+            }, 30000); // 30 second timeout
+
             try {
                 // Call IPC - dialog will show, then loading screen will appear via event
                 const result = await window.electronAPI.openProject();
+
+                // Clear timeout since we got a response
+                clearTimeout(timeoutId);
 
                 if (result.success) {
                     console.log('Project opened at:', result.projectPath);
@@ -83,17 +96,27 @@ export function initWelcomeScreen(parentFunctions) {
                     if (updateProjectNameFn) updateProjectNameFn(result.projectPath);
 
                     // Show the IDE (from parent)
-                    if (showIDEFn) showIDEFn();
+                    if (showIDEFn) {
+                        showIDEFn();
+                    } else {
+                        console.error('showIDEFn is not defined!');
+                    }
                 } else {
                     console.error('Project opening failed:', result.message);
 
                     // Hide loading and show welcome again
                     if (showWelcomeFn) showWelcomeFn();
 
-                    alert(`Failed to open project: ${result.message}`);
+                    // Only show alert for real errors, not for user cancellations
+                    if (!result.message.toLowerCase().includes('cancelled')) {
+                        alert(`Failed to open project: ${result.message}`);
+                    }
                 }
             } catch (error) {
                 console.error('Error opening project:', error);
+
+                // Clear timeout on error
+                clearTimeout(timeoutId);
 
                 // Hide loading and show welcome again
                 if (showWelcomeFn) showWelcomeFn();

@@ -122,22 +122,27 @@
 </head>
 
 <body>
-    <div class="title-bar">Delete Package</div>
+    <div class="title-bar" data-i18n="dialogs.deletePackage">Delete Package</div>
     <div class="content">
         <div class="warning-icon">⚠️</div>
         <div class="warning-message">
-            You are about to delete the package <span class="package-name-display" id="package-name-display"></span>
+            <span data-i18n="dialogs.aboutToDeletePackage">You are about to delete the package</span> <span
+                class="package-name-display" id="package-name-display"></span>
             <br><br>
-            This action cannot be undone. All files in the package will be permanently deleted.
+            <span data-i18n="dialogs.deleteWarning">This action cannot be undone. All files in the package will be
+                permanently deleted.</span>
         </div>
-        <div class="confirm-text">Type the package name to confirm:</div>
-        <input type="text" id="confirmInput" placeholder="Enter package name" autofocus>
-        <div class="error" id="error-msg">Package name does not match</div>
+        <div class="confirm-text" data-i18n="dialogs.typePackageNameConfirm">Type the package name to confirm:</div>
+        <input type="text" id="confirmInput" data-i18n-placeholder="dialogs.enterPackageName"
+            placeholder="Enter package name" autofocus>
+        <div class="error" id="error-msg" data-i18n="dialogs.packageNameMismatch">Package name does not match</div>
         <div class="buttons">
-            <button class="btn-cancel" id="cancel-btn">Cancel</button>
-            <button class="btn-delete" id="delete-btn" disabled>Delete Package</button>
+            <button class="btn-cancel" id="cancel-btn" data-i18n="common.cancel">Cancel</button>
+            <button class="btn-delete" id="delete-btn" data-i18n="dialogs.deletePackageBtn" disabled>Delete
+                Package</button>
         </div>
     </div>
+    <script src="./scripts/dialogI18n.js"></script>
     <script src="./scripts/deletePackageConfirm.js"></script>
 </body>
 

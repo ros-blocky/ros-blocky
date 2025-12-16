@@ -297,6 +297,26 @@ function setupNodesSection(packageItem, packageName, nodes) {
                 }
             });
 
+            // Click handler to select node file and open blocks editor
+            nodeItem.addEventListener('click', (e) => {
+                e.stopPropagation();
+
+                // Remove selection from all items
+                document.querySelectorAll('.node-item.selected, .file-item.selected').forEach(item => {
+                    item.classList.remove('selected');
+                });
+
+                // Add selection to this item
+                nodeItem.classList.add('selected');
+
+                // Dispatch window event for blocks component to listen to
+                window.dispatchEvent(new CustomEvent('fileSelected', {
+                    detail: { type: 'node', fileName: nodeName, packageName: packageName }
+                }));
+
+                console.log('[PackagesPanel] Node file selected:', nodeName);
+            });
+
             nodesList.appendChild(nodeItem);
         });
     } else {
@@ -385,6 +405,28 @@ function setupFileSection(packageItem, packageName, type, files) {
                     runBtn.innerHTML = `<span class="run-spinner"></span>`;
 
                     if (type === 'urdf') {
+                        // Request save before running URDF
+                        console.log('[PackagesPanel] Requesting save before run for:', fileName);
+
+                        // Dispatch event to save current file if it matches
+                        const savePromise = new Promise((resolve) => {
+                            const handleSaveComplete = (event) => {
+                                window.removeEventListener('saveComplete', handleSaveComplete);
+                                resolve(event.detail?.success ?? true);
+                            };
+                            window.addEventListener('saveComplete', handleSaveComplete);
+
+                            // Dispatch save request
+                            window.dispatchEvent(new CustomEvent('saveBeforeRun', {
+                                detail: { packageName, fileName }
+                            }));
+
+                            // Timeout fallback (in case no file is open or save doesn't respond)
+                            setTimeout(() => resolve(true), 1000);
+                        });
+
+                        await savePromise;
+
                         if (window.electronAPI && window.electronAPI.runUrdf) {
                             await window.electronAPI.runUrdf(packageName, fileName);
                         } else {

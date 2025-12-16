@@ -86,15 +86,17 @@
 </head>
 
 <body>
-    <div class="title-bar">New Project</div>
+    <div class="title-bar" data-i18n="dialogs.newProject">New Project</div>
     <div class="content">
-        <label for="projectName">Project Name:</label>
-        <input type="text" id="projectName" placeholder="my_robot_project" autofocus>
+        <label for="projectName" data-i18n="dialogs.projectName">Project Name:</label>
+        <input type="text" id="projectName" data-i18n-placeholder="dialogs.projectNamePlaceholder"
+            placeholder="my_robot_project" autofocus>
         <div class="buttons">
-            <button class="btn-cancel" id="cancel-btn">Cancel</button>
-            <button class="btn-create" id="create-btn">Create</button>
+            <button class="btn-cancel" id="cancel-btn" data-i18n="common.cancel">Cancel</button>
+            <button class="btn-create" id="create-btn" data-i18n="common.create">Create</button>
         </div>
     </div>
+    <script src="./scripts/dialogI18n.js"></script>
     <script src="./scripts/projectNamePrompt.js"></script>
 </body>
 

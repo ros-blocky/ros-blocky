@@ -238,6 +238,44 @@ class PackageService {
     }
 
     /**
+     * Show generic loading dialog
+     * @param {Object} config - { type: 'create'|'build', target: 'all'|'packageName' }
+     * @returns {Promise<BrowserWindow>} The loading window
+     */
+    showLoadingDialog(config) {
+        return new Promise((resolve) => {
+            const loadingWindow = new BrowserWindow({
+                width: 400,
+                height: 280,
+                modal: true,
+                frame: false,
+                resizable: false,
+                show: false,
+                parent: BrowserWindow.getFocusedWindow(),
+                webPreferences: {
+                    preload: path.join(__dirname, '../../preload/dialogPreload.js'),
+                    nodeIntegration: false,
+                    contextIsolation: true
+                }
+            });
+
+            loadingWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/loadingDialog.html'));
+
+            // Show when ready to prevent white flash
+            loadingWindow.once('ready-to-show', () => {
+                loadingWindow.show();
+            });
+
+            // Send config after load
+            loadingWindow.webContents.on('did-finish-load', () => {
+                loadingWindow.webContents.send('loading-config', config);
+            });
+
+            resolve(loadingWindow);
+        });
+    }
+
+    /**
      * Show delete confirmation dialog
      * @param {string} packageName - Name of the package to delete
      * @returns {Promise<boolean>} - True if user confirmed, false otherwise
@@ -608,34 +646,45 @@ if __name__ == '__main__':
         try {
             let content = await fs.readFile(setupPyPath, 'utf8');
 
+            // Add necessary imports FIRST if not present
+            // These are always needed for data_files entries with os.path.join and glob
+            let contentModified = false;
+
+            if (!content.includes('import os')) {
+                content = content.replace(
+                    /^(from setuptools import .+)$/m,
+                    'import os\n$1'
+                );
+                contentModified = true;
+            }
+            if (!content.includes('from glob import glob')) {
+                content = content.replace(
+                    /^(from setuptools import .+)$/m,
+                    '$1\nfrom glob import glob'
+                );
+                contentModified = true;
+            }
+
+            // Check if entry already exists (after adding imports)
+            // Use more specific check to match the data_files entry pattern
+            const entryPattern = new RegExp(`os\\.path\\.join\\('share',\\s*package_name,\\s*'${folderName}'\\)`);
+            if (entryPattern.test(content)) {
+                // Entry already exists, but we may have added imports - save if modified
+                if (contentModified) {
+                    await fs.writeFile(setupPyPath, content);
+                    console.log(`Added missing imports to setup.py for ${folderName}`);
+                }
+                console.log(`Data files entry for ${folderName} already exists`);
+                return;
+            }
+
             // Determine the glob pattern based on folder type
             const globPattern = folderName === 'launch' ? `glob('${folderName}/*.py')` : `glob('${folderName}/*')`;
 
             // The entry to add: (os.path.join('share', package_name, 'folder'), glob('folder/*'))
             const entryToAdd = `(os.path.join('share', package_name, '${folderName}'), ${globPattern})`;
 
-            // Check if entry already exists
-            if (content.includes(`'${folderName}'`)) {
-                console.log(`Data files entry for ${folderName} already exists`);
-                return;
-            }
-
-            // Add necessary imports if not present
-            if (!content.includes('from glob import glob')) {
-                content = content.replace(
-                    'from setuptools import setup',
-                    'from setuptools import setup\nfrom glob import glob'
-                );
-            }
-            if (!content.includes('import os')) {
-                content = content.replace(
-                    'from setuptools import setup',
-                    'import os\nfrom setuptools import setup'
-                );
-            }
-
             // Find data_files array and add entry
-            // Look for the closing of data_files array
             const dataFilesMatch = content.match(/data_files=\[([\s\S]*?)\],/);
             if (dataFilesMatch) {
                 const existingContent = dataFilesMatch[1];
@@ -948,6 +997,126 @@ if __name__ == '__main__':
             return {
                 success: false,
                 message: `Error loading block state: ${error.message}`
+            };
+        }
+    }
+
+    /**
+     * Save Node Python file content
+     * @param {string} packageName - Package name
+     * @param {string} fileName - File name (e.g. my_node.py)
+     * @param {string} content - Python code content
+     * @returns {Promise<{success: boolean, message: string}>}
+     */
+    async saveNodeFile(packageName, fileName, content) {
+        try {
+            if (!this.currentProjectPath) {
+                return {
+                    success: false,
+                    message: 'No project is currently loaded.'
+                };
+            }
+
+            // Node files are in src/package_name/package_name/
+            const nodePath = path.join(this.currentProjectPath, 'src', packageName, packageName, fileName);
+
+            // Write content to file
+            await fs.writeFile(nodePath, content, 'utf8');
+
+            console.log(`[PackageService] Node file saved: ${nodePath}`);
+            return {
+                success: true,
+                message: `Node file "${fileName}" saved successfully.`
+            };
+        } catch (error) {
+            console.error('Error saving Node file:', error);
+            return {
+                success: false,
+                message: `Error saving Node file: ${error.message}`
+            };
+        }
+    }
+
+    /**
+     * Save Node block state to a sidecar .nodeblocks file
+     * @param {string} packageName - Package name
+     * @param {string} fileName - Original file name (e.g. my_node.py)
+     * @param {string} blockXml - Blockly XML serialization
+     * @returns {Promise<{success: boolean, message: string}>}
+     */
+    async saveNodeBlockState(packageName, fileName, blockXml) {
+        try {
+            if (!this.currentProjectPath) {
+                return {
+                    success: false,
+                    message: 'No project is currently loaded.'
+                };
+            }
+
+            // Create .nodeblocks sidecar file path (in same folder as node)
+            const blocksFileName = `${fileName}.nodeblocks`;
+            const blocksPath = path.join(this.currentProjectPath, 'src', packageName, packageName, blocksFileName);
+
+            // Write block state to file
+            await fs.writeFile(blocksPath, blockXml, 'utf8');
+
+            console.log(`[PackageService] Node block state saved to ${blocksFileName}`);
+            return {
+                success: true,
+                message: `Node block state saved successfully.`
+            };
+        } catch (error) {
+            console.error('Error saving Node block state:', error);
+            return {
+                success: false,
+                message: `Error saving Node block state: ${error.message}`
+            };
+        }
+    }
+
+    /**
+     * Load Node block state from a sidecar .nodeblocks file
+     * @param {string} packageName - Package name
+     * @param {string} fileName - Original file name (e.g. my_node.py)
+     * @returns {Promise<{success: boolean, blockXml?: string, message?: string}>}
+     */
+    async loadNodeBlockState(packageName, fileName) {
+        try {
+            if (!this.currentProjectPath) {
+                return {
+                    success: false,
+                    message: 'No project is currently loaded.'
+                };
+            }
+
+            // Create .nodeblocks sidecar file path
+            const blocksFileName = `${fileName}.nodeblocks`;
+            const blocksPath = path.join(this.currentProjectPath, 'src', packageName, packageName, blocksFileName);
+
+            // Check if file exists
+            try {
+                await fs.access(blocksPath);
+            } catch {
+                // File doesn't exist - this is normal for new files
+                return {
+                    success: false,
+                    message: 'No node block state file found.'
+                };
+            }
+
+            // Read block state from file
+            const blockXml = await fs.readFile(blocksPath, 'utf8');
+
+            console.log(`[PackageService] Node block state loaded from ${blocksFileName}`);
+            return {
+                success: true,
+                blockXml: blockXml
+            };
+        } catch (error) {
+            console.error('Error loading Node block state:', error);
+            return {
+                success: false,
+                message: `Error loading Node block state: ${error.message}`
             };
         }
     }

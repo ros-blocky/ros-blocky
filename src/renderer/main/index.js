@@ -50,6 +50,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rvizBtn = document.getElementById('rviz-btn');
         if (rvizBtn) rvizBtn.classList.remove('hidden');
 
+        // Show JSP GUI button in workspace
+        const jspGuiBtn = document.getElementById('jsp-gui-btn');
+        if (jspGuiBtn) jspGuiBtn.classList.remove('hidden');
+
+        // Show TurtleSim button in workspace
+        const turtlesimBtn = document.getElementById('turtlesim-btn');
+        if (turtlesimBtn) turtlesimBtn.classList.remove('hidden');
+
+        // Show Build dropdown in workspace
+        const buildDropdown = document.getElementById('build-dropdown');
+        if (buildDropdown) buildDropdown.classList.remove('hidden');
+
         // Reapply translations when showing workspace
         updatePageTranslations();
     }
@@ -78,10 +90,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const undoBtn = document.getElementById('editor-undo-btn');
         const redoBtn = document.getElementById('editor-redo-btn');
         const rvizBtn = document.getElementById('rviz-btn');
+        const jspGuiBtn = document.getElementById('jsp-gui-btn');
+        const turtlesimBtn = document.getElementById('turtlesim-btn');
+        const buildDropdown = document.getElementById('build-dropdown');
         if (saveBtn) saveBtn.classList.add('hidden');
         if (undoBtn) undoBtn.classList.add('hidden');
         if (redoBtn) redoBtn.classList.add('hidden');
         if (rvizBtn) rvizBtn.classList.add('hidden');
+        if (jspGuiBtn) jspGuiBtn.classList.add('hidden');
+        if (turtlesimBtn) turtlesimBtn.classList.add('hidden');
+        if (buildDropdown) buildDropdown.classList.add('hidden');
 
         // Re-enable and reset welcome screen buttons using the module's function
         try {
@@ -223,5 +241,101 @@ document.addEventListener('DOMContentLoaded', async () => {
                 console.log('Cannot return to workspace - no project open');
             }
         });
+    }
+
+    // ========================================
+    // Build Dropdown
+    // ========================================
+    const buildDropdown = document.getElementById('build-dropdown');
+    const buildBtn = document.getElementById('build-btn');
+    const buildMenu = document.getElementById('build-menu');
+    const buildAll = document.getElementById('build-all');
+    const buildPackagesList = document.getElementById('build-packages-list');
+
+    if (buildBtn && buildMenu) {
+        // Toggle dropdown on button click
+        buildBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const isVisible = !buildMenu.classList.contains('hidden');
+
+            if (isVisible) {
+                buildMenu.classList.add('hidden');
+            } else {
+                // Populate package list before showing
+                await populatePackageList();
+                buildMenu.classList.remove('hidden');
+            }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!buildDropdown.contains(e.target)) {
+                buildMenu.classList.add('hidden');
+            }
+        });
+
+        // Build All Packages
+        if (buildAll) {
+            buildAll.addEventListener('click', async () => {
+                buildMenu.classList.add('hidden');
+                console.log('[Build] Building all packages...');
+
+                try {
+                    const result = await window.electronAPI.buildAllPackages();
+                    if (result.success) {
+                        console.log('[Build] All packages built successfully');
+                    } else {
+                        console.error('[Build] Failed to build:', result.error);
+                        alert(`Build failed: ${result.error}`);
+                    }
+                } catch (error) {
+                    console.error('[Build] Error:', error);
+                    alert(`Build error: ${error.message}`);
+                }
+            });
+        }
+    }
+
+    // Populate package list in dropdown
+    async function populatePackageList() {
+        if (!buildPackagesList) return;
+
+        try {
+            const packages = await window.electronAPI.listPackages();
+            if (packages && packages.length > 0) {
+                buildPackagesList.innerHTML = packages.map(pkg => `
+                    <div class="build-menu-item build-menu-package" data-package="${pkg}">
+                        ${pkg}
+                    </div>
+                `).join('');
+
+                // Add click handlers to each package
+                buildPackagesList.querySelectorAll('.build-menu-package').forEach(item => {
+                    item.addEventListener('click', async () => {
+                        const packageName = item.dataset.package;
+                        buildMenu.classList.add('hidden');
+                        console.log(`[Build] Building package: ${packageName}`);
+
+                        try {
+                            const result = await window.electronAPI.buildPackage(packageName);
+                            if (result.success) {
+                                console.log(`[Build] Package ${packageName} built successfully`);
+                            } else {
+                                console.error(`[Build] Failed to build ${packageName}:`, result.error);
+                                alert(`Build failed: ${result.error}`);
+                            }
+                        } catch (error) {
+                            console.error('[Build] Error:', error);
+                            alert(`Build error: ${error.message}`);
+                        }
+                    });
+                });
+            } else {
+                buildPackagesList.innerHTML = '<div class="build-menu-item" style="color: #999; font-style: italic;">No packages found</div>';
+            }
+        } catch (error) {
+            console.error('[Build] Error loading packages:', error);
+            buildPackagesList.innerHTML = '<div class="build-menu-item" style="color: #999;">Error loading packages</div>';
+        }
     }
 });

@@ -3,10 +3,8 @@
  * Converts Blockly workspace blocks into valid URDF/XACRO XML
  */
 
-/**
- * Initialize the URDF code generator
- * @param {Object} Blockly - The Blockly library
- */
+// Current package name for mesh paths
+let currentPackageName = 'my_package';
 export function initUrdfGenerator(Blockly) {
     console.log('[URDF Generator] Initializing code generators...');
 
@@ -266,8 +264,8 @@ ${content}</inertial>
         const scaleY = block.getFieldValue('SCALE_Y') || 1;
         const scaleZ = block.getFieldValue('SCALE_Z') || 1;
 
-        // Use package:// format for ROS compatibility
-        const meshPath = `package://\${package_name}/meshes/${escapeXml(filename)}`;
+        // Use package:// format for ROS compatibility with actual package name
+        const meshPath = `package://${currentPackageName}/meshes/${escapeXml(filename)}`;
 
         if (scaleX === 1 && scaleY === 1 && scaleZ === 1) {
             return `<mesh filename="${meshPath}"/>
@@ -388,12 +386,18 @@ export function hasOrphanBlocks() {
 /**
  * Generate URDF code from a workspace
  * @param {Blockly.Workspace} workspace - The Blockly workspace
+ * @param {string} packageName - The package name for mesh paths
  * @returns {string} Generated URDF XML
  */
-export function generateUrdfCode(workspace) {
+export function generateUrdfCode(workspace, packageName) {
     if (!workspace || typeof Blockly === 'undefined' || !Blockly.URDF) {
         console.error('[URDF Generator] Cannot generate code - workspace or generator not ready');
         return '';
+    }
+
+    // Set the package name for mesh paths
+    if (packageName) {
+        currentPackageName = packageName;
     }
 
     try {

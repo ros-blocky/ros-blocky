@@ -44,6 +44,9 @@
         }
     },
     "dialogs": {
+        "newProject": "مشروع جديد",
+        "projectName": "اسم المشروع:",
+        "projectNamePlaceholder": "مشروع_الروبوت",
         "newPackage": "حزمة جديدة",
         "packageName": "اسم الحزمة:",
         "packageNameHint": "أحرف صغيرة وأرقام وشرطات سفلية فقط. يجب أن تبدأ بحرف.",
@@ -54,7 +57,35 @@
         "enterFileName": "أدخل اسم الملف",
         "invalidName": "اسم غير صالح. استخدم فقط الأحرف الصغيرة والأرقام والشرطات السفلية.",
         "nameExists": "هذا الاسم موجود بالفعل.",
-        "confirmOverwrite": "الملف موجود بالفعل. هل تريد استبداله؟"
+        "confirmOverwrite": "الملف موجود بالفعل. هل تريد استبداله؟",
+        "deletePackage": "حذف الحزمة",
+        "aboutToDeletePackage": "أنت على وشك حذف الحزمة",
+        "deleteWarning": "لا يمكن التراجع عن هذا الإجراء. سيتم حذف جميع الملفات في الحزمة نهائياً.",
+        "typePackageNameConfirm": "اكتب اسم الحزمة للتأكيد:",
+        "enterPackageName": "أدخل اسم الحزمة",
+        "packageNameMismatch": "اسم الحزمة غير مطابق",
+        "deletePackageBtn": "حذف الحزمة",
+        "createNewItem": "إنشاء عنصر جديد",
+        "package": "الحزمة:",
+        "itemName": "اسم العنصر:",
+        "itemNameHint": "أحرف صغيرة وأرقام وشرطات سفلية فقط. يجب أن تبدأ بحرف.",
+        "itemNamePlaceholder": "مثال: عنصر_جديد",
+        "invalidItemName": "يجب أن يبدأ الاسم بحرف ويحتوي فقط على أحرف صغيرة وأرقام وشرطات سفلية",
+        "createNewNode": "إنشاء عقدة جديدة",
+        "nodeName": "اسم العقدة:",
+        "nodeNamePlaceholder": "مثال: ناشر_بسيط",
+        "createNewUrdf": "إنشاء URDF جديد",
+        "urdfName": "اسم URDF:",
+        "urdfNamePlaceholder": "مثال: ذراع_روبوت",
+        "createNewConfig": "إنشاء تهيئة جديدة",
+        "configName": "اسم التهيئة:",
+        "configNamePlaceholder": "مثال: معلمات",
+        "createNewLaunch": "إنشاء ملف إطلاق جديد",
+        "launchName": "اسم الإطلاق:",
+        "launchNamePlaceholder": "مثال: تشغيل",
+        "confirmDeleteNode": "هل أنت متأكد من حذف العقدة",
+        "confirmDeleteFile": "هل أنت متأكد من حذف",
+        "fromPackage": "من الحزمة"
     },
     "workspace": {
         "title": "مساحة العمل",
@@ -180,5 +211,20 @@
         "loadingWorkspace": "جاري تحميل مساحة عمل ROS2...",
         "recentProjects": "المشاريع الأخيرة",
         "noRecent": "لا توجد مشاريع حديثة"
+    },
+    "build": {
+        "title": "بناء الحزم",
+        "all": "بناء جميع الحزم",
+        "buildPackage": "بناء الحزمة"
+    },
+    "loading": {
+        "processing": "جاري المعالجة...",
+        "initializing": "جاري التهيئة...",
+        "creatingPackage": "جاري إنشاء الحزمة...",
+        "creatingPackageStatus": "جاري إنشاء الحزمة",
+        "buildingAll": "جاري بناء جميع الحزم...",
+        "buildingAllStatus": "جاري تشغيل colcon build...",
+        "buildingPackage": "جاري بناء الحزمة...",
+        "buildingPackageStatus": "جاري البناء"
     }
 }

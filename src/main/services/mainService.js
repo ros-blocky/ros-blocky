@@ -21,7 +21,9 @@ class MainService {
             }
 
             // Step 2: Show folder picker to select parent location
-            const result = await dialog.showOpenDialog({
+            // Pass focused window as parent to make dialog modal (blocks main window)
+            const focusedWindow = BrowserWindow.getFocusedWindow();
+            const result = await dialog.showOpenDialog(focusedWindow, {
                 title: `Select Location for "${projectName}"`,
                 buttonLabel: 'Create Project Here',
                 properties: ['openDirectory', 'createDirectory']
@@ -35,7 +37,6 @@ class MainService {
             const projectPath = path.join(parentPath, projectName);
 
             // **Notify renderer that dialogs are done - show loading screen now!**
-            const focusedWindow = BrowserWindow.getFocusedWindow();
             if (focusedWindow) {
                 focusedWindow.webContents.send('project-dialogs-complete', 'Creating');
             }
@@ -114,7 +115,9 @@ class MainService {
      */
     async openExistingProject() {
         try {
-            const result = await dialog.showOpenDialog({
+            // Pass focused window as parent to make dialog modal (blocks main window)
+            const parentWindow = BrowserWindow.getFocusedWindow();
+            const result = await dialog.showOpenDialog(parentWindow, {
                 title: 'Open ROS2 Project',
                 buttonLabel: 'Open Project',
                 properties: ['openDirectory']

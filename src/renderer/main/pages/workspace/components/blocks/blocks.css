@@ -597,6 +597,11 @@
     /* Red for errors */
 }
 
+.warning-toast.success-toast {
+    background: #4caf50;
+    /* Green for success */
+}
+
 .warning-toast.fade-out {
     opacity: 0;
     transform: translateX(-50%) translateY(10px);

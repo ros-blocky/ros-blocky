@@ -13,7 +13,12 @@ function cancel() {
     window.dialogAPI.sendProjectNameResult(null);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize translations
+    if (window.dialogI18n) {
+        await window.dialogI18n.init();
+    }
+
     const projectNameInput = document.getElementById('projectName');
     const createBtn = document.getElementById('create-btn');
     const cancelBtn = document.getElementById('cancel-btn');

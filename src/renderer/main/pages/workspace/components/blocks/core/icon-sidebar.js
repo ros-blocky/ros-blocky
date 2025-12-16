@@ -113,7 +113,8 @@ function renderIconsFromRegistry(editorType) {
             : `<span class="icon-emoji">${cat.icon}</span>`;
 
         // Try to get translated label, fallback to original label
-        const translationKey = `blocks.urdf.${cat.id}`;
+        // Use dynamic editor type for translation key
+        const translationKey = `blocks.${editorType}.${cat.id}`;
         const translated = t(translationKey);
         const translatedLabel = (translated && translated !== translationKey) ? translated : cat.label;
 

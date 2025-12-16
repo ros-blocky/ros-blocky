@@ -27,5 +27,9 @@ contextBridge.exposeInMainWorld('dialogAPI', {
 
     // Generic confirm dialog
     onSetConfirmConfig: (callback) => ipcRenderer.on('set-confirm-config', (event, config) => callback(config)),
-    sendConfirmResult: (confirmed) => ipcRenderer.send('confirm-result', confirmed)
+    sendConfirmResult: (confirmed) => ipcRenderer.send('confirm-result', confirmed),
+
+    // Generic loading dialog
+    onLoadingConfig: (callback) => ipcRenderer.on('loading-config', (event, config) => callback(config)),
+    onLoadingStatus: (callback) => ipcRenderer.on('loading-status', (event, status) => callback(status))
 });

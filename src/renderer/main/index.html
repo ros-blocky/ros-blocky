@@ -48,11 +48,38 @@
           <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
         </svg>
       </button>
+      <!-- Build Button with Dropdown -->
+      <div class="build-dropdown hidden" id="build-dropdown">
+        <button id="build-btn" class="toolbar-btn build-btn" title="Build Packages" data-i18n-title="build.title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round" class="toolbar-icon">
+            <path
+              d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z">
+            </path>
+          </svg>
+          <span class="dropdown-arrow">▼</span>
+        </button>
+        <div class="build-menu hidden" id="build-menu">
+          <div class="build-menu-item" id="build-all" data-i18n="build.all">Build All Packages</div>
+          <div class="build-menu-separator"></div>
+          <div id="build-packages-list">
+            <!-- Package list populated dynamically -->
+          </div>
+        </div>
+      </div>
     </div>
     <div class="top-bar-center">
       <span id="project-name">ROS Block Code</span>
     </div>
     <div class="top-bar-right">
+      <!-- TurtleSim Button -->
+      <button id="turtlesim-btn" class="toolbar-btn turtlesim-btn hidden" title="TurtleSim">
+        <img src="assets/icons/turtle.png" alt="TurtleSim" class="turtlesim-icon">
+      </button>
+      <!-- Joint State Publisher GUI Button -->
+      <button id="jsp-gui-btn" class="toolbar-btn jsp-btn hidden" title="Joint State Publisher GUI">
+        <img src="assets/icons/joint.png" alt="JSP" class="jsp-icon">
+      </button>
       <!-- RViz Button -->
       <button id="rviz-btn" class="toolbar-btn rviz-btn hidden" title="Launch RViz2">
         <img src="assets/icons/rviz.png" alt="RViz" class="rviz-icon">

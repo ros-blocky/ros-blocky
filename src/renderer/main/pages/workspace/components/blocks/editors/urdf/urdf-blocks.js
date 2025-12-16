@@ -73,7 +73,6 @@ export function registerUrdfBlocks(Blockly) {
                 .setCheck(['LINK', 'JOINT', 'CALL']);
             this.setColour('#4c97ff');
             this.setTooltip(T('robot'));
-            this.setHelpUrl('http://wiki.ros.org/urdf/XML/robot');
         }
     };
 
@@ -90,7 +89,6 @@ export function registerUrdfBlocks(Blockly) {
             this.setNextStatement(true, ['LINK', 'JOINT', 'CALL']);
             this.setColour('#4c97ff');
             this.setTooltip(T('link'));
-            this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
     };
 
@@ -129,7 +127,6 @@ export function registerUrdfBlocks(Blockly) {
             this.setNextStatement(true, ['LINK', 'JOINT', 'CALL']);
             this.setColour('#4c97ff');
             this.setTooltip(T('joint'));
-            this.setHelpUrl('http://wiki.ros.org/urdf/XML/joint');
         }
     };
 
@@ -176,7 +173,6 @@ export function registerUrdfBlocks(Blockly) {
             this.setNextStatement(true, ['VISUAL', 'COLLISION', 'INERTIAL']);
             this.setColour('#FFAB19');
             this.setTooltip(T('visual'));
-            this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
     };
 
@@ -191,7 +187,6 @@ export function registerUrdfBlocks(Blockly) {
             this.setNextStatement(true, ['VISUAL', 'COLLISION', 'INERTIAL']);
             this.setColour('#FFAB19');
             this.setTooltip(T('collision'));
-            this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
     };
 
@@ -207,7 +202,6 @@ export function registerUrdfBlocks(Blockly) {
             this.setNextStatement(true, ['GEOMETRY', 'MATERIAL', 'ORIGIN']);
             this.setColour('#FFAB19');
             this.setTooltip(T('material'));
-            this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
     };
 
@@ -254,7 +248,6 @@ export function registerUrdfBlocks(Blockly) {
             this.setNextStatement(true, ['VISUAL', 'COLLISION', 'INERTIAL']);
             this.setColour('#FFAB19');
             this.setTooltip(T('inertial'));
-            this.setHelpUrl('http://wiki.ros.org/urdf/XML/link');
         }
     };
 

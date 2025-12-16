@@ -114,6 +114,29 @@ function registerProjectIPC() {
         return await packageService.loadBlockState(packageName, fileName);
     });
 
+    // ========== Node File Operations ==========
+
+    /**
+     * Handle save-node-file IPC request
+     */
+    ipcMain.handle('save-node-file', async (event, packageName, fileName, content) => {
+        return await packageService.saveNodeFile(packageName, fileName, content);
+    });
+
+    /**
+     * Handle save-node-block-state IPC request (saves .nodeblocks sidecar file)
+     */
+    ipcMain.handle('save-node-block-state', async (event, packageName, fileName, blockXml) => {
+        return await packageService.saveNodeBlockState(packageName, fileName, blockXml);
+    });
+
+    /**
+     * Handle load-node-block-state IPC request (loads .nodeblocks sidecar file)
+     */
+    ipcMain.handle('load-node-block-state', async (event, packageName, fileName) => {
+        return await packageService.loadNodeBlockState(packageName, fileName);
+    });
+
     // ========== Config Operations ==========
 
     /**
@@ -267,6 +290,114 @@ function registerProjectIPC() {
      */
     ipcMain.handle('run-rviz', async (event) => {
         return await rosService.runRviz();
+    });
+
+    /**
+     * Handle run-joint-state-publisher-gui IPC request
+     * Runs Joint State Publisher GUI tool
+     */
+    ipcMain.handle('run-joint-state-publisher-gui', async (event) => {
+        return await rosService.runJointStatePublisherGui();
+    });
+
+    /**
+     * Handle run-turtlesim IPC request
+     * Runs TurtleSim node
+     */
+    ipcMain.handle('run-turtlesim', async (event) => {
+        return await rosService.runTurtlesim();
+    });
+
+    // ========== Build Operations ==========
+
+    /**
+     * Handle build-all-packages IPC request
+     * Builds all packages using colcon build
+     */
+    ipcMain.handle('build-all-packages', async (event) => {
+        const { BrowserWindow } = require('electron');
+
+        // Show loading dialog
+        const loadingWindow = await packageService.showLoadingDialog({
+            type: 'build',
+            target: 'all'
+        });
+
+        try {
+            const result = await rosService.buildAllPackages((status) => {
+                // Send status updates to loading dialog
+                if (loadingWindow && !loadingWindow.isDestroyed()) {
+                    loadingWindow.webContents.send('loading-status', status);
+                }
+            });
+
+            // Close loading dialog
+            if (loadingWindow && !loadingWindow.isDestroyed()) {
+                loadingWindow.close();
+            }
+
+            // Send build result to main window for toast notification
+            const mainWindow = BrowserWindow.getAllWindows().find(w => !w.isDestroyed() && w.webContents.getURL().includes('index.html'));
+            if (mainWindow) {
+                mainWindow.webContents.send('build-result', {
+                    success: result.success,
+                    target: 'all',
+                    error: result.error
+                });
+            }
+
+            return result;
+        } catch (error) {
+            if (loadingWindow && !loadingWindow.isDestroyed()) {
+                loadingWindow.close();
+            }
+            return { success: false, error: error.message };
+        }
+    });
+
+    /**
+     * Handle build-package IPC request
+     * Builds a single package using colcon build --packages-select
+     */
+    ipcMain.handle('build-package', async (event, packageName) => {
+        const { BrowserWindow } = require('electron');
+
+        // Show loading dialog
+        const loadingWindow = await packageService.showLoadingDialog({
+            type: 'build',
+            target: packageName
+        });
+
+        try {
+            const result = await rosService.buildPackage(packageName, (status) => {
+                // Send status updates to loading dialog
+                if (loadingWindow && !loadingWindow.isDestroyed()) {
+                    loadingWindow.webContents.send('loading-status', status);
+                }
+            });
+
+            // Close loading dialog
+            if (loadingWindow && !loadingWindow.isDestroyed()) {
+                loadingWindow.close();
+            }
+
+            // Send build result to main window for toast notification
+            const mainWindow = BrowserWindow.getAllWindows().find(w => !w.isDestroyed() && w.webContents.getURL().includes('index.html'));
+            if (mainWindow) {
+                mainWindow.webContents.send('build-result', {
+                    success: result.success,
+                    target: packageName,
+                    error: result.error
+                });
+            }
+
+            return result;
+        } catch (error) {
+            if (loadingWindow && !loadingWindow.isDestroyed()) {
+                loadingWindow.close();
+            }
+            return { success: false, error: error.message };
+        }
     });
 }
 

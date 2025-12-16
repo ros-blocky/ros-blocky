@@ -23,47 +23,58 @@ function cancel() {
     window.dialogAPI.sendItemNameResult(null);
 }
 
-// Configuration for different item types
+// Configuration for different item types - uses i18n keys
 const typeConfigs = {
     node: {
-        title: 'Create New Node',
-        label: 'Node Name:',
-        placeholder: 'e.g., simple_publisher',
-        hint: 'Lowercase letters, numbers, and underscores only. Must start with a letter.'
+        titleKey: 'dialogs.createNewNode',
+        labelKey: 'dialogs.nodeName',
+        placeholderKey: 'dialogs.nodeNamePlaceholder',
+        hintKey: 'dialogs.itemNameHint'
     },
     urdf: {
-        title: 'Create New URDF',
-        label: 'URDF Name:',
-        placeholder: 'e.g., robot_arm',
-        hint: 'Lowercase letters, numbers, and underscores only. Must start with a letter.'
+        titleKey: 'dialogs.createNewUrdf',
+        labelKey: 'dialogs.urdfName',
+        placeholderKey: 'dialogs.urdfNamePlaceholder',
+        hintKey: 'dialogs.itemNameHint'
     },
     config: {
-        title: 'Create New Config',
-        label: 'Config Name:',
-        placeholder: 'e.g., params',
-        hint: 'Lowercase letters, numbers, and underscores only. Must start with a letter.'
+        titleKey: 'dialogs.createNewConfig',
+        labelKey: 'dialogs.configName',
+        placeholderKey: 'dialogs.configNamePlaceholder',
+        hintKey: 'dialogs.itemNameHint'
     },
     launch: {
-        title: 'Create New Launch File',
-        label: 'Launch Name:',
-        placeholder: 'e.g., bringup',
-        hint: 'Lowercase letters, numbers, and underscores only. Must start with a letter.'
+        titleKey: 'dialogs.createNewLaunch',
+        labelKey: 'dialogs.launchName',
+        placeholderKey: 'dialogs.launchNamePlaceholder',
+        hintKey: 'dialogs.itemNameHint'
     }
 };
 
 function applyConfig(config) {
     const typeConfig = typeConfigs[config.type] || typeConfigs.node;
 
-    document.getElementById('dialog-title').textContent = typeConfig.title;
-    document.getElementById('input-label').textContent = typeConfig.label;
-    document.getElementById('itemInput').placeholder = typeConfig.placeholder;
-    document.getElementById('hint-text').textContent = typeConfig.hint;
+    // Update data-i18n attributes and let dialogI18n handle the translations
+    document.getElementById('dialog-title').setAttribute('data-i18n', typeConfig.titleKey);
+    document.getElementById('input-label').setAttribute('data-i18n', typeConfig.labelKey);
+    document.getElementById('itemInput').setAttribute('data-i18n-placeholder', typeConfig.placeholderKey);
+    document.getElementById('hint-text').setAttribute('data-i18n', typeConfig.hintKey);
     document.getElementById('package-name').textContent = config.packageName;
 
     itemConfig = config;
+
+    // Re-apply translations after updating attributes
+    if (window.dialogI18n && window.dialogI18n.update) {
+        window.dialogI18n.update();
+    }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize translations
+    if (window.dialogI18n) {
+        await window.dialogI18n.init();
+    }
+
     const itemInput = document.getElementById('itemInput');
     const createBtn = document.getElementById('create-btn');
     const cancelBtn = document.getElementById('cancel-btn');

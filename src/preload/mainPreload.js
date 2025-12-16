@@ -39,6 +39,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveBlockState: (packageName, fileName, blockXml) => ipcRenderer.invoke('save-block-state', packageName, fileName, blockXml),
   loadBlockState: (packageName, fileName) => ipcRenderer.invoke('load-block-state', packageName, fileName),
 
+  // Node file saving
+  saveNodeFile: (packageName, fileName, content) => ipcRenderer.invoke('save-node-file', packageName, fileName, content),
+  saveNodeBlockState: (packageName, fileName, blockXml) => ipcRenderer.invoke('save-node-block-state', packageName, fileName, blockXml),
+  loadNodeBlockState: (packageName, fileName) => ipcRenderer.invoke('load-node-block-state', packageName, fileName),
+
   // Config management
   promptConfigName: (packageName) => ipcRenderer.invoke('prompt-config-name', packageName),
   createConfig: (packageName, configName) => ipcRenderer.invoke('create-config', packageName, configName),
@@ -69,6 +74,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   runUrdf: (packageName, fileName) => ipcRenderer.invoke('run-urdf', packageName, fileName),
   runLaunch: (packageName, fileName) => ipcRenderer.invoke('run-launch', packageName, fileName),
   runRviz: () => ipcRenderer.invoke('run-rviz'),
+  runJointStatePublisherGui: () => ipcRenderer.invoke('run-joint-state-publisher-gui'),
+  runTurtlesim: () => ipcRenderer.invoke('run-turtlesim'),
 
   // Process control
   stopRosProcess: (processKey) => ipcRenderer.invoke('stop-ros-process', processKey),
@@ -76,5 +83,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ROS output listener
   onRosOutput: (callback) => ipcRenderer.on('ros-output', (event, data) => callback(data)),
-  removeRosOutputListener: () => ipcRenderer.removeAllListeners('ros-output')
+  removeRosOutputListener: () => ipcRenderer.removeAllListeners('ros-output'),
+
+  // Build operations
+  buildAllPackages: () => ipcRenderer.invoke('build-all-packages'),
+  buildPackage: (packageName) => ipcRenderer.invoke('build-package', packageName),
+  onBuildResult: (callback) => ipcRenderer.on('build-result', (event, data) => callback(data))
 });

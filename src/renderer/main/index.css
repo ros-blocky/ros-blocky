@@ -113,6 +113,92 @@ body {
     filter: brightness(0) invert(1);
 }
 
+/* JSP GUI Button Styles */
+.jsp-btn {
+    padding: 2px 6px;
+    margin-right: 8px;
+}
+
+.jsp-icon {
+    height: 20px;
+    width: auto;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+}
+
+/* TurtleSim Button Styles */
+.turtlesim-btn {
+    padding: 2px 6px;
+    margin-right: 8px;
+}
+
+.turtlesim-icon {
+    height: 20px;
+    width: auto;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+}
+
+/* Build Dropdown Styles */
+.build-dropdown {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.build-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+}
+
+.dropdown-arrow {
+    font-size: 8px;
+    margin-left: 2px;
+}
+
+.build-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 200px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    overflow: hidden;
+    margin-top: 4px;
+}
+
+.build-menu-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    color: #333;
+    font-size: 13px;
+    transition: background-color 0.2s;
+}
+
+.build-menu-item:hover {
+    background: #f0f8ff;
+    color: #00bbfe;
+}
+
+.build-menu-separator {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 4px 0;
+}
+
+.build-menu-package {
+    padding-left: 24px;
+    font-size: 12px;
+}
+
+.build-menu-package::before {
+    content: "📦 ";
+}
+
 .top-bar-center {
     position: absolute;
     left: 50%;

@@ -6,6 +6,32 @@
 import { FILE_SECTIONS, SECTION_DISPLAY_NAMES } from './config.js';
 import * as api from './api.js';
 
+// Simple translation helper for file operations
+// Fetches translations fresh each time to respect language changes
+async function getTranslation(key, fallback) {
+    try {
+        const lang = localStorage.getItem('ros-blocky-language') || 'en';
+        // Path is relative to index.html at src/renderer/main/
+        const response = await fetch(`../i18n/locales/${lang}.json`);
+        const translations = await response.json();
+
+        // Get nested value
+        const keys = key.split('.');
+        let value = translations;
+        for (const k of keys) {
+            if (value && typeof value === 'object' && k in value) {
+                value = value[k];
+            } else {
+                return fallback;
+            }
+        }
+        return typeof value === 'string' ? value : fallback;
+    } catch (e) {
+        console.error('[file-operations] Translation fetch error:', e);
+        return fallback;
+    }
+}
+
 // Will be set by panel-ui.js to avoid circular dependency
 let refreshPackageListFn = null;
 
@@ -92,7 +118,9 @@ export async function addNodeToPackage(packageName) {
  */
 export async function deleteNode(packageName, nodeName) {
     try {
-        const message = `Are you sure you want to delete node "${nodeName}" from package "${packageName}"?`;
+        const confirmText = await getTranslation('dialogs.confirmDeleteNode', 'Are you sure you want to delete node');
+        const fromText = await getTranslation('dialogs.fromPackage', 'from package');
+        const message = `${confirmText} "${nodeName}" ${fromText} "${packageName}"?`;
         const confirmed = await api.showConfirmDialog(message);
 
         if (!confirmed) return;
@@ -225,7 +253,9 @@ export async function addFilesToSection(packageName, folderName) {
  */
 export async function deleteFile(packageName, sectionType, fileName) {
     try {
-        const message = `Are you sure you want to delete "${fileName}" from package "${packageName}"?`;
+        const confirmText = await getTranslation('dialogs.confirmDeleteFile', 'Are you sure you want to delete');
+        const fromText = await getTranslation('dialogs.fromPackage', 'from package');
+        const message = `${confirmText} "${fileName}" ${fromText} "${packageName}"?`;
         const confirmed = await api.showConfirmDialog(message);
 
         if (!confirmed) return;
@@ -249,7 +279,9 @@ export async function deleteFile(packageName, sectionType, fileName) {
 export async function deleteFolder(packageName, sectionType) {
     try {
         const displayName = SECTION_DISPLAY_NAMES[sectionType] || sectionType;
-        const message = `Are you sure you want to delete all ${displayName} from package "${packageName}"?`;
+        const confirmText = await getTranslation('dialogs.confirmDeleteAll', 'Are you sure you want to delete all');
+        const fromText = await getTranslation('dialogs.fromPackage', 'from package');
+        const message = `${confirmText} ${displayName} ${fromText} "${packageName}"?`;
         const confirmed = await api.showConfirmDialog(message);
 
         if (!confirmed) return;

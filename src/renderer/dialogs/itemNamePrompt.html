@@ -119,25 +119,29 @@
 
 <body>
     <div class="container">
-        <h2 id="dialog-title">Create New Item</h2>
+        <h2 id="dialog-title" data-i18n="dialogs.createNewItem">Create New Item</h2>
 
         <div class="package-display">
-            Package: <span class="package-name" id="package-name"></span>
+            <span data-i18n="dialogs.package">Package:</span> <span class="package-name" id="package-name"></span>
         </div>
 
-        <label for="itemInput" id="input-label">Item Name:</label>
-        <div class="hint" id="hint-text">Lowercase letters, numbers, and underscores only. Must start with a letter.
+        <label for="itemInput" id="input-label" data-i18n="dialogs.itemName">Item Name:</label>
+        <div class="hint" id="hint-text" data-i18n="dialogs.itemNameHint">Lowercase letters, numbers, and underscores
+            only. Must start with a letter.
         </div>
-        <input type="text" id="itemInput" placeholder="e.g., my_item" autofocus>
-        <div class="error" id="error-msg">Name must start with a letter and contain only lowercase letters, numbers, and
+        <input type="text" id="itemInput" data-i18n-placeholder="dialogs.itemNamePlaceholder"
+            placeholder="e.g., my_item" autofocus>
+        <div class="error" id="error-msg" data-i18n="dialogs.invalidItemName">Name must start with a letter and contain
+            only lowercase letters, numbers, and
             underscores</div>
 
         <div class="buttons">
-            <button class="btn-cancel" id="cancel-btn">Cancel</button>
-            <button class="btn-create" id="create-btn" disabled>Create</button>
+            <button class="btn-cancel" id="cancel-btn" data-i18n="common.cancel">Cancel</button>
+            <button class="btn-create" id="create-btn" data-i18n="common.create" disabled>Create</button>
         </div>
     </div>
 
+    <script src="./scripts/dialogI18n.js"></script>
     <script src="./scripts/itemNamePrompt.js"></script>
 </body>
 
