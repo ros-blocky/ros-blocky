@@ -40,10 +40,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (loadingScreen) loadingScreen.classList.add('hidden');
     if (workspace) workspace.classList.add('hidden');
 
+    // State flag to track if project is loaded (prevents race condition with loading screen)
+    let isProjectLoaded = false;
+
     // Helper function to show IDE
     function showIDE() {
+        console.log('[showIDE] Showing workspace, hiding loading and welcome screens');
+
+        // Set flag to prevent loading screen from showing after this
+        isProjectLoaded = true;
+
         if (welcomeScreen) welcomeScreen.classList.add('hidden');
-        if (loadingScreen) loadingScreen.classList.add('hidden');
+        if (loadingScreen) {
+            loadingScreen.classList.add('hidden');
+            // Double-check: also set display none directly as failsafe
+            loadingScreen.style.display = 'none';
+        }
         if (workspace) workspace.classList.remove('hidden');
 
         // Show RViz button in workspace
@@ -64,10 +76,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Reapply translations when showing workspace
         updatePageTranslations();
+
+        console.log('[showIDE] Workspace visible, loading screen hidden');
     }
 
     // Helper function to show loading screen
     function showLoading(title, message) {
+        // Don't show loading screen if project is already loaded (race condition fix)
+        if (isProjectLoaded) {
+            console.log('[showLoading] Skipping - project already loaded');
+            return;
+        }
+
+        console.log('[showLoading] Showing loading screen:', title);
+
         const loadingTitle = document.getElementById('loading-title');
         const loadingMessage = document.getElementById('loading-message');
 
@@ -75,12 +97,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (loadingMessage) loadingMessage.textContent = message;
 
         if (welcomeScreen) welcomeScreen.classList.add('hidden');
-        if (loadingScreen) loadingScreen.classList.remove('hidden');
+        if (loadingScreen) {
+            loadingScreen.classList.remove('hidden');
+            // Reset inline style that may have been set by showIDE
+            loadingScreen.style.display = '';
+        }
         if (workspace) workspace.classList.add('hidden');
     }
 
     // Helper function to show welcome screen
     async function showWelcome() {
+        // Reset the project loaded flag when returning to welcome
+        isProjectLoaded = false;
+
         if (welcomeScreen) welcomeScreen.classList.remove('hidden');
         if (loadingScreen) loadingScreen.classList.add('hidden');
         if (workspace) workspace.classList.add('hidden');

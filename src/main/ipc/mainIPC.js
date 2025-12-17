@@ -246,7 +246,7 @@ function registerProjectIPC() {
 
     /**
      * Handle run-node IPC request
-     * Runs a Python node using ros2 run in a background process
+     * Runs a ROS 2 Python node
      */
     ipcMain.handle('run-node', async (event, packageName, nodeName) => {
         return await rosService.runNode(packageName, nodeName);

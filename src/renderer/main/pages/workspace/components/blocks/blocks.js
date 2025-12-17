@@ -39,6 +39,66 @@ const FILE_ICONS = {
     default: '📄'
 };
 
+// Global log store - keyed by node name (persists across file switches)
+const globalNodeLogs = {};
+// Track visible log panels keyed by node name
+const visibleLogPanels = {};
+
+// Export for use by node blocks
+export function getNodeLogs(nodeName) {
+    if (!globalNodeLogs[nodeName]) {
+        globalNodeLogs[nodeName] = [];
+    }
+    return globalNodeLogs[nodeName];
+}
+
+export function addNodeLog(nodeName, message, type) {
+    if (!globalNodeLogs[nodeName]) {
+        globalNodeLogs[nodeName] = [];
+    }
+    globalNodeLogs[nodeName].push({ message, type, timestamp: Date.now() });
+    // Keep only last 100 logs
+    if (globalNodeLogs[nodeName].length > 100) {
+        globalNodeLogs[nodeName].shift();
+    }
+    // Update any visible log panel for this node
+    if (visibleLogPanels[nodeName]) {
+        const panel = visibleLogPanels[nodeName];
+        const content = panel.querySelector('.log-panel-content');
+        if (content) {
+            if (content.querySelector('.log-empty')) {
+                content.innerHTML = '';
+            }
+            const logLine = document.createElement('div');
+            logLine.className = 'log-line ' + (type || 'info');
+            logLine.textContent = message;
+            content.appendChild(logLine);
+            content.scrollTop = content.scrollHeight;
+        }
+    }
+}
+
+export function registerLogPanel(nodeName, panel) {
+    visibleLogPanels[nodeName] = panel;
+}
+
+export function unregisterLogPanel(nodeName) {
+    delete visibleLogPanels[nodeName];
+}
+
+export function getLogPanel(nodeName) {
+    return visibleLogPanels[nodeName] || null;
+}
+
+export function closeLogPanel(nodeName) {
+    if (visibleLogPanels[nodeName]) {
+        visibleLogPanels[nodeName].remove();
+        delete visibleLogPanels[nodeName];
+        return true;
+    }
+    return false;
+}
+
 /**
  * Initialize the blocks component
  */
@@ -168,6 +228,51 @@ export function initBlocks() {
                     showErrorToast(`Build failed for "${result.target}": ` + (result.error || 'Unknown error'));
                 }
             }
+        });
+    }
+
+    // Listen for ROS output to route to node log panels
+    if (window.electronAPI && window.electronAPI.onRosOutput) {
+        window.electronAPI.onRosOutput((data) => {
+            // Only process node logs
+            if (!data.processKey || !data.processKey.startsWith('node:')) {
+                return;
+            }
+
+            // Skip status messages - only show actual log output
+            if (data.type === 'status') {
+                return;
+            }
+
+            // Skip non-ROS log messages (status updates, etc)
+            if (!data.message || !data.message.includes('[')) {
+                return;
+            }
+
+            // Try to extract actual ROS node name from log message
+            // ROS log format: [INFO] [timestamp] [node_name]: message
+            let nodeName = null;
+            if (data.message) {
+                const rosLogMatch = data.message.match(/\]\s*\[([^\]]+)\]:\s*/);
+                if (rosLogMatch) {
+                    nodeName = rosLogMatch[1];
+                }
+            }
+
+            // Fallback to file name from processKey if no node name in message
+            if (!nodeName) {
+                const match = data.processKey.match(/node:[^/]+\/(.+)/);
+                if (match) {
+                    nodeName = match[1].replace('.py', '');
+                }
+            }
+
+            if (!nodeName) return;
+
+            // Add to global log store (this also updates any visible log panel)
+            const logType = data.type === 'error' ? 'error' :
+                data.message && data.message.includes('[WARN]') ? 'warn' : 'info';
+            addNodeLog(nodeName, data.message, logType);
         });
     }
 
@@ -308,7 +413,7 @@ async function saveCurrentFile() {
         // Handle based on file type
         if (activeFile.type === 'node') {
             // SAVE NODE FILE - No validation for now
-            const pythonCode = generateNodeCode(mainWorkspace, window.nodeGenerator);
+            const pythonCode = generateNodeCode(mainWorkspace);
 
             if (!pythonCode) {
                 console.warn('[Blocks] No code generated - workspace may be empty');

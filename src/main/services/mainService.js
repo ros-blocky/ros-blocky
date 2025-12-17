@@ -130,9 +130,9 @@ class MainService {
             const projectPath = result.filePaths[0];
 
             // **Notify renderer that dialog is done - show loading screen now!**
-            const focusedWindow = BrowserWindow.getFocusedWindow();
-            if (focusedWindow) {
-                focusedWindow.webContents.send('project-dialogs-complete', 'Opening');
+            // Use parentWindow consistently to avoid race condition if window loses focus
+            if (parentWindow && !parentWindow.isDestroyed()) {
+                parentWindow.webContents.send('project-dialogs-complete', 'Opening');
             }
 
             const isValid = await this.isValidROS2Workspace(projectPath);
@@ -149,8 +149,9 @@ class MainService {
             packageService.setProjectPath(projectPath);
 
             // Notify renderer that project is loaded
-            if (focusedWindow) {
-                focusedWindow.webContents.send('project-loaded', projectPath);
+            // Use parentWindow consistently to avoid race condition
+            if (parentWindow && !parentWindow.isDestroyed()) {
+                parentWindow.webContents.send('project-loaded', projectPath);
             }
 
             return {

@@ -14,9 +14,15 @@ export const NODE_CATEGORIES = [
         iconType: 'image',
         label: 'Structure',
         color: '#4c97ff',
-        description: 'Node structure - main node block',
+        description: 'Node structure, publishers, and subscribers',
         blocks: [
-            'node_structure_node'
+            'node_structure_node',
+            'node_publishers_create',
+            'node_publishers_publish',
+            'node_publishers_create_message',
+            'node_publishers_set_field',
+            'node_subscribers_create',
+            'node_subscribers_get_data'
         ]
     },
     {
@@ -38,32 +44,6 @@ export const NODE_CATEGORIES = [
         ]
     },
     {
-        id: 'publishers',
-        icon: 'assets/icons/node-publishers.svg',
-        iconType: 'image',
-        label: 'Publishers',
-        color: '#FFAB19',
-        description: 'Create publishers and publish messages',
-        blocks: [
-            'node_publishers_create',
-            'node_publishers_publish',
-            'node_publishers_create_message'
-        ]
-    },
-    {
-        id: 'subscribers',
-        icon: 'assets/icons/node-subscribers.svg',
-        iconType: 'image',
-        label: 'Subscribers',
-        color: '#e67e22',
-        description: 'Create subscribers and handle callbacks',
-        blocks: [
-            'node_subscribers_create',
-            'node_subscribers_callback',
-            'node_subscribers_get_data'
-        ]
-    },
-    {
         id: 'timers',
         icon: 'assets/icons/node-timers.svg',
         iconType: 'image',
@@ -72,7 +52,6 @@ export const NODE_CATEGORIES = [
         description: 'Create and manage timers',
         blocks: [
             'node_timers_create',
-            'node_timers_callback',
             'node_timers_cancel'
         ]
     },
@@ -84,6 +63,13 @@ export const NODE_CATEGORIES = [
         color: '#ee0979',
         description: 'ROS 2 message types',
         blocks: [
+            'node_messages_type_string',
+            'node_messages_type_int32',
+            'node_messages_type_float64',
+            'node_messages_type_bool',
+            'node_messages_type_twist',
+            'node_messages_type_pose',
+            'node_messages_type_laserscan',
             'node_messages_string',
             'node_messages_int32',
             'node_messages_float64',
@@ -117,6 +103,9 @@ export const NODE_CATEGORIES = [
         color: '#7f8c8d',
         description: 'Node logging functions',
         blocks: [
+            'node_logging_text',
+            'node_logging_msg',
+            'node_logging_msg_data',
             'node_logging_info',
             'node_logging_warn',
             'node_logging_error',

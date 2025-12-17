@@ -287,13 +287,55 @@ function setupNodesSection(packageItem, packageName, nodes) {
 
             // Run button click handler
             const runBtn = nodeItem.querySelector('.run-btn');
+            const processKey = `node:${packageName}/${nodeName}`;
+            runBtn.dataset.processKey = processKey;
+
             runBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
+
+                // Check if already running - if so, stop it
+                if (runBtn.classList.contains('running')) {
+                    console.log('[PackagesPanel] Stopping node:', nodeName);
+                    if (window.electronAPI && window.electronAPI.stopRosProcess) {
+                        await window.electronAPI.stopRosProcess(processKey);
+                    }
+                    return;
+                }
+
                 console.log('[PackagesPanel] Running node:', nodeName, 'from package:', packageName);
+
+                // Show loading state
+                runBtn.classList.add('loading');
+                runBtn.innerHTML = `<span class="run-spinner"></span>`;
+
+                // Request save before running node
+                console.log('[PackagesPanel] Requesting save before run for:', nodeName);
+
+                const savePromise = new Promise((resolve) => {
+                    const handleSaveComplete = (event) => {
+                        window.removeEventListener('saveComplete', handleSaveComplete);
+                        resolve(event.detail?.success ?? true);
+                    };
+                    window.addEventListener('saveComplete', handleSaveComplete);
+
+                    // Dispatch save request
+                    window.dispatchEvent(new CustomEvent('saveBeforeRun', {
+                        detail: { packageName, fileName: `${nodeName}.py` }
+                    }));
+
+                    // Timeout fallback (in case no file is open or save doesn't respond)
+                    setTimeout(() => resolve(true), 1000);
+                });
+
+                await savePromise;
+
                 if (window.electronAPI && window.electronAPI.runNode) {
                     await window.electronAPI.runNode(packageName, nodeName);
                 } else {
                     console.warn('[PackagesPanel] runNode API not available');
+                    // Reset button on error
+                    runBtn.classList.remove('loading');
+                    runBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" class="run-icon"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
                 }
             });
 
@@ -311,7 +353,7 @@ function setupNodesSection(packageItem, packageName, nodes) {
 
                 // Dispatch window event for blocks component to listen to
                 window.dispatchEvent(new CustomEvent('fileSelected', {
-                    detail: { type: 'node', fileName: nodeName, packageName: packageName }
+                    detail: { type: 'node', fileName: `${nodeName}.py`, packageName: packageName }
                 }));
 
                 console.log('[PackagesPanel] Node file selected:', nodeName);

@@ -48,16 +48,18 @@ export function initPackagesPanel() {
             if (data.type === 'status') {
                 console.log('[ROS Output Listener] Status update:', data.message);
 
-                // Check if this is a URDF process
+                // Check process type
                 const isUrdf = data.processKey && data.processKey.startsWith('urdf:');
+                const isNode = data.processKey && data.processKey.startsWith('node:');
 
-                if (data.message === 'starting' || data.message === 'running') {
-                    if (data.message === 'running') {
-                        // Robot initialized - show stop button
-                        runBtn.classList.remove('loading');
-                        runBtn.classList.add('running');
-                        runBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" class="stop-icon"><rect x="6" y="6" width="12" height="12"></rect></svg>`;
-                    }
+                if (data.message === 'starting') {
+                    // Just keep spinner showing - wait for 'running' status from backend
+                    // Backend will send 'running' when it detects [INFO] log output
+                } else if (data.message === 'running') {
+                    // Process confirmed running - show stop button
+                    runBtn.classList.remove('loading');
+                    runBtn.classList.add('running');
+                    runBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" class="stop-icon"><rect x="6" y="6" width="12" height="12"></rect></svg>`;
 
                     // Hide run buttons on all OTHER URDF files
                     if (isUrdf) {

@@ -352,7 +352,8 @@ function stopAllProcesses() {
     const processesToKill = [
         'robot_state_publisher.exe',
         'rviz2.exe',
-        'ros2.exe'
+        'ros2.exe',
+        'python.exe'  // Nodes run as Python processes
     ];
 
     for (const processName of processesToKill) {
@@ -470,8 +471,12 @@ type "${commandsFile}" | pixi shell
             console.log(`[ROS Output] ${output}`);
             sendToRenderer('log', output, processKey);
 
-            // Check for "Robot initialized" to notify UI
+            // Check for "Robot initialized" to notify UI (for URDF)
             if (output.includes('Robot initialized')) {
+                sendToRenderer('status', 'running', processKey);
+            }
+            // For nodes, detect when ros2 run command is executed or when they start logging
+            if (processKey.startsWith('node:') && (output.includes('[INFO]') || output.includes('ros2 run'))) {
                 sendToRenderer('status', 'running', processKey);
             }
         });
@@ -484,6 +489,10 @@ type "${commandsFile}" | pixi shell
 
             // Check for "Robot initialized" in stderr too (ROS logs go to stderr)
             if (output.includes('Robot initialized')) {
+                sendToRenderer('status', 'running', processKey);
+            }
+            // For nodes, detect when they start logging (ROS INFO pattern)
+            if (processKey.startsWith('node:') && output.includes('[INFO]')) {
                 sendToRenderer('status', 'running', processKey);
             }
         });

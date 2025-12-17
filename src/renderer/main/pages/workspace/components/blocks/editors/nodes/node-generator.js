@@ -88,19 +88,48 @@ export function initNodeGenerator(Blockly) {
         let callbackMethods = '';
         let nextBlock = block.getNextBlock();
 
+        // Clear any previously stored callbacks
+        block.workspace.subscriberCallbacks = [];
+        block.workspace.timerCallbacks = [];
+
+        console.log('[Node Generator] Processing node block:', name, 'nextBlock:', nextBlock ? nextBlock.type : 'none');
+
         while (nextBlock) {
+            console.log('[Node Generator] Processing child block:', nextBlock.type);
             const blockCode = pythonGenerator.blockToCode(nextBlock);
+            console.log('[Node Generator] Generated code for', nextBlock.type, ':', blockCode);
             if (blockCode) {
                 const codeStr = typeof blockCode === 'string' ? blockCode : blockCode[0];
-                // Callback definitions go as class methods
-                if (nextBlock.type.includes('_callback')) {
-                    callbackMethods += pythonGenerator.INDENT + codeStr.split('\n').join('\n' + pythonGenerator.INDENT) + '\n';
-                } else {
-                    // Other blocks go into __init__
-                    initContent += pythonGenerator.INDENT + pythonGenerator.INDENT + codeStr;
-                }
+                // Other blocks go into __init__
+                initContent += pythonGenerator.INDENT + pythonGenerator.INDENT + codeStr;
             }
             nextBlock = nextBlock.getNextBlock();
+        }
+
+        console.log('[Node Generator] Final initContent:', initContent);
+
+        // Collect stored callbacks from subscriber blocks
+        if (block.workspace.subscriberCallbacks && block.workspace.subscriberCallbacks.length > 0) {
+            for (const cb of block.workspace.subscriberCallbacks) {
+                callbackMethods += `\n${pythonGenerator.INDENT}def ${cb.name}(self, msg):\n`;
+                // Add extra indentation to callback content since it's inside a class method
+                const indentedContent = cb.content
+                    ? cb.content.split('\n').map(line => line ? pythonGenerator.INDENT + line : '').join('\n')
+                    : `${pythonGenerator.INDENT}${pythonGenerator.INDENT}pass\n`;
+                callbackMethods += indentedContent;
+            }
+        }
+
+        // Collect stored callbacks from timer blocks
+        if (block.workspace.timerCallbacks && block.workspace.timerCallbacks.length > 0) {
+            for (const cb of block.workspace.timerCallbacks) {
+                callbackMethods += `\n${pythonGenerator.INDENT}def ${cb.name}(self):\n`;
+                // Add extra indentation to callback content since it's inside a class method
+                const indentedContent = cb.content
+                    ? cb.content.split('\n').map(line => line ? pythonGenerator.INDENT + line : '').join('\n')
+                    : `${pythonGenerator.INDENT}${pythonGenerator.INDENT}pass\n`;
+                callbackMethods += indentedContent;
+            }
         }
 
         // Build the class
@@ -111,7 +140,7 @@ export function initNodeGenerator(Blockly) {
 
         // Add callback methods
         if (callbackMethods) {
-            code += '\n' + callbackMethods;
+            code += callbackMethods;
         }
 
         // Build the main function
@@ -219,7 +248,23 @@ export function initNodeGenerator(Blockly) {
 
     pythonGenerator.forBlock['node_publishers_create'] = function (block) {
         const name = block.getFieldValue('NAME') || 'publisher';
-        const msgType = block.getFieldValue('MSG_TYPE') || 'String';
+        // Check if type block is connected, otherwise use default
+        const typeInput = block.getInput('MSG_TYPE');
+        let msgType = 'String';
+        if (typeInput && typeInput.connection && typeInput.connection.targetBlock()) {
+            const typeBlock = typeInput.connection.targetBlock();
+            console.log('[Node Generator] Type block connected:', typeBlock.type);
+            // Get the type name from the block type itself (e.g. node_messages_type_string -> String)
+            const typeMatch = typeBlock.type.match(/node_messages_type_(\w+)/);
+            if (typeMatch) {
+                msgType = typeMatch[1].charAt(0).toUpperCase() + typeMatch[1].slice(1);
+                // Handle special cases
+                if (msgType === 'Laserscan') msgType = 'LaserScan';
+                if (msgType === 'Int32') msgType = 'Int32';
+                if (msgType === 'Float64') msgType = 'Float64';
+            }
+            console.log('[Node Generator] Extracted msgType:', msgType);
+        }
         const topic = block.getFieldValue('TOPIC') || '/topic';
         const qos = block.getFieldValue('QOS') || 10;
 
@@ -242,36 +287,60 @@ export function initNodeGenerator(Blockly) {
         return `${name} = ${msgType}\n`;
     };
 
+    pythonGenerator.forBlock['node_publishers_set_field'] = function (block) {
+        const msg = block.getFieldValue('MSG') || 'msg';
+        const field = block.getFieldValue('FIELD') || 'data';
+        const value = pythonGenerator.valueToCode(block, 'VALUE', 0) || "''";
+        return `${msg}.${field} = ${value}\n`;
+    };
+
     // ========================================
     // SUBSCRIBERS BLOCKS
     // ========================================
 
     pythonGenerator.forBlock['node_subscribers_create'] = function (block) {
         const name = block.getFieldValue('NAME') || 'subscription';
-        const msgType = block.getFieldValue('MSG_TYPE') || 'String';
+        // Check if type block is connected, otherwise use default
+        const typeInput = block.getInput('MSG_TYPE');
+        let msgType = 'String';
+        if (typeInput && typeInput.connection && typeInput.connection.targetBlock()) {
+            const typeBlock = typeInput.connection.targetBlock();
+            // Get the type name from the block type itself
+            const typeMatch = typeBlock.type.match(/node_messages_type_(\w+)/);
+            if (typeMatch) {
+                msgType = typeMatch[1].charAt(0).toUpperCase() + typeMatch[1].slice(1);
+                if (msgType === 'Laserscan') msgType = 'LaserScan';
+                if (msgType === 'Int32') msgType = 'Int32';
+                if (msgType === 'Float64') msgType = 'Float64';
+            }
+        }
         const topic = block.getFieldValue('TOPIC') || '/topic';
-        const callback = block.getFieldValue('CALLBACK') || 'listener_callback';
+        const callbackName = name + '_callback';
+
+        // Get inline callback content
+        const callbackContent = pythonGenerator.statementToCode(block, 'CALLBACK_CONTENT');
 
         const msgImport = getMsgImport(msgType);
         addImport(msgImport);
 
-        return `self.${name} = self.create_subscription(${msgType}, '${topic}', self.${callback}, 10)\n`;
+        // Store callback method to be added to the class
+        if (!block.workspace.subscriberCallbacks) {
+            block.workspace.subscriberCallbacks = [];
+        }
+        block.workspace.subscriberCallbacks.push({
+            name: callbackName,
+            content: callbackContent || pythonGenerator.INDENT + 'pass\n'
+        });
+
+        return `self.${name} = self.create_subscription(${msgType}, '${topic}', self.${callbackName}, 10)\n`;
     };
 
-    pythonGenerator.forBlock['node_subscribers_callback'] = function (block) {
-        const name = block.getFieldValue('NAME') || 'listener_callback';
-        const content = pythonGenerator.statementToCode(block, 'CONTENT');
-
-        let code = `def ${name}(self, msg):\n`;
-        code += content;
-
-        return code;
-    };
+    // Legacy callback block - kept for backwards compatibility but not shown in palette
 
     pythonGenerator.forBlock['node_subscribers_get_data'] = function (block) {
         const msg = block.getFieldValue('MSG') || 'msg';
         const field = block.getFieldValue('FIELD') || 'data';
-        return [`${msg}.${field}`, pythonGenerator.ORDER_ATOMIC];
+        return [`${msg}.${field}`, 0];
     };
 
     // ========================================
@@ -281,20 +350,24 @@ export function initNodeGenerator(Blockly) {
     pythonGenerator.forBlock['node_timers_create'] = function (block) {
         const name = block.getFieldValue('NAME') || 'timer';
         const period = block.getFieldValue('PERIOD') || 1.0;
-        const callback = block.getFieldValue('CALLBACK') || 'timer_callback';
+        const callbackName = name + '_callback';
 
-        return `self.${name} = self.create_timer(${period}, self.${callback})\n`;
+        // Get inline callback content
+        const callbackContent = pythonGenerator.statementToCode(block, 'CALLBACK_CONTENT');
+
+        // Store callback method to be added to the class
+        if (!block.workspace.timerCallbacks) {
+            block.workspace.timerCallbacks = [];
+        }
+        block.workspace.timerCallbacks.push({
+            name: callbackName,
+            content: callbackContent || pythonGenerator.INDENT + 'pass\n'
+        });
+
+        return `self.${name} = self.create_timer(${period}, self.${callbackName})\n`;
     };
 
-    pythonGenerator.forBlock['node_timers_callback'] = function (block) {
-        const name = block.getFieldValue('NAME') || 'timer_callback';
-        const content = pythonGenerator.statementToCode(block, 'CONTENT');
-
-        let code = `def ${name}(self):\n`;
-        code += content;
-
-        return code;
-    };
+    // Legacy callback block - kept for backwards compatibility but not shown in palette
 
     pythonGenerator.forBlock['node_timers_cancel'] = function (block) {
         const name = block.getFieldValue('NAME') || 'timer';
@@ -305,6 +378,44 @@ export function initNodeGenerator(Blockly) {
     // MESSAGES BLOCKS
     // ========================================
 
+    // === Message Type Generators ===
+    // Note: Order 0 = ATOMIC (highest precedence, no parentheses needed)
+    pythonGenerator.forBlock['node_messages_type_string'] = function (block) {
+        addImport('from std_msgs.msg import String');
+        return ['String', 0];
+    };
+
+    pythonGenerator.forBlock['node_messages_type_int32'] = function (block) {
+        addImport('from std_msgs.msg import Int32');
+        return ['Int32', 0];
+    };
+
+    pythonGenerator.forBlock['node_messages_type_float64'] = function (block) {
+        addImport('from std_msgs.msg import Float64');
+        return ['Float64', 0];
+    };
+
+    pythonGenerator.forBlock['node_messages_type_bool'] = function (block) {
+        addImport('from std_msgs.msg import Bool');
+        return ['Bool', 0];
+    };
+
+    pythonGenerator.forBlock['node_messages_type_twist'] = function (block) {
+        addImport('from geometry_msgs.msg import Twist');
+        return ['Twist', 0];
+    };
+
+    pythonGenerator.forBlock['node_messages_type_pose'] = function (block) {
+        addImport('from geometry_msgs.msg import Pose');
+        return ['Pose', 0];
+    };
+
+    pythonGenerator.forBlock['node_messages_type_laserscan'] = function (block) {
+        addImport('from sensor_msgs.msg import LaserScan');
+        return ['LaserScan', 0];
+    };
+
+    // === Message Data Generators ===
     pythonGenerator.forBlock['node_messages_string'] = function (block) {
         const data = block.getFieldValue('DATA') || 'Hello';
         addImport('from std_msgs.msg import String');
@@ -413,24 +524,41 @@ export function initNodeGenerator(Blockly) {
     // LOGGING BLOCKS
     // ========================================
 
+    // Text value generator
+    pythonGenerator.forBlock['node_logging_text'] = function (block) {
+        const text = block.getFieldValue('TEXT') || '';
+        return [`'${text.replace(/'/g, "\\'")}'`, 0];
+    };
+
+    // Msg variable generator
+    pythonGenerator.forBlock['node_logging_msg'] = function (block) {
+        return ['msg', 0];
+    };
+
+    // Msg.field generator
+    pythonGenerator.forBlock['node_logging_msg_data'] = function (block) {
+        const field = block.getFieldValue('FIELD') || 'data';
+        return [`msg.${field}`, 0];
+    };
+
     pythonGenerator.forBlock['node_logging_info'] = function (block) {
-        const message = block.getFieldValue('MESSAGE') || 'Message';
-        return `self.get_logger().info('${escapeString(message)}')\n`;
+        const message = pythonGenerator.valueToCode(block, 'MESSAGE', 0) || "'Message'";
+        return `self.get_logger().info(str(${message}))\n`;
     };
 
     pythonGenerator.forBlock['node_logging_warn'] = function (block) {
-        const message = block.getFieldValue('MESSAGE') || 'Warning';
-        return `self.get_logger().warning('${escapeString(message)}')\n`;
+        const message = pythonGenerator.valueToCode(block, 'MESSAGE', 0) || "'Warning'";
+        return `self.get_logger().warning(str(${message}))\n`;
     };
 
     pythonGenerator.forBlock['node_logging_error'] = function (block) {
-        const message = block.getFieldValue('MESSAGE') || 'Error';
-        return `self.get_logger().error('${escapeString(message)}')\n`;
+        const message = pythonGenerator.valueToCode(block, 'MESSAGE', 0) || "'Error'";
+        return `self.get_logger().error(str(${message}))\n`;
     };
 
     pythonGenerator.forBlock['node_logging_debug'] = function (block) {
-        const message = block.getFieldValue('MESSAGE') || 'Debug';
-        return `self.get_logger().debug('${escapeString(message)}')\n`;
+        const message = pythonGenerator.valueToCode(block, 'MESSAGE', 0) || "'Debug'";
+        return `self.get_logger().debug(str(${message}))\n`;
     };
 
     // ========================================
