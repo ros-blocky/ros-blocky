@@ -1,11 +1,19 @@
-const { dialog, BrowserWindow } = require('electron');
+/**
+ * Package Service - Handles ROS2 package operations
+ * Refactored to delegate to specialized services for better maintainability
+ */
+
+const { BrowserWindow } = require('electron');
 const fs = require('fs').promises;
 const path = require('path');
 const { spawn } = require('child_process');
 
-/**
- * Package Service - Handles ROS2 package operations
- */
+// Import specialized services
+const dialogService = require('./dialogService');
+const setupPyService = require('./setupPyService');
+const nodeService = require('./nodeService');
+const fileService = require('./fileService');
+
 class PackageService {
     constructor() {
         this.currentProjectPath = null;
@@ -17,6 +25,12 @@ class PackageService {
      */
     setProjectPath(projectPath) {
         this.currentProjectPath = projectPath;
+
+        // Initialize child services with project path getter
+        const getProjectPath = () => this.currentProjectPath;
+        setupPyService.init(getProjectPath);
+        nodeService.init(getProjectPath);
+        fileService.init(getProjectPath);
     }
 
     /**
@@ -27,54 +41,151 @@ class PackageService {
         return this.currentProjectPath;
     }
 
-    /**
-     * Prompt user for package name
-     * @returns {Promise<string|null>}
-     */
-    /**
-     * Prompt user for package name
-     * @returns {Promise<string|null>}
-     */
-    async promptPackageName() {
-        return new Promise((resolve) => {
-            const promptWindow = new BrowserWindow({
-                width: 450,
-                height: 220,
-                modal: true,
-                frame: false,
-                resizable: false,
-                show: false,
-                parent: BrowserWindow.getFocusedWindow(),
-                webPreferences: {
-                    preload: path.join(__dirname, '../../preload/dialogPreload.js'),
-                    nodeIntegration: false,
-                    contextIsolation: true
-                }
-            });
+    // ============== Dialog Delegates ==============
 
-            // Load HTML file
-            promptWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/packageNamePrompt.html'));
-
-            // Show when ready to prevent white flash
-            promptWindow.once('ready-to-show', () => {
-                promptWindow.show();
-            });
-
-            const { ipcMain } = require('electron');
-            const handler = (event, name) => {
-                promptWindow.close();
-                ipcMain.removeListener('package-name-result', handler);
-                resolve(name);
-            };
-
-            ipcMain.on('package-name-result', handler);
-
-            promptWindow.on('closed', () => {
-                ipcMain.removeListener('package-name-result', handler);
-                resolve(null);
-            });
-        });
+    promptPackageName() {
+        return dialogService.promptPackageName();
     }
+
+    showConfirmDialog(message) {
+        return dialogService.showConfirmDialog(message);
+    }
+
+    showLoadingDialog(config) {
+        return dialogService.showLoadingDialog(config);
+    }
+
+    promptDeletePackage(packageName) {
+        return dialogService.promptDeletePackage(packageName);
+    }
+
+    promptItemName(itemType, packageName) {
+        return dialogService.promptItemName(itemType, packageName);
+    }
+
+    promptNodeName(packageName) {
+        return dialogService.promptNodeName(packageName);
+    }
+
+    promptUrdfName(packageName) {
+        return dialogService.promptUrdfName(packageName);
+    }
+
+    promptConfigName(packageName) {
+        return dialogService.promptConfigName(packageName);
+    }
+
+    promptLaunchName(packageName) {
+        return dialogService.promptLaunchName(packageName);
+    }
+
+    promptGenericFileName(packageName, title, prompt) {
+        return dialogService.promptGenericFileName(packageName, title, prompt);
+    }
+
+    // ============== Node Delegates ==============
+
+    createNode(packageName, nodeName) {
+        return nodeService.createNode(packageName, nodeName);
+    }
+
+    saveNodeFile(packageName, fileName, content) {
+        return nodeService.saveNodeFile(packageName, fileName, content);
+    }
+
+    saveNodeBlockState(packageName, fileName, blockXml) {
+        return nodeService.saveNodeBlockState(packageName, fileName, blockXml);
+    }
+
+    loadNodeBlockState(packageName, fileName) {
+        return nodeService.loadNodeBlockState(packageName, fileName);
+    }
+
+    listPackageNodes(packageName) {
+        return nodeService.listPackageNodes(packageName);
+    }
+
+    toPascalCase(str) {
+        return nodeService.toPascalCase(str);
+    }
+
+    // ============== File Delegates ==============
+
+    createUrdf(packageName, urdfName) {
+        return fileService.createUrdf(packageName, urdfName);
+    }
+
+    saveUrdfFile(packageName, fileName, content) {
+        return fileService.saveUrdfFile(packageName, fileName, content);
+    }
+
+    saveBlockState(packageName, fileName, blockXml) {
+        return fileService.saveBlockState(packageName, fileName, blockXml);
+    }
+
+    loadBlockState(packageName, fileName) {
+        return fileService.loadBlockState(packageName, fileName);
+    }
+
+    listPackageUrdfs(packageName) {
+        return fileService.listPackageUrdfs(packageName);
+    }
+
+    createConfig(packageName, configName) {
+        return fileService.createConfig(packageName, configName);
+    }
+
+    listPackageConfigs(packageName) {
+        return fileService.listPackageConfigs(packageName);
+    }
+
+    createLaunch(packageName, launchName) {
+        return fileService.createLaunch(packageName, launchName);
+    }
+
+    listPackageLaunches(packageName) {
+        return fileService.listPackageLaunches(packageName);
+    }
+
+    importMeshFiles(packageName) {
+        return fileService.importMeshFiles(packageName);
+    }
+
+    listPackageMeshes(packageName) {
+        return fileService.listPackageMeshes(packageName);
+    }
+
+    deleteSectionFiles(packageName, sectionType) {
+        return fileService.deleteSectionFiles(packageName, sectionType);
+    }
+
+    deleteSectionFile(packageName, sectionType, fileName) {
+        return fileService.deleteSectionFile(packageName, sectionType, fileName);
+    }
+
+    createSectionFile(packageName, folderName, fileName) {
+        return fileService.createSectionFile(packageName, folderName, fileName);
+    }
+
+    // ============== Setup.py Delegates ==============
+
+    addNodeEntryPoint(packageName, nodeName) {
+        return setupPyService.addNodeEntryPoint(packageName, nodeName);
+    }
+
+    removeNodeEntryPoint(packageName, nodeName) {
+        return setupPyService.removeNodeEntryPoint(packageName, nodeName);
+    }
+
+    addDataFilesEntry(packageName, folderName) {
+        return setupPyService.addDataFilesEntry(packageName, folderName);
+    }
+
+    removeDataFilesEntry(packageName, folderName) {
+        return setupPyService.removeDataFilesEntry(packageName, folderName);
+    }
+
+    // ============== Package Operations (kept here) ==============
 
     /**
      * Create a new ROS2 package
@@ -137,12 +248,10 @@ class PackageService {
             });
             loadingWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/packageCreationLoading.html'));
 
-            // Show when ready to prevent white flash
             loadingWindow.once('ready-to-show', () => {
                 loadingWindow.show();
             });
 
-            // Update status
             loadingWindow.webContents.on('did-finish-load', () => {
                 loadingWindow.webContents.send('package-creation-status', `Creating package "${packageName}"...`);
             });
@@ -175,7 +284,6 @@ class PackageService {
             }
 
         } catch (error) {
-            // Close loading dialog on error
             if (loadingWindow && !loadingWindow.isDestroyed()) {
                 loadingWindow.close();
             }
@@ -185,144 +293,6 @@ class PackageService {
                 message: `Error creating package: ${error.message}`
             };
         }
-    }
-
-    /**
-     * Show generic confirm dialog with Yes/No buttons
-     * @param {string} message - Message to display
-     * @returns {Promise<boolean>} - True if user clicked Yes, false otherwise
-     */
-    showConfirmDialog(message) {
-        return new Promise((resolve) => {
-            const confirmWindow = new BrowserWindow({
-                width: 400,
-                height: 180,
-                modal: true,
-                frame: false,
-                resizable: false,
-                show: false,
-                parent: BrowserWindow.getFocusedWindow(),
-                webPreferences: {
-                    preload: path.join(__dirname, '../../preload/dialogPreload.js'),
-                    nodeIntegration: false,
-                    contextIsolation: true
-                }
-            });
-
-            confirmWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/confirmDialog.html'));
-
-            // Show when ready to prevent white flash
-            confirmWindow.once('ready-to-show', () => {
-                confirmWindow.show();
-            });
-
-            // Send config after load
-            confirmWindow.webContents.on('did-finish-load', () => {
-                confirmWindow.webContents.send('set-confirm-config', { message });
-            });
-
-            const { ipcMain } = require('electron');
-            const handler = (event, confirmed) => {
-                confirmWindow.close();
-                ipcMain.removeListener('confirm-result', handler);
-                resolve(confirmed);
-            };
-
-            ipcMain.on('confirm-result', handler);
-
-            confirmWindow.on('closed', () => {
-                ipcMain.removeListener('confirm-result', handler);
-                resolve(false);
-            });
-        });
-    }
-
-    /**
-     * Show generic loading dialog
-     * @param {Object} config - { type: 'create'|'build', target: 'all'|'packageName' }
-     * @returns {Promise<BrowserWindow>} The loading window
-     */
-    showLoadingDialog(config) {
-        return new Promise((resolve) => {
-            const loadingWindow = new BrowserWindow({
-                width: 400,
-                height: 280,
-                modal: true,
-                frame: false,
-                resizable: false,
-                show: false,
-                parent: BrowserWindow.getFocusedWindow(),
-                webPreferences: {
-                    preload: path.join(__dirname, '../../preload/dialogPreload.js'),
-                    nodeIntegration: false,
-                    contextIsolation: true
-                }
-            });
-
-            loadingWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/loadingDialog.html'));
-
-            // Show when ready to prevent white flash
-            loadingWindow.once('ready-to-show', () => {
-                loadingWindow.show();
-            });
-
-            // Send config after load
-            loadingWindow.webContents.on('did-finish-load', () => {
-                loadingWindow.webContents.send('loading-config', config);
-            });
-
-            resolve(loadingWindow);
-        });
-    }
-
-    /**
-     * Show delete confirmation dialog
-     * @param {string} packageName - Name of the package to delete
-     * @returns {Promise<boolean>} - True if user confirmed, false otherwise
-     */
-    promptDeletePackage(packageName) {
-        return new Promise((resolve) => {
-            const confirmWindow = new BrowserWindow({
-                width: 450,
-                height: 380,
-                modal: true,
-                frame: false,
-                resizable: false,
-                show: false,
-                parent: BrowserWindow.getFocusedWindow(),
-                webPreferences: {
-                    preload: path.join(__dirname, '../../preload/dialogPreload.js'),
-                    nodeIntegration: false,
-                    contextIsolation: true
-                }
-            });
-
-            confirmWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/deletePackageConfirm.html'));
-
-            // Show when ready to prevent white flash
-            confirmWindow.once('ready-to-show', () => {
-                confirmWindow.show();
-            });
-
-            // Send package name after load
-            confirmWindow.webContents.on('did-finish-load', () => {
-                confirmWindow.webContents.send('set-package-name', packageName);
-            });
-
-            const { ipcMain } = require('electron');
-            const handler = (event, confirmedName) => {
-                confirmWindow.close();
-                ipcMain.removeListener('delete-package-confirmed', handler);
-                resolve(confirmedName === packageName);
-            };
-
-            ipcMain.on('delete-package-confirmed', handler);
-
-            confirmWindow.on('closed', () => {
-                ipcMain.removeListener('delete-package-confirmed', handler);
-                resolve(false);
-            });
-        });
     }
 
     /**
@@ -378,1117 +348,6 @@ class PackageService {
     }
 
     /**
-     * Show generic item name prompt dialog
-     * @param {string} itemType - Type of item: 'node', 'urdf', 'config', 'launch'
-     * @param {string} packageName - Name of the package
-     * @returns {Promise<{name: string, type: string}|null>} - Item info or null if cancelled
-     */
-    promptItemName(itemType, packageName) {
-        return new Promise((resolve) => {
-            const promptWindow = new BrowserWindow({
-                width: 450,
-                height: 300,
-                modal: true,
-                frame: false,
-                resizable: false,
-                show: false,
-                parent: BrowserWindow.getFocusedWindow(),
-                webPreferences: {
-                    preload: path.join(__dirname, '../../preload/dialogPreload.js'),
-                    nodeIntegration: false,
-                    contextIsolation: true
-                }
-            });
-
-            promptWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/itemNamePrompt.html'));
-
-            // Show when ready to prevent white flash
-            promptWindow.once('ready-to-show', () => {
-                promptWindow.show();
-            });
-
-            // Send item config after load
-            promptWindow.webContents.on('did-finish-load', () => {
-                promptWindow.webContents.send('set-item-config', {
-                    type: itemType,
-                    packageName: packageName
-                });
-            });
-
-            const { ipcMain } = require('electron');
-            const handler = (event, result) => {
-                promptWindow.close();
-                ipcMain.removeListener('item-name-result', handler);
-                resolve(result);
-            };
-
-            ipcMain.on('item-name-result', handler);
-
-            promptWindow.on('closed', () => {
-                ipcMain.removeListener('item-name-result', handler);
-                resolve(null);
-            });
-        });
-    }
-
-    /**
-     * Show node name prompt dialog (convenience method)
-     * @param {string} packageName - Name of the package
-     * @returns {Promise<string|null>} - Node name or null if cancelled
-     */
-    async promptNodeName(packageName) {
-        const result = await this.promptItemName('node', packageName);
-        return result ? result.name : null;
-    }
-
-    /**
-     * Create a new node in a package
-     * @param {string} packageName - Name of the package
-     * @param {string} nodeName - Name of the node
-     * @returns {Promise<{success: boolean, message: string, nodePath?: string}>}
-     */
-    async createNode(packageName, nodeName) {
-        try {
-            if (!this.currentProjectPath) {
-                return {
-                    success: false,
-                    message: 'No project is currently loaded.'
-                };
-            }
-
-            // Validate node name
-            if (!nodeName || nodeName.trim() === '') {
-                return { success: false, message: 'Node name cannot be empty' };
-            }
-
-            const validNamePattern = /^[a-z][a-z0-9_]*$/;
-            if (!validNamePattern.test(nodeName)) {
-                return {
-                    success: false,
-                    message: 'Invalid node name. Must start with a letter and contain only lowercase letters, numbers, and underscores.'
-                };
-            }
-
-            const packagePath = path.join(this.currentProjectPath, 'src', packageName);
-            const nodeDir = path.join(packagePath, packageName);
-            const nodePath = path.join(nodeDir, `${nodeName}.py`);
-
-            // Check if package exists
-            try {
-                await fs.access(packagePath);
-            } catch {
-                return {
-                    success: false,
-                    message: `Package "${packageName}" not found.`
-                };
-            }
-
-            // Check if node already exists
-            try {
-                await fs.access(nodePath);
-                return {
-                    success: false,
-                    message: `Node "${nodeName}" already exists in package "${packageName}".`
-                };
-            } catch {
-                // Node doesn't exist, continue
-            }
-
-            // Create node Python file
-            const nodeContent = `#!/usr/bin/env python3
-import rclpy
-from rclpy.node import Node
-
-
-class ${this.toPascalCase(nodeName)}(Node):
-    """${nodeName} node."""
-
-    def __init__(self):
-        super().__init__('${nodeName}')
-        self.get_logger().info('${nodeName} node started')
-
-
-def main(args=None):
-    rclpy.init(args=args)
-    node = ${this.toPascalCase(nodeName)}()
-    
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
-
-
-if __name__ == '__main__':
-    main()
-`;
-
-            await fs.writeFile(nodePath, nodeContent);
-
-            // Update setup.py to add entry point
-            await this.addNodeEntryPoint(packageName, nodeName);
-
-            return {
-                success: true,
-                message: `Node "${nodeName}" created successfully!`,
-                nodePath
-            };
-
-        } catch (error) {
-            console.error('Error creating node:', error);
-            return {
-                success: false,
-                message: `Error creating node: ${error.message}`
-            };
-        }
-    }
-
-    /**
-     * Convert snake_case to PascalCase
-     */
-    toPascalCase(str) {
-        return str.split('_').map(word =>
-            word.charAt(0).toUpperCase() + word.slice(1)
-        ).join('');
-    }
-
-    /**
-     * Add node entry point to setup.py
-     */
-    async addNodeEntryPoint(packageName, nodeName) {
-        const setupPyPath = path.join(this.currentProjectPath, 'src', packageName, 'setup.py');
-
-        try {
-            let content = await fs.readFile(setupPyPath, 'utf8');
-
-            // Find the console_scripts section and add the entry point
-            const entryPoint = `'${nodeName} = ${packageName}.${nodeName}:main'`;
-
-            // Check if entry point already exists
-            if (content.includes(entryPoint)) {
-                return;
-            }
-
-            // Find console_scripts array and add entry
-            const consoleScriptsMatch = content.match(/'console_scripts':\s*\[\s*\]/);
-            if (consoleScriptsMatch) {
-                // Empty array - add first entry
-                content = content.replace(
-                    /'console_scripts':\s*\[\s*\]/,
-                    `'console_scripts': [\n            ${entryPoint},\n        ]`
-                );
-            } else {
-                // Array has entries - add to existing
-                const match = content.match(/'console_scripts':\s*\[([^\]]*)\]/);
-                if (match) {
-                    let existingEntries = match[1].trim();
-                    if (existingEntries) {
-                        // Ensure existing entries end with a comma
-                        if (!existingEntries.endsWith(',')) {
-                            existingEntries += ',';
-                        }
-                        content = content.replace(
-                            /'console_scripts':\s*\[[^\]]*\]/,
-                            `'console_scripts': [\n            ${existingEntries}\n            ${entryPoint},\n        ]`
-                        );
-                    }
-                }
-            }
-
-            await fs.writeFile(setupPyPath, content);
-        } catch (error) {
-            console.error('Error updating setup.py:', error);
-        }
-    }
-
-    /**
-     * Remove node entry point from setup.py
-     * @param {string} packageName - Package name
-     * @param {string} nodeName - Node name to remove
-     */
-    async removeNodeEntryPoint(packageName, nodeName) {
-        const setupPyPath = path.join(this.currentProjectPath, 'src', packageName, 'setup.py');
-
-        try {
-            let content = await fs.readFile(setupPyPath, 'utf8');
-
-            // Create regex pattern to match the entry point line (with various whitespace)
-            const entryPointPattern = new RegExp(
-                `\\s*'${nodeName}\\s*=\\s*${packageName}\\.${nodeName}:main'\\s*,?`,
-                'g'
-            );
-
-            // Remove the entry point
-            content = content.replace(entryPointPattern, '');
-
-            // Clean up any trailing commas before closing bracket
-            content = content.replace(/,(\s*)\]/g, '$1]');
-
-            // Clean up empty console_scripts arrays (remove extra whitespace)
-            content = content.replace(
-                /'console_scripts':\s*\[\s*\n\s*\]/g,
-                "'console_scripts': []"
-            );
-
-            await fs.writeFile(setupPyPath, content);
-            console.log(`Removed entry point for ${nodeName} from setup.py`);
-        } catch (error) {
-            console.error('Error removing entry point from setup.py:', error);
-        }
-    }
-
-    /**
-     * Add a data_files entry for a folder (meshes, urdf, config, launch)
-     * @param {string} packageName - Package name
-     * @param {string} folderName - Folder name (meshes, urdf, config, launch)
-     */
-    async addDataFilesEntry(packageName, folderName) {
-        const setupPyPath = path.join(this.currentProjectPath, 'src', packageName, 'setup.py');
-
-        try {
-            let content = await fs.readFile(setupPyPath, 'utf8');
-
-            // Add necessary imports FIRST if not present
-            // These are always needed for data_files entries with os.path.join and glob
-            let contentModified = false;
-
-            if (!content.includes('import os')) {
-                content = content.replace(
-                    /^(from setuptools import .+)$/m,
-                    'import os\n$1'
-                );
-                contentModified = true;
-            }
-            if (!content.includes('from glob import glob')) {
-                content = content.replace(
-                    /^(from setuptools import .+)$/m,
-                    '$1\nfrom glob import glob'
-                );
-                contentModified = true;
-            }
-
-            // Check if entry already exists (after adding imports)
-            // Use more specific check to match the data_files entry pattern
-            const entryPattern = new RegExp(`os\\.path\\.join\\('share',\\s*package_name,\\s*'${folderName}'\\)`);
-            if (entryPattern.test(content)) {
-                // Entry already exists, but we may have added imports - save if modified
-                if (contentModified) {
-                    await fs.writeFile(setupPyPath, content);
-                    console.log(`Added missing imports to setup.py for ${folderName}`);
-                }
-                console.log(`Data files entry for ${folderName} already exists`);
-                return;
-            }
-
-            // Determine the glob pattern based on folder type
-            const globPattern = folderName === 'launch' ? `glob('${folderName}/*.py')` : `glob('${folderName}/*')`;
-
-            // The entry to add: (os.path.join('share', package_name, 'folder'), glob('folder/*'))
-            const entryToAdd = `(os.path.join('share', package_name, '${folderName}'), ${globPattern})`;
-
-            // Find data_files array and add entry
-            const dataFilesMatch = content.match(/data_files=\[([\s\S]*?)\],/);
-            if (dataFilesMatch) {
-                const existingContent = dataFilesMatch[1];
-                const newDataFiles = `data_files=[${existingContent}        ${entryToAdd},\n    ],`;
-                content = content.replace(dataFilesMatch[0], newDataFiles);
-            }
-
-            await fs.writeFile(setupPyPath, content);
-            console.log(`Added data_files entry for ${folderName} to setup.py`);
-        } catch (error) {
-            console.error('Error adding data_files entry to setup.py:', error);
-        }
-    }
-
-    /**
-     * Remove a data_files entry for a folder (meshes, urdf, config, launch)
-     * @param {string} packageName - Package name
-     * @param {string} folderName - Folder name (meshes, urdf, config, launch)
-     */
-    async removeDataFilesEntry(packageName, folderName) {
-        const setupPyPath = path.join(this.currentProjectPath, 'src', packageName, 'setup.py');
-
-        try {
-            let content = await fs.readFile(setupPyPath, 'utf8');
-
-            // Remove the data_files entry line for this folder
-            // Match patterns like: (os.path.join('share', package_name, 'folderName'), glob('folderName/*')),
-            const entryPattern = new RegExp(
-                `\\s*\\(os\\.path\\.join\\('share',\\s*package_name,\\s*'${folderName}'\\),\\s*glob\\('[^']*'\\)\\),?`,
-                'g'
-            );
-            content = content.replace(entryPattern, '');
-
-            // Clean up any double newlines
-            content = content.replace(/\n\n\n+/g, '\n\n');
-
-            await fs.writeFile(setupPyPath, content);
-            console.log(`Removed data_files entry for ${folderName} from setup.py`);
-        } catch (error) {
-            console.error('Error removing data_files entry from setup.py:', error);
-        }
-    }
-
-    /**
-     * List nodes in a package
-     * @param {string} packageName - Name of the package
-     * @returns {Promise<string[]>}
-     */
-    async listPackageNodes(packageName) {
-        try {
-            const nodeDir = path.join(this.currentProjectPath, 'src', packageName, packageName);
-            const files = await fs.readdir(nodeDir);
-
-            // Filter .py files, exclude __init__.py
-            return files
-                .filter(f => f.endsWith('.py') && f !== '__init__.py')
-                .map(f => f.replace('.py', ''));
-        } catch {
-            return [];
-        }
-    }
-
-    /**
-     * Prompt for URDF name (convenience method)
-     * @param {string} packageName - Name of the package
-     * @returns {Promise<string|null>}
-     */
-    async promptUrdfName(packageName) {
-        const result = await this.promptItemName('urdf', packageName);
-        return result ? result.name : null;
-    }
-
-    /**
-     * Create a new URDF file in a package
-     * @param {string} packageName - Name of the package
-     * @param {string} urdfName - Name of the URDF file
-     * @returns {Promise<{success: boolean, message: string, urdfPath?: string}>}
-     */
-    async createUrdf(packageName, urdfName) {
-        try {
-            if (!this.currentProjectPath) {
-                return {
-                    success: false,
-                    message: 'No project is currently loaded.'
-                };
-            }
-
-            // Validate name
-            if (!urdfName || urdfName.trim() === '') {
-                return { success: false, message: 'URDF name cannot be empty' };
-            }
-
-            const validNamePattern = /^[a-z][a-z0-9_]*$/;
-            if (!validNamePattern.test(urdfName)) {
-                return {
-                    success: false,
-                    message: 'Invalid URDF name. Must start with a letter and contain only lowercase letters, numbers, and underscores.'
-                };
-            }
-
-            const packagePath = path.join(this.currentProjectPath, 'src', packageName);
-            const urdfDir = path.join(packagePath, 'urdf');
-            const urdfPath = path.join(urdfDir, `${urdfName}.xacro`);
-
-            // Check if package exists
-            try {
-                await fs.access(packagePath);
-            } catch {
-                return {
-                    success: false,
-                    message: `Package "${packageName}" not found.`
-                };
-            }
-
-            // Create urdf directory if it doesn't exist
-            await fs.mkdir(urdfDir, { recursive: true });
-
-            // Check if URDF already exists
-            try {
-                await fs.access(urdfPath);
-                return {
-                    success: false,
-                    message: `URDF "${urdfName}" already exists in package "${packageName}".`
-                };
-            } catch {
-                // URDF doesn't exist, continue
-            }
-
-            // Create URDF xacro file
-            const urdfContent = `<?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="${urdfName}">
-    <!-- ${urdfName} URDF description -->
-    
-    <!-- Materials -->
-    <material name="white">
-        <color rgba="1 1 1 1"/>
-    </material>
-    <material name="blue">
-        <color rgba="0 0 0.8 1"/>
-    </material>
-    
-    <!-- Base Link -->
-    <link name="base_link">
-        <visual>
-            <geometry>
-                <box size="0.1 0.1 0.1"/>
-            </geometry>
-            <material name="blue"/>
-        </visual>
-        <collision>
-            <geometry>
-                <box size="0.1 0.1 0.1"/>
-            </geometry>
-        </collision>
-        <inertial>
-            <mass value="1.0"/>
-            <inertia ixx="0.001" ixy="0" ixz="0" iyy="0.001" iyz="0" izz="0.001"/>
-        </inertial>
-    </link>
-    
-</robot>
-`;
-
-            await fs.writeFile(urdfPath, urdfContent);
-
-            // Add urdf folder to setup.py data_files
-            await this.addDataFilesEntry(packageName, 'urdf');
-
-            return {
-                success: true,
-                message: `URDF "${urdfName}" created successfully!`,
-                urdfPath
-            };
-
-        } catch (error) {
-            console.error('Error creating URDF:', error);
-            return {
-                success: false,
-                message: `Error creating URDF: ${error.message}`
-            };
-        }
-    }
-
-    /**
-     * List URDFs in a package
-     * @param {string} packageName - Name of the package
-     * @returns {Promise<string[]>}
-     */
-    async listPackageUrdfs(packageName) {
-        try {
-            const urdfDir = path.join(this.currentProjectPath, 'src', packageName, 'urdf');
-            const files = await fs.readdir(urdfDir);
-            return files.filter(f => f.endsWith('.xacro') || f.endsWith('.urdf'));
-        } catch {
-            return [];
-        }
-    }
-
-    /**
-     * Save URDF file content
-     * @param {string} packageName - Package name
-     * @param {string} fileName - File name (e.g. robot.urdf)
-     * @param {string} content - File content
-     * @returns {Promise<{success: boolean, message: string}>}
-     */
-    async saveUrdfFile(packageName, fileName, content) {
-        try {
-            if (!this.currentProjectPath) {
-                return {
-                    success: false,
-                    message: 'No project is currently loaded.'
-                };
-            }
-
-            const urdfPath = path.join(this.currentProjectPath, 'src', packageName, 'urdf', fileName);
-
-            // Write content to file
-            await fs.writeFile(urdfPath, content, 'utf8');
-
-            return {
-                success: true,
-                message: `File "${fileName}" saved successfully.`
-            };
-        } catch (error) {
-            console.error('Error saving URDF file:', error);
-            return {
-                success: false,
-                message: `Error saving file: ${error.message}`
-            };
-        }
-    }
-
-    /**
-     * Save block state to a sidecar .blocks file
-     * @param {string} packageName - Package name
-     * @param {string} fileName - Original file name (e.g. robot.urdf)
-     * @param {string} blockXml - Blockly XML serialization
-     * @returns {Promise<{success: boolean, message: string}>}
-     */
-    async saveBlockState(packageName, fileName, blockXml) {
-        try {
-            if (!this.currentProjectPath) {
-                return {
-                    success: false,
-                    message: 'No project is currently loaded.'
-                };
-            }
-
-            // Create .blocks sidecar file path
-            const blocksFileName = `${fileName}.blocks`;
-            const blocksPath = path.join(this.currentProjectPath, 'src', packageName, 'urdf', blocksFileName);
-
-            // Write block state to file
-            await fs.writeFile(blocksPath, blockXml, 'utf8');
-
-            console.log(`[PackageService] Block state saved to ${blocksFileName}`);
-            return {
-                success: true,
-                message: `Block state saved successfully.`
-            };
-        } catch (error) {
-            console.error('Error saving block state:', error);
-            return {
-                success: false,
-                message: `Error saving block state: ${error.message}`
-            };
-        }
-    }
-
-    /**
-     * Load block state from a sidecar .blocks file
-     * @param {string} packageName - Package name
-     * @param {string} fileName - Original file name (e.g. robot.urdf)
-     * @returns {Promise<{success: boolean, blockXml?: string, message?: string}>}
-     */
-    async loadBlockState(packageName, fileName) {
-        try {
-            if (!this.currentProjectPath) {
-                return {
-                    success: false,
-                    message: 'No project is currently loaded.'
-                };
-            }
-
-            // Create .blocks sidecar file path
-            const blocksFileName = `${fileName}.blocks`;
-            const blocksPath = path.join(this.currentProjectPath, 'src', packageName, 'urdf', blocksFileName);
-
-            // Check if file exists
-            try {
-                await fs.access(blocksPath);
-            } catch {
-                // File doesn't exist - this is normal for new files
-                return {
-                    success: false,
-                    message: 'No block state file found.'
-                };
-            }
-
-            // Read block state from file
-            const blockXml = await fs.readFile(blocksPath, 'utf8');
-
-            console.log(`[PackageService] Block state loaded from ${blocksFileName}`);
-            return {
-                success: true,
-                blockXml: blockXml
-            };
-        } catch (error) {
-            console.error('Error loading block state:', error);
-            return {
-                success: false,
-                message: `Error loading block state: ${error.message}`
-            };
-        }
-    }
-
-    /**
-     * Save Node Python file content
-     * @param {string} packageName - Package name
-     * @param {string} fileName - File name (e.g. my_node.py)
-     * @param {string} content - Python code content
-     * @returns {Promise<{success: boolean, message: string}>}
-     */
-    async saveNodeFile(packageName, fileName, content) {
-        try {
-            if (!this.currentProjectPath) {
-                return {
-                    success: false,
-                    message: 'No project is currently loaded.'
-                };
-            }
-
-            // Node files are in src/package_name/package_name/
-            const nodePath = path.join(this.currentProjectPath, 'src', packageName, packageName, fileName);
-
-            // Write content to file
-            await fs.writeFile(nodePath, content, 'utf8');
-
-            console.log(`[PackageService] Node file saved: ${nodePath}`);
-            return {
-                success: true,
-                message: `Node file "${fileName}" saved successfully.`
-            };
-        } catch (error) {
-            console.error('Error saving Node file:', error);
-            return {
-                success: false,
-                message: `Error saving Node file: ${error.message}`
-            };
-        }
-    }
-
-    /**
-     * Save Node block state to a sidecar .nodeblocks file
-     * @param {string} packageName - Package name
-     * @param {string} fileName - Original file name (e.g. my_node.py)
-     * @param {string} blockXml - Blockly XML serialization
-     * @returns {Promise<{success: boolean, message: string}>}
-     */
-    async saveNodeBlockState(packageName, fileName, blockXml) {
-        try {
-            if (!this.currentProjectPath) {
-                return {
-                    success: false,
-                    message: 'No project is currently loaded.'
-                };
-            }
-
-            // Create .nodeblocks sidecar file path (in same folder as node)
-            const blocksFileName = `${fileName}.nodeblocks`;
-            const blocksPath = path.join(this.currentProjectPath, 'src', packageName, packageName, blocksFileName);
-
-            // Write block state to file
-            await fs.writeFile(blocksPath, blockXml, 'utf8');
-
-            console.log(`[PackageService] Node block state saved to ${blocksFileName}`);
-            return {
-                success: true,
-                message: `Node block state saved successfully.`
-            };
-        } catch (error) {
-            console.error('Error saving Node block state:', error);
-            return {
-                success: false,
-                message: `Error saving Node block state: ${error.message}`
-            };
-        }
-    }
-
-    /**
-     * Load Node block state from a sidecar .nodeblocks file
-     * @param {string} packageName - Package name
-     * @param {string} fileName - Original file name (e.g. my_node.py)
-     * @returns {Promise<{success: boolean, blockXml?: string, message?: string}>}
-     */
-    async loadNodeBlockState(packageName, fileName) {
-        try {
-            if (!this.currentProjectPath) {
-                return {
-                    success: false,
-                    message: 'No project is currently loaded.'
-                };
-            }
-
-            // Create .nodeblocks sidecar file path
-            const blocksFileName = `${fileName}.nodeblocks`;
-            const blocksPath = path.join(this.currentProjectPath, 'src', packageName, packageName, blocksFileName);
-
-            // Check if file exists
-            try {
-                await fs.access(blocksPath);
-            } catch {
-                // File doesn't exist - this is normal for new files
-                return {
-                    success: false,
-                    message: 'No node block state file found.'
-                };
-            }
-
-            // Read block state from file
-            const blockXml = await fs.readFile(blocksPath, 'utf8');
-
-            console.log(`[PackageService] Node block state loaded from ${blocksFileName}`);
-            return {
-                success: true,
-                blockXml: blockXml
-            };
-        } catch (error) {
-            console.error('Error loading Node block state:', error);
-            return {
-                success: false,
-                message: `Error loading Node block state: ${error.message}`
-            };
-        }
-    }
-
-    /**
-     * Prompt for config name (convenience method)
-     * @param {string} packageName - Name of the package
-     * @returns {Promise<string|null>}
-     */
-    async promptConfigName(packageName) {
-        const result = await this.promptItemName('config', packageName);
-        return result ? result.name : null;
-    }
-
-    /**
-     * Create a new config file in a package
-     * @param {string} packageName - Name of the package
-     * @param {string} configName - Name of the config file
-     * @returns {Promise<{success: boolean, message: string, configPath?: string}>}
-     */
-    async createConfig(packageName, configName) {
-        try {
-            if (!this.currentProjectPath) {
-                return {
-                    success: false,
-                    message: 'No project is currently loaded.'
-                };
-            }
-
-            // Validate name
-            if (!configName || configName.trim() === '') {
-                return { success: false, message: 'Config name cannot be empty' };
-            }
-
-            const validNamePattern = /^[a-z][a-z0-9_]*$/;
-            if (!validNamePattern.test(configName)) {
-                return {
-                    success: false,
-                    message: 'Invalid config name. Must start with a letter and contain only lowercase letters, numbers, and underscores.'
-                };
-            }
-
-            const packagePath = path.join(this.currentProjectPath, 'src', packageName);
-            const configDir = path.join(packagePath, 'config');
-            const configPath = path.join(configDir, `${configName}.yaml`);
-
-            // Check if package exists
-            try {
-                await fs.access(packagePath);
-            } catch {
-                return {
-                    success: false,
-                    message: `Package "${packageName}" not found.`
-                };
-            }
-
-            // Create config directory if it doesn't exist
-            await fs.mkdir(configDir, { recursive: true });
-
-            // Check if config already exists
-            try {
-                await fs.access(configPath);
-                return {
-                    success: false,
-                    message: `Config "${configName}" already exists in package "${packageName}".`
-                };
-            } catch {
-                // Config doesn't exist, continue
-            }
-
-            // Create config yaml file
-            const configContent = `# ${configName} configuration file
-# Package: ${packageName}
-
-/**:
-  ros__parameters:
-    # Add your parameters here
-    example_param: "value"
-    example_number: 1.0
-    example_list:
-      - item1
-      - item2
-`;
-
-            await fs.writeFile(configPath, configContent);
-
-            // Add config folder to setup.py data_files
-            await this.addDataFilesEntry(packageName, 'config');
-
-            return {
-                success: true,
-                message: `Config "${configName}" created successfully!`,
-                configPath
-            };
-
-        } catch (error) {
-            console.error('Error creating config:', error);
-            return {
-                success: false,
-                message: `Error creating config: ${error.message}`
-            };
-        }
-    }
-
-    /**
-     * List configs in a package
-     * @param {string} packageName - Name of the package
-     * @returns {Promise<string[]>}
-     */
-    async listPackageConfigs(packageName) {
-        try {
-            const configDir = path.join(this.currentProjectPath, 'src', packageName, 'config');
-            const files = await fs.readdir(configDir);
-            return files.filter(f => f.endsWith('.yaml') || f.endsWith('.yml'));
-        } catch {
-            return [];
-        }
-    }
-
-    /**
-     * Prompt for launch file name (convenience method)
-     * @param {string} packageName - Name of the package
-     * @returns {Promise<string|null>}
-     */
-    async promptLaunchName(packageName) {
-        const result = await this.promptItemName('launch', packageName);
-        return result ? result.name : null;
-    }
-
-    /**
-     * Create a new launch file in a package
-     * @param {string} packageName - Name of the package
-     * @param {string} launchName - Name of the launch file
-     * @returns {Promise<{success: boolean, message: string, launchPath?: string}>}
-     */
-    async createLaunch(packageName, launchName) {
-        try {
-            if (!this.currentProjectPath) {
-                return {
-                    success: false,
-                    message: 'No project is currently loaded.'
-                };
-            }
-
-            // Validate name
-            if (!launchName || launchName.trim() === '') {
-                return { success: false, message: 'Launch file name cannot be empty' };
-            }
-
-            const validNamePattern = /^[a-z][a-z0-9_]*$/;
-            if (!validNamePattern.test(launchName)) {
-                return {
-                    success: false,
-                    message: 'Invalid launch name. Must start with a letter and contain only lowercase letters, numbers, and underscores.'
-                };
-            }
-
-            const packagePath = path.join(this.currentProjectPath, 'src', packageName);
-            const launchDir = path.join(packagePath, 'launch');
-            const launchPath = path.join(launchDir, `${launchName}.py`);
-
-            // Check if package exists
-            try {
-                await fs.access(packagePath);
-            } catch {
-                return {
-                    success: false,
-                    message: `Package "${packageName}" not found.`
-                };
-            }
-
-            // Create launch directory if it doesn't exist
-            await fs.mkdir(launchDir, { recursive: true });
-
-            // Check if launch file already exists
-            try {
-                await fs.access(launchPath);
-                return {
-                    success: false,
-                    message: `Launch file "${launchName}" already exists in package "${packageName}".`
-                };
-            } catch {
-                // Launch doesn't exist, continue
-            }
-
-            // Create launch Python file
-            const launchContent = `#!/usr/bin/env python3
-"""${launchName} launch file for ${packageName} package."""
-
-from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
-
-
-def generate_launch_description():
-    """Generate launch description."""
-    
-    # Declare launch arguments
-    # use_sim_time = LaunchConfiguration('use_sim_time')
-    
-    # declare_use_sim_time = DeclareLaunchArgument(
-    #     'use_sim_time',
-    #     default_value='false',
-    #     description='Use simulation time'
-    # )
-    
-    # Define nodes
-    # example_node = Node(
-    #     package='${packageName}',
-    #     executable='your_node_name',
-    #     name='your_node_name',
-    #     output='screen',
-    #     parameters=[{'use_sim_time': use_sim_time}]
-    # )
-    
-    return LaunchDescription([
-        # declare_use_sim_time,
-        # example_node,
-    ])
-`;
-
-            await fs.writeFile(launchPath, launchContent);
-
-            // Add launch folder to setup.py data_files
-            await this.addDataFilesEntry(packageName, 'launch');
-
-            return {
-                success: true,
-                message: `Launch file "${launchName}" created successfully!`,
-                launchPath
-            };
-
-        } catch (error) {
-            console.error('Error creating launch file:', error);
-            return {
-                success: false,
-                message: `Error creating launch file: ${error.message}`
-            };
-        }
-    }
-
-    /**
-     * List launch files in a package
-     * @param {string} packageName - Name of the package
-     * @returns {Promise<string[]>}
-     */
-    async listPackageLaunches(packageName) {
-        try {
-            const launchDir = path.join(this.currentProjectPath, 'src', packageName, 'launch');
-            const files = await fs.readdir(launchDir);
-            return files.filter(f => f.endsWith('.py'));
-        } catch {
-            return [];
-        }
-    }
-
-    /**
-     * Generic file name prompt (used by UI for urdf, config, launch)
-     * Uses the generic item prompt dialog
-     * @param {string} packageName - Name of the package
-     * @param {string} title - Dialog title
-     * @param {string} prompt - Prompt text
-     * @returns {Promise<string|null>}
-     */
-    async promptGenericFileName(packageName, title, prompt) {
-        // Determine the item type based on the title
-        let itemType = 'node'; // default
-        if (title.toLowerCase().includes('urdf')) {
-            itemType = 'urdf';
-        } else if (title.toLowerCase().includes('config')) {
-            itemType = 'config';
-        } else if (title.toLowerCase().includes('launch')) {
-            itemType = 'launch';
-        }
-
-        const result = await this.promptItemName(itemType, packageName);
-        return result ? result.name : null;
-    }
-
-    /**
-     * Create a file in a section folder (urdf, config, launch)
-     * @param {string} packageName - Name of the package
-     * @param {string} folderName - Folder name (urdf, config, launch)
-     * @param {string} fileName - Full file name with extension
-     * @returns {Promise<{success: boolean, message: string, filePath?: string}>}
-     */
-    async createSectionFile(packageName, folderName, fileName) {
-        try {
-            if (!this.currentProjectPath) {
-                return {
-                    success: false,
-                    message: 'No project is currently loaded.'
-                };
-            }
-
-            // Extract name without extension
-            const baseName = fileName.replace(/\.[^/.]+$/, '');
-
-            // Route to specific create method based on folder
-            switch (folderName) {
-                case 'urdf':
-                    return await this.createUrdf(packageName, baseName);
-                case 'config':
-                    return await this.createConfig(packageName, baseName);
-                case 'launch':
-                    return await this.createLaunch(packageName, baseName);
-                default:
-                    return {
-                        success: false,
-                        message: `Unknown folder type: ${folderName}`
-                    };
-            }
-
-        } catch (error) {
-            console.error('Error creating section file:', error);
-            return {
-                success: false,
-                message: `Error creating file: ${error.message}`
-            };
-        }
-    }
-
-    /**
-     * Run a command in the pixi environment
-     * @param {string} command - Command to run
-     * @param {string} cwd - Working directory
-     * @returns {Promise<{success: boolean, output?: string, error?: string}>}
-     */
-    runPixiCommand(command, cwd) {
-        return new Promise((resolve) => {
-            // Build full command: source ROS2 setup, then run pixi
-            const fullCommand = `call C:\\pixi_ws\\ros2-windows\\local_setup.bat && pixi run ${command}`;
-
-            const pixiProcess = spawn('cmd.exe', ['/c', fullCommand], {
-                cwd,
-                shell: false
-            });
-
-            let stdout = '';
-            let stderr = '';
-
-            pixiProcess.stdout.on('data', (data) => {
-                stdout += data.toString();
-                console.log('Output:', data.toString());
-            });
-
-            pixiProcess.stderr.on('data', (data) => {
-                stderr += data.toString();
-                console.log('Stderr:', data.toString());
-            });
-
-            pixiProcess.on('close', (code) => {
-                console.log('pixi run closed with code:', code);
-                if (code === 0 || stdout.includes('going to create')) {
-                    resolve({ success: true, output: stdout });
-                } else {
-                    resolve({ success: false, error: stderr || stdout });
-                }
-            });
-
-            pixiProcess.on('error', (error) => {
-                resolve({ success: false, error: error.message });
-            });
-        });
-    }
-
-    /**
      * List all packages in the current project
      * @returns {Promise<string[]>}
      */
@@ -1500,14 +359,12 @@ def generate_launch_description():
 
             const srcPath = path.join(this.currentProjectPath, 'src');
 
-            // Check if src directory exists
             try {
                 await fs.access(srcPath);
             } catch {
                 return [];
             }
 
-            // Read all directories in src
             const entries = await fs.readdir(srcPath, { withFileTypes: true });
             const packages = entries
                 .filter(entry => entry.isDirectory())
@@ -1522,297 +379,16 @@ def generate_launch_description():
     }
 
     /**
-     * Delete all files in a section (nodes, urdf, config, launch)
-     * @param {string} packageName - Name of the package
-     * @param {string} sectionType - Type of section: 'nodes', 'urdf', 'config', 'launch'
-     * @returns {Promise<{success: boolean, message: string}>}
+     * Run a command in the pixi environment using pixi shell
+     * @param {string} command - Command to run
+     * @param {string} targetDir - Target directory for the command
+     * @returns {Promise<{success: boolean, output?: string, error?: string}>}
      */
-    async deleteSectionFiles(packageName, sectionType) {
-        try {
-            if (!this.currentProjectPath) {
-                return {
-                    success: false,
-                    message: 'No project is currently loaded.'
-                };
-            }
-
-            // Map section type to folder name
-            const folderMap = {
-                'nodes': packageName,  // nodes are in package/package_name folder
-                'meshes': 'meshes',
-                'urdf': 'urdf',
-                'config': 'config',
-                'launch': 'launch'
-            };
-
-            const folderName = folderMap[sectionType];
-            if (!folderName) {
-                return {
-                    success: false,
-                    message: `Unknown section type: ${sectionType}`
-                };
-            }
-
-            let sectionPath;
-            if (sectionType === 'nodes') {
-                // Nodes are in package/package_name/ folder (the Python module)
-                sectionPath = path.join(this.currentProjectPath, 'src', packageName, packageName);
-            } else {
-                sectionPath = path.join(this.currentProjectPath, 'src', packageName, folderName);
-            }
-
-            // Check if section exists
-            try {
-                await fs.access(sectionPath);
-            } catch {
-                return {
-                    success: false,
-                    message: `Section "${sectionType}" not found in package "${packageName}".`
-                };
-            }
-
-            if (sectionType === 'nodes') {
-                // For nodes, we delete all .py files except __init__.py
-                const files = await fs.readdir(sectionPath);
-                const nodeFiles = files.filter(f => f.endsWith('.py') && f !== '__init__.py');
-
-                for (const file of nodeFiles) {
-                    await fs.unlink(path.join(sectionPath, file));
-                    // Remove entry point from setup.py
-                    const nodeName = file.replace('.py', '');
-                    await this.removeNodeEntryPoint(packageName, nodeName);
-                }
-
-                return {
-                    success: true,
-                    message: `Deleted ${nodeFiles.length} node(s) from package "${packageName}".`
-                };
-            } else {
-                // For other sections, delete the entire folder and recreate it empty
-                await fs.rm(sectionPath, { recursive: true, force: true });
-
-                // Remove data_files entry from setup.py
-                await this.removeDataFilesEntry(packageName, sectionType);
-
-                return {
-                    success: true,
-                    message: `Deleted all ${sectionType} files from package "${packageName}".`
-                };
-            }
-
-        } catch (error) {
-            console.error('Error deleting section files:', error);
-            return {
-                success: false,
-                message: `Error deleting ${sectionType} files: ${error.message}`
-            };
-        }
-    }
-
-    /**
-     * Delete a single file from a section
-     * @param {string} packageName - Name of the package
-     * @param {string} sectionType - Type of section: 'nodes', 'urdf', 'config', 'launch'
-     * @param {string} fileName - Name of the file to delete
-     * @returns {Promise<{success: boolean, message: string}>}
-     */
-    async deleteSectionFile(packageName, sectionType, fileName) {
-        try {
-            if (!this.currentProjectPath) {
-                return {
-                    success: false,
-                    message: 'No project is currently loaded.'
-                };
-            }
-
-            // Map section type to folder name
-            const folderMap = {
-                'nodes': packageName,
-                'meshes': 'meshes',
-                'urdf': 'urdf',
-                'config': 'config',
-                'launch': 'launch'
-            };
-
-            const folderName = folderMap[sectionType];
-            if (!folderName) {
-                return {
-                    success: false,
-                    message: `Unknown section type: ${sectionType}`
-                };
-            }
-
-            let filePath;
-            if (sectionType === 'nodes') {
-                filePath = path.join(this.currentProjectPath, 'src', packageName, packageName, fileName);
-            } else {
-                filePath = path.join(this.currentProjectPath, 'src', packageName, folderName, fileName);
-            }
-
-            // Check if file exists
-            try {
-                await fs.access(filePath);
-            } catch {
-                return {
-                    success: false,
-                    message: `File "${fileName}" not found.`
-                };
-            }
-
-            // Delete the file
-            await fs.unlink(filePath);
-
-            // For nodes, also remove entry point from setup.py
-            if (sectionType === 'nodes') {
-                const nodeName = fileName.replace('.py', '');
-                await this.removeNodeEntryPoint(packageName, nodeName);
-            }
-
-            // For urdf/config/launch/meshes, check if folder is now empty and delete it
-            if (sectionType !== 'nodes') {
-                const folderPath = path.join(this.currentProjectPath, 'src', packageName, folderName);
-                try {
-                    const remainingFiles = await fs.readdir(folderPath);
-                    if (remainingFiles.length === 0) {
-                        await fs.rmdir(folderPath);
-                        console.log(`Deleted empty folder: ${folderPath}`);
-                        // Remove data_files entry from setup.py
-                        await this.removeDataFilesEntry(packageName, sectionType);
-                    }
-                } catch (err) {
-                    console.log('Could not check/delete folder:', err.message);
-                }
-            }
-
-            return {
-                success: true,
-                message: `File "${fileName}" deleted successfully.`
-            };
-
-        } catch (error) {
-            console.error('Error deleting file:', error);
-            return {
-                success: false,
-                message: `Error deleting file: ${error.message}`
-            };
-        }
-    }
-
-    /**
-     * Import mesh files (.stl, .dae) into a package's meshes folder
-     * @param {string} packageName - Name of the package
-     * @returns {Promise<{success: boolean, message: string, filesCopied?: number}>}
-     */
-    async importMeshFiles(packageName) {
-        try {
-            if (!this.currentProjectPath) {
-                return {
-                    success: false,
-                    message: 'No project is currently loaded.'
-                };
-            }
-
-            // Open file dialog for mesh files
-            const result = await dialog.showOpenDialog({
-                title: 'Select Mesh Files',
-                filters: [
-                    { name: 'Mesh Files', extensions: ['stl', 'STL', 'dae', 'DAE'] }
-                ],
-                properties: ['openFile', 'multiSelections']
-            });
-
-            if (result.canceled || result.filePaths.length === 0) {
-                return {
-                    success: false,
-                    message: 'No files selected'
-                };
-            }
-
-            const meshesDir = path.join(this.currentProjectPath, 'src', packageName, 'meshes');
-
-            // Create meshes folder if it doesn't exist
-            try {
-                await fs.access(meshesDir);
-            } catch {
-                await fs.mkdir(meshesDir, { recursive: true });
-                console.log('Created meshes folder:', meshesDir);
-            }
-
-            // Check for duplicate files
-            const duplicates = [];
-            for (const filePath of result.filePaths) {
-                const fileName = path.basename(filePath);
-                const destPath = path.join(meshesDir, fileName);
-                try {
-                    await fs.access(destPath);
-                    duplicates.push(fileName);
-                } catch {
-                    // File doesn't exist, no duplicate
-                }
-            }
-
-            // If duplicates found, ask for confirmation
-            if (duplicates.length > 0) {
-                const duplicateList = duplicates.length <= 3
-                    ? duplicates.join(', ')
-                    : `${duplicates.slice(0, 3).join(', ')} and ${duplicates.length - 3} more`;
-                const confirmOverwrite = await this.showConfirmDialog(
-                    `The following files already exist:\n${duplicateList}\n\nDo you want to overwrite them?`
-                );
-
-                if (!confirmOverwrite) {
-                    return {
-                        success: false,
-                        message: 'Import cancelled'
-                    };
-                }
-            }
-
-            // Copy each selected file to meshes folder
-            let filesCopied = 0;
-            for (const filePath of result.filePaths) {
-                const fileName = path.basename(filePath);
-                const destPath = path.join(meshesDir, fileName);
-                await fs.copyFile(filePath, destPath);
-                filesCopied++;
-                console.log(`Copied mesh file: ${fileName}`);
-            }
-
-            // Add meshes folder to setup.py data_files
-            await this.addDataFilesEntry(packageName, 'meshes');
-
-            return {
-                success: true,
-                message: `Successfully imported ${filesCopied} mesh file(s).`,
-                filesCopied
-            };
-
-        } catch (error) {
-            console.error('Error importing mesh files:', error);
-            return {
-                success: false,
-                message: `Error importing mesh files: ${error.message}`
-            };
-        }
-    }
-
-    /**
-     * List mesh files in a package
-     * @param {string} packageName - Name of the package
-     * @returns {Promise<string[]>}
-     */
-    async listPackageMeshes(packageName) {
-        try {
-            const meshesDir = path.join(this.currentProjectPath, 'src', packageName, 'meshes');
-            const files = await fs.readdir(meshesDir);
-            return files.filter(f =>
-                f.toLowerCase().endsWith('.stl') ||
-                f.toLowerCase().endsWith('.dae')
-            );
-        } catch {
-            return [];
-        }
+    runPixiCommand(command, targetDir) {
+        const pixiUtil = require('./pixiUtil');
+        return pixiUtil.executeInPixiShell([command], { targetDir });
     }
 }
 
 module.exports = new PackageService();
+
