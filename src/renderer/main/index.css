@@ -100,10 +100,16 @@ body {
     cursor: not-allowed;
 }
 
+/* Topics Button Styles */
+.topics-btn {
+    padding: 2px 6px;
+    margin-right: 4px;
+}
+
 /* RViz Button Styles */
 .rviz-btn {
     padding: 2px 6px;
-    margin-right: 8px;
+    margin-right: 4px;
 }
 
 .rviz-icon {
@@ -116,7 +122,7 @@ body {
 /* JSP GUI Button Styles */
 .jsp-btn {
     padding: 2px 6px;
-    margin-right: 8px;
+    margin-right: 4px;
 }
 
 .jsp-icon {
@@ -129,7 +135,7 @@ body {
 /* TurtleSim Button Styles */
 .turtlesim-btn {
     padding: 2px 6px;
-    margin-right: 8px;
+    margin-right: 4px;
 }
 
 .turtlesim-icon {
@@ -313,4 +319,312 @@ body {
     height: 100%;
     align-items: center;
     justify-content: center;
+}
+
+/* ========================================
+   Topics Panel Styles
+   ======================================== */
+.topics-panel {
+    background: #1e1e1e;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    width: 350px;
+    height: 400px;
+    min-width: 280px;
+    min-height: 200px;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: 'Consolas', 'Monaco', monospace;
+    resize: both;
+}
+
+.topics-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #2d2d2d;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: grab;
+}
+
+.topics-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.topics-header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.topics-refresh-btn,
+.topics-close-btn {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1;
+    transition: color 0.2s, background-color 0.2s;
+}
+
+.topics-refresh-btn:hover,
+.topics-close-btn:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.topics-panel-content {
+    flex: 1;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+.topics-panel-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.topics-panel-content::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+.topics-panel-content::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 3px;
+}
+
+.topic-wrapper {
+    margin: 2px 0;
+}
+
+.topic-item {
+    font-size: 12px;
+    color: #4ec9b0;
+    padding: 6px 10px;
+    background: rgba(78, 201, 176, 0.1);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background-color 0.2s;
+}
+
+.topic-item:hover {
+    background: rgba(78, 201, 176, 0.2);
+}
+
+.topic-expand {
+    font-size: 8px;
+    color: #888;
+    transition: transform 0.2s;
+}
+
+.topic-name {
+    flex: 1;
+}
+
+.topic-details {
+    margin-left: 20px;
+    margin-top: 4px;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    border-left: 2px solid #4ec9b0;
+}
+
+.topic-details.hidden {
+    display: none;
+}
+
+.topic-info-row {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 6px;
+}
+
+.topic-info-row:last-child {
+    margin-bottom: 0;
+}
+
+.info-label {
+    font-size: 10px;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+}
+
+.info-value {
+    font-size: 11px;
+    color: #ccc;
+    word-break: break-all;
+}
+
+.info-value.type {
+    color: #9cdcfe;
+    font-weight: 500;
+}
+
+.topic-loading {
+    font-size: 11px;
+    color: #888;
+    font-style: italic;
+}
+
+.topic-error {
+    font-size: 11px;
+    color: #f14c4c;
+}
+
+.topics-loading {
+    color: #999;
+    font-size: 12px;
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+}
+
+.topics-empty {
+    color: #666;
+    font-size: 12px;
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+}
+
+.topics-error {
+    color: #f14c4c;
+    font-size: 12px;
+    padding: 10px;
+    background: rgba(241, 76, 76, 0.1);
+    border-radius: 4px;
+}
+
+/* Echo Button */
+.echo-btn {
+    margin-top: 8px;
+    padding: 6px 12px;
+    background: #4ec9b0;
+    color: #1e1e1e;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.echo-btn:hover {
+    background: #5fd9c0;
+}
+
+/* Echo Panel */
+.echo-panel {
+    background: #1e1e1e;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    width: 400px;
+    height: 300px;
+    min-width: 300px;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: 'Consolas', 'Monaco', monospace;
+    resize: both;
+}
+
+.echo-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #2d2d2d;
+    color: #4ec9b0;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: grab;
+}
+
+.echo-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.echo-header-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.echo-stop-btn,
+.echo-close-btn {
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 3px;
+    line-height: 1;
+}
+
+.echo-stop-btn:hover {
+    color: #f14c4c;
+    background-color: rgba(241, 76, 76, 0.1);
+}
+
+.echo-close-btn:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.echo-panel-content {
+    flex: 1;
+    padding: 8px;
+    overflow-y: auto;
+    font-size: 11px;
+}
+
+.echo-panel-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.echo-panel-content::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+.echo-panel-content::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 3px;
+}
+
+.echo-line {
+    color: #dcdcdc;
+    margin-bottom: 4px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.echo-stopped {
+    color: #f14c4c;
+    font-style: italic;
+}
+
+.echo-waiting {
+    color: #888;
+    font-style: italic;
+}
+
+.echo-error {
+    color: #f14c4c;
 }

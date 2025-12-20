@@ -583,11 +583,15 @@ if __name__ == '__main__':
                 // Array has entries - add to existing
                 const match = content.match(/'console_scripts':\s*\[([^\]]*)\]/);
                 if (match) {
-                    const existingEntries = match[1].trim();
+                    let existingEntries = match[1].trim();
                     if (existingEntries) {
+                        // Ensure existing entries end with a comma
+                        if (!existingEntries.endsWith(',')) {
+                            existingEntries += ',';
+                        }
                         content = content.replace(
-                            /'console_scripts':\s*\[([^\]]*)\]/,
-                            `'console_scripts': [${existingEntries}\n            ${entryPoint},\n        ]`
+                            /'console_scripts':\s*\[[^\]]*\]/,
+                            `'console_scripts': [\n            ${existingEntries}\n            ${entryPoint},\n        ]`
                         );
                     }
                 }

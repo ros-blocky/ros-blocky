@@ -308,6 +308,30 @@ function registerProjectIPC() {
         return await rosService.runTurtlesim();
     });
 
+    /**
+     * Handle get-topic-list IPC request
+     * Returns list of available ROS 2 topics
+     */
+    ipcMain.handle('get-topic-list', async (event) => {
+        return await rosService.getTopicList();
+    });
+
+    /**
+     * Handle get-topic-info IPC request
+     * Returns detailed info about a specific topic
+     */
+    ipcMain.handle('get-topic-info', async (event, topicName) => {
+        return await rosService.getTopicInfo(topicName);
+    });
+
+    /**
+     * Handle start-topic-echo IPC request
+     * Starts streaming ros2 topic echo output
+     */
+    ipcMain.handle('start-topic-echo', async (event, topicName) => {
+        return await rosService.startTopicEcho(topicName);
+    });
+
     // ========== Build Operations ==========
 
     /**

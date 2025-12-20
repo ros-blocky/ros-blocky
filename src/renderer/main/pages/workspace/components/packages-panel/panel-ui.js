@@ -327,7 +327,15 @@ function setupNodesSection(packageItem, packageName, nodes) {
                     setTimeout(() => resolve(true), 1000);
                 });
 
-                await savePromise;
+                const saveSuccess = await savePromise;
+
+                // If validation failed, abort the run
+                if (!saveSuccess) {
+                    console.warn('[PackagesPanel] Validation failed, aborting run');
+                    runBtn.classList.remove('loading');
+                    runBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" class="run-icon"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+                    return;
+                }
 
                 if (window.electronAPI && window.electronAPI.runNode) {
                     await window.electronAPI.runNode(packageName, nodeName);

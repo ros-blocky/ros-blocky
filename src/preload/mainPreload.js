@@ -76,6 +76,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   runRviz: () => ipcRenderer.invoke('run-rviz'),
   runJointStatePublisherGui: () => ipcRenderer.invoke('run-joint-state-publisher-gui'),
   runTurtlesim: () => ipcRenderer.invoke('run-turtlesim'),
+  getTopicList: () => ipcRenderer.invoke('get-topic-list'),
+  getTopicInfo: (topicName) => ipcRenderer.invoke('get-topic-info', topicName),
+  startTopicEcho: (topicName) => ipcRenderer.invoke('start-topic-echo', topicName),
+  onEchoOutput: (callback) => ipcRenderer.on('echo-output', (event, data, key) => callback(data, key)),
+  onEchoStopped: (callback) => ipcRenderer.on('echo-stopped', (event, data, key) => callback(data, key)),
+  removeEchoListeners: () => {
+    ipcRenderer.removeAllListeners('echo-output');
+    ipcRenderer.removeAllListeners('echo-stopped');
+  },
 
   // Process control
   stopRosProcess: (processKey) => ipcRenderer.invoke('stop-ros-process', processKey),

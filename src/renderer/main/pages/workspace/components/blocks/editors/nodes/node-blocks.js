@@ -85,6 +85,83 @@ export function registerNodeBlocks(Blockly) {
     console.log('[Node Blocks] Registering block definitions...');
 
     // ========================================
+    // CUSTOM CONNECTION CHECKER
+    // Prevents MsgType and Message Instance blocks from connecting to wrong inputs
+    // ========================================
+
+    // Type blocks - ONLY these can connect to Publisher/Subscriber type slot
+    const MsgTypeBlocks = [
+        'node_messages_type_string', 'node_messages_type_int32', 'node_messages_type_float64',
+        'node_messages_type_bool', 'node_messages_type_twist', 'node_messages_type_pose',
+        'node_messages_type_laserscan'
+    ];
+
+    // Message instance blocks - these can NOT connect anywhere
+    const MsgInstanceBlocks = [
+        'node_messages_string', 'node_messages_int32', 'node_messages_float64',
+        'node_messages_bool', 'node_messages_twist', 'node_messages_pose',
+        'node_messages_point'
+    ];
+
+    // Only register once
+    if (!Blockly.ConnectionChecker || !Blockly.registry.hasItem('connectionChecker', 'msgtype_checker')) {
+        class MsgTypeConnectionChecker extends Blockly.ConnectionChecker {
+            doTypeChecks(a, b) {
+                // Get the blocks involved
+                const blockA = a.getSourceBlock();
+                const blockB = b.getSourceBlock();
+
+                // Check if either block is an INSTANCE block
+                const aIsInstance = blockA && MsgInstanceBlocks.includes(blockA.type);
+                const bIsInstance = blockB && MsgInstanceBlocks.includes(blockB.type);
+                if (aIsInstance || bIsInstance) {
+                    // Instance blocks can ONLY connect to set variable VALUE input
+                    const targetInput = a.getParentInput() || b.getParentInput();
+                    const otherBlock = aIsInstance ? blockB : blockA;
+
+                    // Check if connecting to node_variables_set VALUE input
+                    if (otherBlock && otherBlock.type === 'node_variables_set') {
+                        const inputName = targetInput?.name;
+                        if (inputName === 'VALUE') {
+                            return true; // Allow instance blocks to connect to set variable value slot
+                        }
+                    }
+                    return false; // Block instance blocks from connecting elsewhere
+                }
+
+                // Check if either block is a TYPE block
+                const aIsMsgType = blockA && MsgTypeBlocks.includes(blockA.type);
+                const bIsMsgType = blockB && MsgTypeBlocks.includes(blockB.type);
+
+                if (aIsMsgType || bIsMsgType) {
+                    // TYPE blocks can ONLY connect to MSG_TYPE inputs on publisher/subscriber
+                    const targetInput = a.getParentInput() || b.getParentInput();
+                    const otherBlock = aIsMsgType ? blockB : blockA;
+
+                    // Check if connecting to publisher/subscriber MSG_TYPE input
+                    const validParents = ['node_publishers_create', 'node_subscribers_create'];
+                    if (otherBlock && validParents.includes(otherBlock.type)) {
+                        const inputName = targetInput?.name;
+                        if (inputName === 'MSG_TYPE') {
+                            return true; // Allow TYPE blocks to connect to type slot
+                        }
+                    }
+                    return false; // Block TYPE blocks from connecting elsewhere
+                }
+
+                // For other blocks, use default checking
+                return super.doTypeChecks(a, b);
+            }
+        }
+
+        Blockly.registry.register(
+            Blockly.registry.Type.CONNECTION_CHECKER,
+            'msgtype_checker',
+            MsgTypeConnectionChecker
+        );
+    }
+
+    // ========================================
     // STRUCTURE CATEGORY
     // ========================================
 
@@ -98,14 +175,17 @@ export function registerNodeBlocks(Blockly) {
 
     Blockly.Blocks['node_structure_node'] = {
         init: function () {
+            // Get node name from active file (will be updated when workspace loads)
+            const initialName = this.getNodeNameFromFile() || 'my_node';
+
             this.appendDummyInput()
-                .appendField('Node')
-                .appendField('name')
-                .appendField(new Blockly.FieldTextInput('my_node', validatePythonName), 'NAME')
+                .appendField(L('node'))
+                .appendField(L('nodeName'))
+                .appendField(new Blockly.FieldLabel(initialName), 'NAME')
                 .appendField('  ')
                 .appendField(new Blockly.FieldImage(
                     'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H6v-2h6v2zm4-4H6v-2h10v2zm0-4H6V7h10v2z"/></svg>'),
-                    16, 16, '📋 Logs', this.toggleLogPanel.bind(this)
+                    16, 16, L('logs'), this.toggleLogPanel.bind(this)
                 ));
             this.setNextStatement(true, null);
             this.setColour('#4c97ff');
@@ -116,6 +196,32 @@ export function registerNodeBlocks(Blockly) {
             // Log panel state
             this.logPanelVisible = false;
             this.logPanel = null;
+        },
+
+        /**
+         * Get node name from the active file name
+         * @returns {string} Node name derived from file name
+         */
+        getNodeNameFromFile: function () {
+            // Try to get from window.blocksActiveFile (set by blocks.js)
+            if (window.blocksActiveFile && window.blocksActiveFile.fileName) {
+                // Remove .py extension and return
+                return window.blocksActiveFile.fileName.replace(/\.py$/, '');
+            }
+            return null;
+        },
+
+        /**
+         * Update the node name field based on current file
+         */
+        updateNodeName: function () {
+            const nodeName = this.getNodeNameFromFile();
+            if (nodeName) {
+                const nameField = this.getField('NAME');
+                if (nameField) {
+                    nameField.setValue(nodeName);
+                }
+            }
         },
 
         toggleLogPanel: function () {
@@ -228,29 +334,16 @@ export function registerNodeBlocks(Blockly) {
     // VARIABLES CATEGORY
     // ========================================
 
-    // Create variable
-    Blockly.Blocks['node_variables_create'] = {
-        init: function () {
-            this.appendDummyInput()
-                .appendField(L('createVar'))
-                .appendField(new Blockly.FieldTextInput('my_var', validatePythonName), 'NAME')
-                .appendField('=')
-                .appendField(new Blockly.FieldTextInput('0'), 'VALUE');
-            this.setPreviousStatement(true);
-            this.setNextStatement(true);
-            this.setColour('#16a085');
-            this.setTooltip(T('createVar'));
-        }
-    };
-
-    // Set variable
+    // Set variable (with value input for both target and value)
     Blockly.Blocks['node_variables_set'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField(L('setVar'))
-                .appendField(new Blockly.FieldTextInput('my_var', validatePythonName), 'NAME')
-                .appendField('=')
-                .appendField(new Blockly.FieldTextInput('0'), 'VALUE');
+                .appendField(L('setVar'));
+            this.appendValueInput('TARGET');
+            this.appendDummyInput()
+                .appendField('=');
+            this.appendValueInput('VALUE');
+            this.setInputsInline(true);
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour('#16a085');
@@ -258,15 +351,115 @@ export function registerNodeBlocks(Blockly) {
         }
     };
 
-    // Get variable
+    // Get variable (value block with value input)
     Blockly.Blocks['node_variables_get'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField(L('getVar'))
-                .appendField(new Blockly.FieldTextInput('my_var', validatePythonName), 'NAME');
-            this.setOutput(true, 'Variable');
+                .appendField(L('getVar'));
+            this.appendValueInput('TARGET');
+            this.setInputsInline(true);
+            this.setOutput(true, 'Value');
             this.setColour('#16a085');
             this.setTooltip(T('getVar'));
+        }
+    };
+
+    // Number value block
+    Blockly.Blocks['node_variables_number'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldNumber(0), 'VALUE');
+            this.setOutput(true, 'Number');
+            this.setColour('#16a085');
+            this.setTooltip('A number value');
+        }
+    };
+
+    // String value block
+    Blockly.Blocks['node_variables_string'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('"')
+                .appendField(new Blockly.FieldTextInput('hello'), 'VALUE')
+                .appendField('"');
+            this.setOutput(true, 'String');
+            this.setColour('#16a085');
+            this.setTooltip('A text string value');
+        }
+    };
+
+    // Boolean value block
+    Blockly.Blocks['node_variables_boolean'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ['True', 'True'],
+                    ['False', 'False']
+                ]), 'VALUE');
+            this.setOutput(true, 'Value');  // Use 'Value' for round shape
+            this.setColour('#16a085');
+            this.setTooltip('A boolean value (True/False)');
+        }
+    };
+
+    // Property accessor block (for chaining like msg.linear.x)
+    Blockly.Blocks['node_variables_property'] = {
+        init: function () {
+            this.appendValueInput('OBJECT');
+            this.appendDummyInput()
+                .appendField('.');
+            this.appendValueInput('PROPERTY');
+            this.setInputsInline(true);
+            this.setOutput(true, 'Value');
+            this.setColour('#16a085');
+            this.setTooltip('Access a property on an object (e.g., msg.linear.x)');
+        }
+    };
+
+    // Name/identifier block (simple variable name)
+    Blockly.Blocks['node_variables_name'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldTextInput('my_var', validatePythonName), 'VALUE');
+            this.setOutput(true, 'Name');
+            this.setColour('#1abc9c');
+            this.setTooltip('A variable name');
+        }
+    };
+
+    // Scope wrapper block (adds local/self prefix)
+    Blockly.Blocks['node_variables_scope'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField(new Blockly.FieldDropdown([
+                    ['local', 'local'],
+                    ['self', 'self']
+                ]), 'SCOPE');
+            this.appendValueInput('NAME');
+            this.setInputsInline(true);
+            this.setOutput(true, 'Value');
+            this.setColour('#1abc9c');
+            this.setTooltip('Wrap a variable with scope (local or self)');
+        }
+    };
+
+    // Declare variable block (with scope selector)
+    Blockly.Blocks['node_variables_declare'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('declare')
+                .appendField(new Blockly.FieldDropdown([
+                    ['local', 'local'],
+                    ['self', 'self']
+                ]), 'SCOPE')
+                .appendField(new Blockly.FieldTextInput('my_var', validatePythonName), 'NAME')
+                .appendField('=');
+            this.appendValueInput('VALUE');
+            this.setInputsInline(true);
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour('#16a085');
+            this.setTooltip('Declare a variable (local = function scope, self = instance variable)');
         }
     };
 
@@ -377,9 +570,11 @@ export function registerNodeBlocks(Blockly) {
         init: function () {
             this.appendDummyInput()
                 .appendField(L('publish'))
-                .appendField(new Blockly.FieldTextInput('publisher', validatePythonName), 'PUBLISHER')
-                .appendField(L('message'))
-                .appendField(new Blockly.FieldTextInput('msg', validatePythonName), 'MSG');
+                .appendField(new Blockly.FieldTextInput('publisher', validatePythonName), 'PUBLISHER');
+            this.appendValueInput('MSG')
+                .setCheck(null)
+                .appendField(L('message'));
+            this.setInputsInline(true);
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour('#4c97ff');
@@ -404,7 +599,7 @@ export function registerNodeBlocks(Blockly) {
                 ]), 'MSG_TYPE');
             this.setPreviousStatement(true);
             this.setNextStatement(true);
-            this.setColour('#4c97ff');
+            this.setColour('#ee0979');
             this.setTooltip(T('createMessage'));
         }
     };
@@ -413,7 +608,7 @@ export function registerNodeBlocks(Blockly) {
     Blockly.Blocks['node_publishers_set_field'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField('set')
+                .appendField(L('setField'))
                 .appendField(new Blockly.FieldTextInput('msg', validatePythonName), 'MSG')
                 .appendField('.')
                 .appendField(new Blockly.FieldTextInput('data'), 'FIELD')
@@ -422,8 +617,8 @@ export function registerNodeBlocks(Blockly) {
             this.setInputsInline(true);
             this.setPreviousStatement(true);
             this.setNextStatement(true);
-            this.setColour('#4c97ff');
-            this.setTooltip('Set a field on a message (e.g., msg.data = value)');
+            this.setColour('#ee0979');
+            this.setTooltip(T('setField'));
         }
     };
 
@@ -444,12 +639,12 @@ export function registerNodeBlocks(Blockly) {
                 .appendField(L('topic'))
                 .appendField(new Blockly.FieldTextInput('/topic', validateTopicName), 'TOPIC');
             this.appendStatementInput('CALLBACK_CONTENT')
-                .appendField('on message (msg):');
+                .appendField(L('onMessage'));
             this.setInputsInline(true);
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour('#4c97ff');
-            this.setTooltip('Create a subscriber with inline callback');
+            this.setTooltip(T('createSubscriber'));
         }
     };
 
@@ -464,7 +659,7 @@ export function registerNodeBlocks(Blockly) {
                 .appendField('.')
                 .appendField(new Blockly.FieldTextInput('data'), 'FIELD');
             this.setOutput(true, 'Value');
-            this.setColour('#4c97ff');
+            this.setColour('#ee0979');
             this.setTooltip(T('getMsgData'));
         }
     };
@@ -483,11 +678,11 @@ export function registerNodeBlocks(Blockly) {
                 .appendField(new Blockly.FieldNumber(1.0, 0.01, 1000, 0.01), 'PERIOD')
                 .appendField(L('seconds'));
             this.appendStatementInput('CALLBACK_CONTENT')
-                .appendField('on tick:');
+                .appendField(L('onTick'));
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour('#f1c40f');
-            this.setTooltip('Create a timer with inline callback');
+            this.setTooltip(T('createTimer'));
         }
     };
 
@@ -589,59 +784,64 @@ export function registerNodeBlocks(Blockly) {
         }
     };
 
-    // === Message Data Blocks ===
-    // String message
+    // === Message Instance Blocks (for creating message instances) ===
+    // String() instance - with optional data input
     Blockly.Blocks['node_messages_string'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField(L('stringMsg'))
-                .appendField(L('data'))
-                .appendField(new Blockly.FieldTextInput('Hello'), 'DATA');
-            this.setOutput(true, 'Message');
+                .appendField('String(');
+            this.appendValueInput('DATA');
+            this.appendDummyInput()
+                .appendField(')');
+            this.setInputsInline(true);
+            this.setOutput(true, 'Value');
             this.setColour('#ee0979');
-            this.setTooltip(T('stringMsg'));
+            this.setTooltip('Create a String message instance');
         }
     };
 
-    // Int32 message
+    // Int32() instance
     Blockly.Blocks['node_messages_int32'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField(L('int32Msg'))
-                .appendField(L('data'))
-                .appendField(new Blockly.FieldNumber(0), 'DATA');
-            this.setOutput(true, 'Message');
+                .appendField('Int32(');
+            this.appendValueInput('DATA');
+            this.appendDummyInput()
+                .appendField(')');
+            this.setInputsInline(true);
+            this.setOutput(true, 'Value');
             this.setColour('#ee0979');
-            this.setTooltip(T('int32Msg'));
+            this.setTooltip('Create an Int32 message instance');
         }
     };
 
-    // Float64 message
+    // Float64() instance
     Blockly.Blocks['node_messages_float64'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField(L('float64Msg'))
-                .appendField(L('data'))
-                .appendField(new Blockly.FieldNumber(0.0, -Infinity, Infinity, 0.01), 'DATA');
-            this.setOutput(true, 'Message');
+                .appendField('Float64(');
+            this.appendValueInput('DATA');
+            this.appendDummyInput()
+                .appendField(')');
+            this.setInputsInline(true);
+            this.setOutput(true, 'Value');
             this.setColour('#ee0979');
-            this.setTooltip(T('float64Msg'));
+            this.setTooltip('Create a Float64 message instance');
         }
     };
 
-    // Bool message
+    // Bool() instance
     Blockly.Blocks['node_messages_bool'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField(L('boolMsg'))
-                .appendField(L('data'))
-                .appendField(new Blockly.FieldDropdown([
-                    ['True', 'True'],
-                    ['False', 'False']
-                ]), 'DATA');
-            this.setOutput(true, 'Message');
+                .appendField('Bool(');
+            this.appendValueInput('DATA');
+            this.appendDummyInput()
+                .appendField(')');
+            this.setInputsInline(true);
+            this.setOutput(true, 'Value');
             this.setColour('#ee0979');
-            this.setTooltip(T('boolMsg'));
+            this.setTooltip('Create a Bool message instance');
         }
     };
 
@@ -722,34 +922,117 @@ export function registerNodeBlocks(Blockly) {
         }
     };
 
-    // Set field
-    Blockly.Blocks['node_messages_set_field'] = {
-        init: function () {
-            this.appendDummyInput()
-                .appendField(L('setField'))
-                .appendField(new Blockly.FieldTextInput('msg', validatePythonName), 'MSG')
-                .appendField('.')
-                .appendField(new Blockly.FieldTextInput('data'), 'FIELD')
-                .appendField('=')
-                .appendField(new Blockly.FieldTextInput('value'), 'VALUE');
-            this.setPreviousStatement(true);
-            this.setNextStatement(true);
-            this.setColour('#ee0979');
-            this.setTooltip(T('setField'));
-        }
-    };
-
-    // Get field
+    // Smart Get Field - with message type dropdown that updates field options
     Blockly.Blocks['node_messages_get_field'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField(L('getField'))
-                .appendField(new Blockly.FieldTextInput('msg', validatePythonName), 'MSG')
-                .appendField('.')
-                .appendField(new Blockly.FieldTextInput('data'), 'FIELD');
+                .appendField('get')
+                .appendField(new Blockly.FieldDropdown([
+                    ['String', 'String'],
+                    ['Int32', 'Int32'],
+                    ['Float64', 'Float64'],
+                    ['Bool', 'Bool'],
+                    ['Twist', 'Twist'],
+                    ['Pose', 'Pose'],
+                    ['Point', 'Point']
+                ], this.updateFieldDropdown.bind(this)), 'MSG_TYPE')
+                .appendField(new Blockly.FieldDropdown([
+                    ['data', 'data']
+                ]), 'FIELD')
+                .appendField('from')
+                .appendField(new Blockly.FieldTextInput('msg', validatePythonName), 'MSG');
             this.setOutput(true, 'Value');
             this.setColour('#ee0979');
-            this.setTooltip(T('getField'));
+            this.setTooltip('Get a field value from a message');
+        },
+
+        updateFieldDropdown: function (newValue) {
+            const fieldOptions = this.getFieldOptionsForType(newValue);
+            const fieldDropdown = this.getField('FIELD');
+            if (fieldDropdown) {
+                fieldDropdown.menuGenerator_ = fieldOptions;
+                fieldDropdown.setValue(fieldOptions[0][1]);
+            }
+            return newValue;
+        },
+
+        getFieldOptionsForType: function (msgType) {
+            const fieldMap = {
+                'String': [['data', 'data']],
+                'Int32': [['data', 'data']],
+                'Float64': [['data', 'data']],
+                'Bool': [['data', 'data']],
+                'Point': [['x', 'x'], ['y', 'y'], ['z', 'z']],
+                'Twist': [
+                    ['linear.x', 'linear.x'], ['linear.y', 'linear.y'], ['linear.z', 'linear.z'],
+                    ['angular.x', 'angular.x'], ['angular.y', 'angular.y'], ['angular.z', 'angular.z']
+                ],
+                'Pose': [
+                    ['position.x', 'position.x'], ['position.y', 'position.y'], ['position.z', 'position.z'],
+                    ['orientation.x', 'orientation.x'], ['orientation.y', 'orientation.y'],
+                    ['orientation.z', 'orientation.z'], ['orientation.w', 'orientation.w']
+                ]
+            };
+            return fieldMap[msgType] || [['data', 'data']];
+        }
+    };
+
+    // Smart Set Field - with message type dropdown that updates field options
+    Blockly.Blocks['node_messages_set_field'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField('set')
+                .appendField(new Blockly.FieldDropdown([
+                    ['String', 'String'],
+                    ['Int32', 'Int32'],
+                    ['Float64', 'Float64'],
+                    ['Bool', 'Bool'],
+                    ['Twist', 'Twist'],
+                    ['Pose', 'Pose'],
+                    ['Point', 'Point']
+                ], this.updateFieldDropdown.bind(this)), 'MSG_TYPE')
+                .appendField(new Blockly.FieldDropdown([
+                    ['data', 'data']
+                ]), 'FIELD')
+                .appendField('in')
+                .appendField(new Blockly.FieldTextInput('msg', validatePythonName), 'MSG')
+                .appendField('to');
+            this.appendValueInput('VALUE');
+            this.setInputsInline(true);
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour('#ee0979');
+            this.setTooltip('Set a field value on a message');
+        },
+
+        updateFieldDropdown: function (newValue) {
+            const fieldOptions = this.getFieldOptionsForType(newValue);
+            const fieldDropdown = this.getField('FIELD');
+            if (fieldDropdown) {
+                fieldDropdown.menuGenerator_ = fieldOptions;
+                fieldDropdown.setValue(fieldOptions[0][1]);
+            }
+            return newValue;
+        },
+
+        getFieldOptionsForType: function (msgType) {
+            const fieldMap = {
+                'String': [['data', 'data']],
+                'Int32': [['data', 'data']],
+                'Float64': [['data', 'data']],
+                'Bool': [['data', 'data']],
+                'Point': [['x', 'x'], ['y', 'y'], ['z', 'z']],
+                'Twist': [
+                    ['linear.x', 'linear.x'], ['linear.y', 'linear.y'], ['linear.z', 'linear.z'],
+                    ['angular.x', 'angular.x'], ['angular.y', 'angular.y'], ['angular.z', 'angular.z']
+                ],
+                'Pose': [
+                    ['position.x', 'position.x'], ['position.y', 'position.y'], ['position.z', 'position.z'],
+                    ['orientation.x', 'orientation.x'], ['orientation.y', 'orientation.y'],
+                    ['orientation.z', 'orientation.z'], ['orientation.w', 'orientation.w']
+                ]
+            };
+            return fieldMap[msgType] || [['data', 'data']];
         }
     };
 
@@ -812,30 +1095,7 @@ export function registerNodeBlocks(Blockly) {
                 .appendField('"');
             this.setOutput(true, 'String');
             this.setColour('#7f8c8d');
-            this.setTooltip('Text value - use for string literals');
-        }
-    };
-
-    // Msg variable block (for subscriber callback message)
-    Blockly.Blocks['node_logging_msg'] = {
-        init: function () {
-            this.appendDummyInput()
-                .appendField('msg');
-            this.setOutput(true, null);
-            this.setColour('#7f8c8d');
-            this.setTooltip('Message variable from subscriber callback');
-        }
-    };
-
-    // Msg data block (get msg.data)
-    Blockly.Blocks['node_logging_msg_data'] = {
-        init: function () {
-            this.appendDummyInput()
-                .appendField('msg.')
-                .appendField(new Blockly.FieldTextInput('data'), 'FIELD');
-            this.setOutput(true, null);
-            this.setColour('#7f8c8d');
-            this.setTooltip('Get a field from the message (e.g. msg.data)');
+            this.setTooltip(T('text'));
         }
     };
 
@@ -848,7 +1108,7 @@ export function registerNodeBlocks(Blockly) {
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour('#7f8c8d');
-            this.setTooltip('Log info message - accepts text or variables');
+            this.setTooltip(T('logInfo'));
         }
     };
 
@@ -861,7 +1121,7 @@ export function registerNodeBlocks(Blockly) {
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour('#7f8c8d');
-            this.setTooltip('Log warning message - accepts text or variables');
+            this.setTooltip(T('logWarn'));
         }
     };
 
@@ -874,7 +1134,7 @@ export function registerNodeBlocks(Blockly) {
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour('#7f8c8d');
-            this.setTooltip('Log error message - accepts text or variables');
+            this.setTooltip(T('logError'));
         }
     };
 
@@ -887,7 +1147,7 @@ export function registerNodeBlocks(Blockly) {
             this.setPreviousStatement(true);
             this.setNextStatement(true);
             this.setColour('#7f8c8d');
-            this.setTooltip('Log debug message - accepts text or variables');
+            this.setTooltip(T('logDebug'));
         }
     };
 
@@ -1011,8 +1271,8 @@ export function registerNodeBlocks(Blockly) {
     // Arithmetic
     Blockly.Blocks['node_math_arithmetic'] = {
         init: function () {
+            this.appendValueInput('A');
             this.appendDummyInput()
-                .appendField(new Blockly.FieldTextInput('a'), 'LEFT')
                 .appendField(new Blockly.FieldDropdown([
                     ['+', '+'],
                     ['-', '-'],
@@ -1020,8 +1280,9 @@ export function registerNodeBlocks(Blockly) {
                     ['/', '/'],
                     ['%', '%'],
                     ['**', '**']
-                ]), 'OP')
-                .appendField(new Blockly.FieldTextInput('b'), 'RIGHT');
+                ]), 'OP');
+            this.appendValueInput('B');
+            this.setInputsInline(true);
             this.setOutput(true, 'Number');
             this.setColour('#e74c3c');
             this.setTooltip(T('arithmetic'));
@@ -1081,9 +1342,11 @@ export function registerNodeBlocks(Blockly) {
                     ['math.tan', 'math.tan'],
                     ['math.pi', 'math.pi']
                 ]), 'FUNC')
-                .appendField('(')
-                .appendField(new Blockly.FieldTextInput('x'), 'ARG')
+                .appendField('(');
+            this.appendValueInput('ARG');
+            this.appendDummyInput()
                 .appendField(')');
+            this.setInputsInline(true);
             this.setOutput(true, 'Number');
             this.setColour('#e74c3c');
             this.setTooltip(T('mathFunc'));
@@ -1127,93 +1390,170 @@ export function registerNodeBlocks(Blockly) {
     };
 
     // ========================================
-    // TURTLESIM CATEGORY
+    // ========================================
+    // PROCEDURES CATEGORY
     // ========================================
 
-    // Teleport
-    Blockly.Blocks['node_turtlesim_teleport'] = {
+    // Define Procedure
+    Blockly.Blocks['node_procedures_define'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField(L('teleport'))
-                .appendField(L('turtle'))
-                .appendField(new Blockly.FieldTextInput('turtle1'), 'TURTLE');
-            this.appendDummyInput()
-                .appendField('x').appendField(new Blockly.FieldNumber(5.5, 0, 11, 0.1), 'X')
-                .appendField('y').appendField(new Blockly.FieldNumber(5.5, 0, 11, 0.1), 'Y')
-                .appendField('θ').appendField(new Blockly.FieldNumber(0, 0, 6.28, 0.1), 'THETA');
-            this.setPreviousStatement(true);
-            this.setNextStatement(true);
-            this.setColour('#1abc9c');
-            this.setTooltip(T('teleport'));
+                .appendField(L('defineProcedure'))
+                .appendField(new Blockly.FieldTextInput('my_procedure', validatePythonName), 'NAME');
+            this.appendStatementInput('BODY');
+            this.setColour('#9b59b6');
+            this.setTooltip(T('defineProcedure'));
         }
     };
 
-    // Set pen
-    Blockly.Blocks['node_turtlesim_set_pen'] = {
+    // Call Procedure
+    Blockly.Blocks['node_procedures_call'] = {
         init: function () {
             this.appendDummyInput()
-                .appendField(L('setPen'))
-                .appendField(L('turtle'))
-                .appendField(new Blockly.FieldTextInput('turtle1'), 'TURTLE');
+                .appendField(L('callProcedure'))
+                .appendField(new Blockly.FieldTextInput('my_procedure', validatePythonName), 'NAME');
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour('#9b59b6');
+            this.setTooltip(T('callProcedure'));
+        }
+    };
+
+    // Return value (removed - not needed for simple procedures)
+
+    // ========================================
+    // CONTROL FLOW CATEGORY
+    // ========================================
+
+    // If block
+    Blockly.Blocks['node_controlflow_if'] = {
+        init: function () {
+            this.appendValueInput('CONDITION')
+                .setCheck('Boolean')
+                .appendField(L('if'));
+            this.appendStatementInput('DO');
+            this.setInputsInline(true);
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour('#E9A23B');
+            this.setTooltip(T('if'));
+        }
+    };
+
+    // If-Else block
+    Blockly.Blocks['node_controlflow_ifelse'] = {
+        init: function () {
+            this.appendValueInput('CONDITION')
+                .setCheck('Boolean')
+                .appendField(L('if'));
+            this.appendStatementInput('DO');
+            this.appendStatementInput('ELSE')
+                .appendField(L('else'));
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour('#E9A23B');
+            this.setTooltip(T('ifelse'));
+        }
+    };
+
+    // Repeat N times block
+    Blockly.Blocks['node_controlflow_for'] = {
+        init: function () {
             this.appendDummyInput()
-                .appendField('R').appendField(new Blockly.FieldNumber(255, 0, 255), 'R')
-                .appendField('G').appendField(new Blockly.FieldNumber(255, 0, 255), 'G')
-                .appendField('B').appendField(new Blockly.FieldNumber(255, 0, 255), 'B')
-                .appendField(L('width')).appendField(new Blockly.FieldNumber(3, 1, 20), 'WIDTH');
+                .appendField(L('repeat'))
+                .appendField(new Blockly.FieldNumber(10, 1), 'TIMES')
+                .appendField(L('times'));
+            this.appendStatementInput('DO');
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour('#E9A23B');
+            this.setTooltip(T('for'));
+        }
+    };
+
+    // Repeat While block
+    Blockly.Blocks['node_controlflow_while'] = {
+        init: function () {
+            this.appendValueInput('CONDITION')
+                .setCheck('Boolean')
+                .appendField(L('repeatWhile'));
+            this.appendStatementInput('DO');
+            this.setPreviousStatement(true);
+            this.setNextStatement(true);
+            this.setColour('#E9A23B');
+            this.setTooltip(T('while'));
+        }
+    };
+
+    // Break block
+    Blockly.Blocks['node_controlflow_break'] = {
+        init: function () {
             this.appendDummyInput()
-                .appendField(L('penOff'))
+                .appendField(L('break'));
+            this.setPreviousStatement(true);
+            this.setColour('#E9A23B');
+            this.setTooltip(T('break'));
+        }
+    };
+
+    // Continue block
+    Blockly.Blocks['node_controlflow_continue'] = {
+        init: function () {
+            this.appendDummyInput()
+                .appendField(L('continue'));
+            this.setPreviousStatement(true);
+            this.setColour('#E9A23B');
+            this.setTooltip(T('continue'));
+        }
+    };
+
+    // Compare block (for conditions)
+    Blockly.Blocks['node_controlflow_compare'] = {
+        init: function () {
+            this.appendValueInput('A');
+            this.appendDummyInput()
                 .appendField(new Blockly.FieldDropdown([
-                    ['False', '0'],
-                    ['True', '1']
-                ]), 'OFF');
-            this.setPreviousStatement(true);
-            this.setNextStatement(true);
-            this.setColour('#1abc9c');
-            this.setTooltip(T('setPen'));
+                    ['=', '=='],
+                    ['≠', '!='],
+                    ['<', '<'],
+                    ['>', '>'],
+                    ['≤', '<='],
+                    ['≥', '>=']
+                ]), 'OP');
+            this.appendValueInput('B');
+            this.setInputsInline(true);
+            this.setOutput(true, 'Boolean');
+            this.setColour('#e74c3c');
+            this.setTooltip(T('compare'));
         }
     };
 
-    // Clear
-    Blockly.Blocks['node_turtlesim_clear'] = {
+    // Logic AND/OR block
+    Blockly.Blocks['node_controlflow_logic'] = {
         init: function () {
+            this.appendValueInput('A');
             this.appendDummyInput()
-                .appendField(L('clear'));
-            this.setPreviousStatement(true);
-            this.setNextStatement(true);
-            this.setColour('#1abc9c');
-            this.setTooltip(T('clear'));
+                .appendField(new Blockly.FieldDropdown([
+                    ['and', 'and'],
+                    ['or', 'or']
+                ]), 'OP');
+            this.appendValueInput('B');
+            this.setInputsInline(true);
+            this.setOutput(true, 'Boolean');
+            this.setColour('#e74c3c');
+            this.setTooltip(T('logic'));
         }
     };
 
-    // Spawn
-    Blockly.Blocks['node_turtlesim_spawn'] = {
+    // Not block
+    Blockly.Blocks['node_controlflow_not'] = {
         init: function () {
-            this.appendDummyInput()
-                .appendField(L('spawn'))
-                .appendField(L('name'))
-                .appendField(new Blockly.FieldTextInput('turtle2'), 'NAME');
-            this.appendDummyInput()
-                .appendField('x').appendField(new Blockly.FieldNumber(5.5, 0, 11, 0.1), 'X')
-                .appendField('y').appendField(new Blockly.FieldNumber(5.5, 0, 11, 0.1), 'Y')
-                .appendField('θ').appendField(new Blockly.FieldNumber(0, 0, 6.28, 0.1), 'THETA');
-            this.setPreviousStatement(true);
-            this.setNextStatement(true);
-            this.setColour('#1abc9c');
-            this.setTooltip(T('spawn'));
-        }
-    };
-
-    // Kill
-    Blockly.Blocks['node_turtlesim_kill'] = {
-        init: function () {
-            this.appendDummyInput()
-                .appendField(L('kill'))
-                .appendField(L('turtle'))
-                .appendField(new Blockly.FieldTextInput('turtle1'), 'NAME');
-            this.setPreviousStatement(true);
-            this.setNextStatement(true);
-            this.setColour('#1abc9c');
-            this.setTooltip(T('kill'));
+            this.appendValueInput('VALUE')
+                .appendField(L('not'));
+            this.setInputsInline(true);
+            this.setOutput(true, 'Boolean');
+            this.setColour('#e74c3c');
+            this.setTooltip(T('not'));
         }
     };
 
@@ -1254,9 +1594,6 @@ export function getAllNodeBlockTypes() {
         'node_controlflow_try',
         // Math & Logic
         'node_math_arithmetic', 'node_math_compare', 'node_math_logic',
-        'node_math_function', 'node_math_random', 'node_math_clamp',
-        // TurtleSim
-        'node_turtlesim_teleport', 'node_turtlesim_set_pen', 'node_turtlesim_clear',
-        'node_turtlesim_spawn', 'node_turtlesim_kill'
+        'node_math_function', 'node_math_random', 'node_math_clamp'
     ];
 }

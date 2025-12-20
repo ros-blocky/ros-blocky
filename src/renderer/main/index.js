@@ -70,6 +70,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const turtlesimBtn = document.getElementById('turtlesim-btn');
         if (turtlesimBtn) turtlesimBtn.classList.remove('hidden');
 
+        // Show Topics button in workspace
+        const topicsBtn = document.getElementById('topics-btn');
+        if (topicsBtn) topicsBtn.classList.remove('hidden');
+
         // Show Build dropdown in workspace
         const buildDropdown = document.getElementById('build-dropdown');
         if (buildDropdown) buildDropdown.classList.remove('hidden');
@@ -121,6 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rvizBtn = document.getElementById('rviz-btn');
         const jspGuiBtn = document.getElementById('jsp-gui-btn');
         const turtlesimBtn = document.getElementById('turtlesim-btn');
+        const topicsBtn = document.getElementById('topics-btn');
         const buildDropdown = document.getElementById('build-dropdown');
         if (saveBtn) saveBtn.classList.add('hidden');
         if (undoBtn) undoBtn.classList.add('hidden');
@@ -128,6 +133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (rvizBtn) rvizBtn.classList.add('hidden');
         if (jspGuiBtn) jspGuiBtn.classList.add('hidden');
         if (turtlesimBtn) turtlesimBtn.classList.add('hidden');
+        if (topicsBtn) topicsBtn.classList.add('hidden');
         if (buildDropdown) buildDropdown.classList.add('hidden');
 
         // Re-enable and reset welcome screen buttons using the module's function
@@ -366,5 +372,282 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.error('[Build] Error loading packages:', error);
             buildPackagesList.innerHTML = '<div class="build-menu-item" style="color: #999;">Error loading packages</div>';
         }
+    }
+
+    // ========================================
+    // Topics Button
+    // ========================================
+    const topicsBtn = document.getElementById('topics-btn');
+    let topicsPanel = null;
+
+    if (topicsBtn) {
+        topicsBtn.addEventListener('click', async () => {
+            // If panel already exists, just refresh it
+            if (topicsPanel && document.body.contains(topicsPanel)) {
+                await refreshTopics();
+                return;
+            }
+
+            // Create topics panel
+            topicsPanel = document.createElement('div');
+            topicsPanel.className = 'topics-panel';
+            topicsPanel.innerHTML = `
+                <div class="topics-panel-header">
+                    <span class="topics-title">📡 ROS 2 Topics</span>
+                    <div class="topics-header-actions">
+                        <button class="topics-refresh-btn" title="Refresh">↻</button>
+                        <button class="topics-close-btn" title="Close">×</button>
+                    </div>
+                </div>
+                <div class="topics-panel-content">
+                    <div class="topics-loading">Loading topics...</div>
+                </div>
+            `;
+
+            document.body.appendChild(topicsPanel);
+
+            // Position panel
+            topicsPanel.style.position = 'fixed';
+            topicsPanel.style.top = '100px';
+            topicsPanel.style.right = '20px';
+            topicsPanel.style.zIndex = '10000';
+
+            // Make panel draggable
+            const header = topicsPanel.querySelector('.topics-panel-header');
+            let isDragging = false;
+            let dragOffsetX = 0;
+            let dragOffsetY = 0;
+
+            header.addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'BUTTON') return;
+                isDragging = true;
+                dragOffsetX = e.clientX - topicsPanel.offsetLeft;
+                dragOffsetY = e.clientY - topicsPanel.offsetTop;
+                header.style.cursor = 'grabbing';
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                topicsPanel.style.left = (e.clientX - dragOffsetX) + 'px';
+                topicsPanel.style.top = (e.clientY - dragOffsetY) + 'px';
+                topicsPanel.style.right = 'auto';
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                header.style.cursor = 'grab';
+            });
+
+            // Close button
+            topicsPanel.querySelector('.topics-close-btn').addEventListener('click', () => {
+                topicsPanel.remove();
+                topicsPanel = null;
+            });
+
+            // Refresh button
+            topicsPanel.querySelector('.topics-refresh-btn').addEventListener('click', refreshTopics);
+
+            // Initial load
+            await refreshTopics();
+        });
+    }
+
+    async function refreshTopics() {
+        if (!topicsPanel) return;
+        const content = topicsPanel.querySelector('.topics-panel-content');
+        content.innerHTML = '<div class="topics-loading">Loading topics...</div>';
+
+        try {
+            const result = await window.electronAPI.getTopicList();
+            if (result.success && result.topics.length > 0) {
+                content.innerHTML = result.topics.map(topic => `
+                    <div class="topic-wrapper">
+                        <div class="topic-item" data-topic="${topic}">
+                            <span class="topic-expand">▶</span>
+                            <span class="topic-name">${topic}</span>
+                        </div>
+                        <div class="topic-details hidden"></div>
+                    </div>
+                `).join('');
+
+                // Add click handlers for each topic
+                content.querySelectorAll('.topic-item').forEach(item => {
+                    item.addEventListener('click', async () => {
+                        const wrapper = item.closest('.topic-wrapper');
+                        const details = wrapper.querySelector('.topic-details');
+                        const expandIcon = item.querySelector('.topic-expand');
+                        const topicName = item.dataset.topic;
+
+                        // Toggle visibility
+                        if (!details.classList.contains('hidden')) {
+                            details.classList.add('hidden');
+                            expandIcon.textContent = '▶';
+                            return;
+                        }
+
+                        // Show loading
+                        details.classList.remove('hidden');
+                        expandIcon.textContent = '▼';
+                        details.innerHTML = '<div class="topic-loading">Loading...</div>';
+
+                        try {
+                            const infoResult = await window.electronAPI.getTopicInfo(topicName);
+                            if (infoResult.success) {
+                                const info = infoResult.info;
+                                details.innerHTML = `
+                                    <div class="topic-info-row">
+                                        <span class="info-label">Type:</span>
+                                        <span class="info-value type">${info.type || 'Unknown'}</span>
+                                    </div>
+                                    <div class="topic-info-row">
+                                        <span class="info-label">Publishers (${info.publisherCount}):</span>
+                                        <span class="info-value">${info.publishers.length > 0 ? info.publishers.join(', ') : 'None'}</span>
+                                    </div>
+                                    <div class="topic-info-row">
+                                        <span class="info-label">Subscribers (${info.subscriberCount}):</span>
+                                        <span class="info-value">${info.subscribers.length > 0 ? info.subscribers.join(', ') : 'None'}</span>
+                                    </div>
+                                    <button class="echo-btn" data-topic="${topicName}">▶ Echo</button>
+                                `;
+
+                                // Add echo button handler
+                                const echoBtn = details.querySelector('.echo-btn');
+                                echoBtn.addEventListener('click', async (e) => {
+                                    e.stopPropagation();
+                                    await startTopicEchoPanel(topicName);
+                                });
+                            } else {
+                                details.innerHTML = `<div class="topic-error">Error: ${infoResult.error}</div>`;
+                            }
+                        } catch (error) {
+                            details.innerHTML = `<div class="topic-error">Error: ${error.message}</div>`;
+                        }
+                    });
+                });
+            } else if (result.success && result.topics.length === 0) {
+                content.innerHTML = '<div class="topics-empty">No topics found. Start a ROS 2 node first.</div>';
+            } else {
+                content.innerHTML = `<div class="topics-error">Error: ${result.error}</div>`;
+            }
+        } catch (error) {
+            content.innerHTML = `<div class="topics-error">Error: ${error.message}</div>`;
+        }
+    }
+
+    // Echo panel for topic streaming
+    let echoPanel = null;
+    let currentEchoKey = null;
+
+    async function startTopicEchoPanel(topicName) {
+        // Close existing echo panel if open
+        if (echoPanel) {
+            echoPanel.remove();
+            if (currentEchoKey) {
+                await window.electronAPI.stopRosProcess(currentEchoKey);
+            }
+        }
+
+        // Create echo panel
+        echoPanel = document.createElement('div');
+        echoPanel.className = 'echo-panel';
+        echoPanel.innerHTML = `
+            <div class="echo-panel-header">
+                <span class="echo-title">📡 ${topicName}</span>
+                <div class="echo-header-actions">
+                    <button class="echo-stop-btn" title="Stop">■</button>
+                    <button class="echo-close-btn" title="Close">×</button>
+                </div>
+            </div>
+            <div class="echo-panel-content">
+                <div class="echo-waiting">Waiting for messages...</div>
+            </div>
+        `;
+
+        document.body.appendChild(echoPanel);
+
+        // Position panel
+        echoPanel.style.position = 'fixed';
+        echoPanel.style.top = '150px';
+        echoPanel.style.right = '400px';
+        echoPanel.style.zIndex = '10001';
+
+        // Make draggable
+        const header = echoPanel.querySelector('.echo-panel-header');
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.tagName === 'BUTTON') return;
+            isDragging = true;
+            dragOffsetX = e.clientX - echoPanel.offsetLeft;
+            dragOffsetY = e.clientY - echoPanel.offsetTop;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            echoPanel.style.left = (e.clientX - dragOffsetX) + 'px';
+            echoPanel.style.top = (e.clientY - dragOffsetY) + 'px';
+            echoPanel.style.right = 'auto';
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        const content = echoPanel.querySelector('.echo-panel-content');
+
+        // Start echo
+        const result = await window.electronAPI.startTopicEcho(topicName);
+        if (result.success) {
+            currentEchoKey = result.processKey;
+            content.innerHTML = '';
+
+            // Listen for echo output
+            window.electronAPI.onEchoOutput((data, key) => {
+                if (key === currentEchoKey) {
+                    const line = document.createElement('div');
+                    line.className = 'echo-line';
+                    line.textContent = data;
+                    content.appendChild(line);
+                    content.scrollTop = content.scrollHeight;
+
+                    // Keep only last 100 lines
+                    while (content.children.length > 100) {
+                        content.removeChild(content.firstChild);
+                    }
+                }
+            });
+
+            window.electronAPI.onEchoStopped((data, key) => {
+                if (key === currentEchoKey) {
+                    const line = document.createElement('div');
+                    line.className = 'echo-line echo-stopped';
+                    line.textContent = '--- Echo stopped ---';
+                    content.appendChild(line);
+                    currentEchoKey = null;
+                }
+            });
+        } else {
+            content.innerHTML = `<div class="echo-error">Error: ${result.error}</div>`;
+        }
+
+        // Close button
+        echoPanel.querySelector('.echo-close-btn').addEventListener('click', async () => {
+            if (currentEchoKey) {
+                await window.electronAPI.stopRosProcess(currentEchoKey);
+            }
+            window.electronAPI.removeEchoListeners();
+            echoPanel.remove();
+            echoPanel = null;
+            currentEchoKey = null;
+        });
+
+        // Stop button
+        echoPanel.querySelector('.echo-stop-btn').addEventListener('click', async () => {
+            if (currentEchoKey) {
+                await window.electronAPI.stopRosProcess(currentEchoKey);
+            }
+        });
     }
 });

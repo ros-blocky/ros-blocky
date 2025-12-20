@@ -22,6 +22,29 @@ export function initNodeGenerator(Blockly) {
     // Python uses 4-space indentation
     pythonGenerator.INDENT = '    ';
 
+    // Define order constants (Blockly's basic Generator doesn't have these)
+    pythonGenerator.ORDER_ATOMIC = 0;           // 0 "" ...
+    pythonGenerator.ORDER_COLLECTION = 1;       // tuples, lists, dictionaries
+    pythonGenerator.ORDER_STRING_CONVERSION = 1; // `expression...`
+    pythonGenerator.ORDER_MEMBER = 2.1;         // . []
+    pythonGenerator.ORDER_FUNCTION_CALL = 2.2;  // ()
+    pythonGenerator.ORDER_EXPONENTIATION = 3;   // **
+    pythonGenerator.ORDER_UNARY_SIGN = 4;       // + -
+    pythonGenerator.ORDER_BITWISE_NOT = 4;      // ~
+    pythonGenerator.ORDER_MULTIPLICATIVE = 5;   // * / // %
+    pythonGenerator.ORDER_ADDITIVE = 6;         // + -
+    pythonGenerator.ORDER_BITWISE_SHIFT = 7;    // << >>
+    pythonGenerator.ORDER_BITWISE_AND = 8;      // &
+    pythonGenerator.ORDER_BITWISE_XOR = 9;      // ^
+    pythonGenerator.ORDER_BITWISE_OR = 10;      // |
+    pythonGenerator.ORDER_RELATIONAL = 11;      // in, not in, is, is not, <, <=, >, >=, <>, !=, ==
+    pythonGenerator.ORDER_LOGICAL_NOT = 12;     // not
+    pythonGenerator.ORDER_LOGICAL_AND = 13;     // and
+    pythonGenerator.ORDER_LOGICAL_OR = 14;      // or
+    pythonGenerator.ORDER_CONDITIONAL = 15;     // if else
+    pythonGenerator.ORDER_LAMBDA = 16;          // lambda
+    pythonGenerator.ORDER_NONE = 99;            // (...)
+
     // ========================================
     // GENERATOR UTILITIES
     // ========================================
@@ -196,21 +219,66 @@ export function initNodeGenerator(Blockly) {
     // VARIABLES BLOCKS
     // ========================================
 
+    pythonGenerator.forBlock['node_variables_set'] = function (block) {
+        const target = pythonGenerator.valueToCode(block, 'TARGET', pythonGenerator.ORDER_NONE) || 'my_var';
+        const value = pythonGenerator.valueToCode(block, 'VALUE', pythonGenerator.ORDER_NONE) || '0';
+        return `${target} = ${value}\n`;
+    };
+
+    pythonGenerator.forBlock['node_variables_get'] = function (block) {
+        const target = pythonGenerator.valueToCode(block, 'TARGET', pythonGenerator.ORDER_NONE) || 'my_var';
+        return [target, pythonGenerator.ORDER_ATOMIC];
+    };
+
+    pythonGenerator.forBlock['node_variables_number'] = function (block) {
+        const value = block.getFieldValue('VALUE') || 0;
+        return [String(value), pythonGenerator.ORDER_ATOMIC];
+    };
+
+    pythonGenerator.forBlock['node_variables_string'] = function (block) {
+        const value = block.getFieldValue('VALUE') || '';
+        // Escape quotes in the string
+        const escaped = value.replace(/'/g, "\\'");
+        return [`'${escaped}'`, pythonGenerator.ORDER_ATOMIC];
+    };
+
+    pythonGenerator.forBlock['node_variables_boolean'] = function (block) {
+        const value = block.getFieldValue('VALUE') || 'True';
+        return [value, pythonGenerator.ORDER_ATOMIC];
+    };
+
+    pythonGenerator.forBlock['node_variables_property'] = function (block) {
+        const object = pythonGenerator.valueToCode(block, 'OBJECT', pythonGenerator.ORDER_NONE) || 'obj';
+        const property = pythonGenerator.valueToCode(block, 'PROPERTY', pythonGenerator.ORDER_NONE) || 'prop';
+        return [`${object}.${property}`, pythonGenerator.ORDER_ATOMIC];
+    };
+
+    pythonGenerator.forBlock['node_variables_name'] = function (block) {
+        const value = block.getFieldValue('VALUE') || 'my_var';
+        return [value, pythonGenerator.ORDER_ATOMIC];
+    };
+
+    pythonGenerator.forBlock['node_variables_scope'] = function (block) {
+        const scope = block.getFieldValue('SCOPE') || 'local';
+        const name = pythonGenerator.valueToCode(block, 'NAME', pythonGenerator.ORDER_NONE) || 'my_var';
+        // Add self. prefix for instance variables
+        return [scope === 'self' ? `self.${name}` : name, pythonGenerator.ORDER_ATOMIC];
+    };
+
+    pythonGenerator.forBlock['node_variables_declare'] = function (block) {
+        const scope = block.getFieldValue('SCOPE') || 'local';
+        const name = block.getFieldValue('NAME') || 'my_var';
+        const value = pythonGenerator.valueToCode(block, 'VALUE', pythonGenerator.ORDER_NONE) || '0';
+        // Add self. prefix for instance variables
+        const varName = scope === 'self' ? `self.${name}` : name;
+        return `${varName} = ${value}\n`;
+    };
+
+    // Keep legacy generators for backward compatibility
     pythonGenerator.forBlock['node_variables_create'] = function (block) {
         const name = block.getFieldValue('NAME') || 'my_var';
         const value = block.getFieldValue('VALUE') || '0';
         return `self.${name} = ${value}\n`;
-    };
-
-    pythonGenerator.forBlock['node_variables_set'] = function (block) {
-        const name = block.getFieldValue('NAME') || 'my_var';
-        const value = block.getFieldValue('VALUE') || '0';
-        return `self.${name} = ${value}\n`;
-    };
-
-    pythonGenerator.forBlock['node_variables_get'] = function (block) {
-        const name = block.getFieldValue('NAME') || 'my_var';
-        return [`self.${name}`, pythonGenerator.ORDER_ATOMIC];
     };
 
     pythonGenerator.forBlock['node_variables_create_list'] = function (block) {
@@ -277,7 +345,7 @@ export function initNodeGenerator(Blockly) {
 
     pythonGenerator.forBlock['node_publishers_publish'] = function (block) {
         const publisher = block.getFieldValue('PUBLISHER') || 'publisher';
-        const msg = block.getFieldValue('MSG') || 'msg';
+        const msg = pythonGenerator.valueToCode(block, 'MSG', pythonGenerator.ORDER_NONE) || 'msg';
         return `self.${publisher}.publish(${msg})\n`;
     };
 
@@ -290,7 +358,7 @@ export function initNodeGenerator(Blockly) {
     pythonGenerator.forBlock['node_publishers_set_field'] = function (block) {
         const msg = block.getFieldValue('MSG') || 'msg';
         const field = block.getFieldValue('FIELD') || 'data';
-        const value = pythonGenerator.valueToCode(block, 'VALUE', 0) || "''";
+        const value = pythonGenerator.valueToCode(block, 'VALUE', pythonGenerator.ORDER_NONE) || "''";
         return `${msg}.${field} = ${value}\n`;
     };
 
@@ -340,7 +408,7 @@ export function initNodeGenerator(Blockly) {
     pythonGenerator.forBlock['node_subscribers_get_data'] = function (block) {
         const msg = block.getFieldValue('MSG') || 'msg';
         const field = block.getFieldValue('FIELD') || 'data';
-        return [`${msg}.${field}`, 0];
+        return [`${msg}.${field}`, pythonGenerator.ORDER_ATOMIC];
     };
 
     // ========================================
@@ -382,62 +450,63 @@ export function initNodeGenerator(Blockly) {
     // Note: Order 0 = ATOMIC (highest precedence, no parentheses needed)
     pythonGenerator.forBlock['node_messages_type_string'] = function (block) {
         addImport('from std_msgs.msg import String');
-        return ['String', 0];
+        return ['String', pythonGenerator.ORDER_ATOMIC];
     };
 
     pythonGenerator.forBlock['node_messages_type_int32'] = function (block) {
         addImport('from std_msgs.msg import Int32');
-        return ['Int32', 0];
+        return ['Int32', pythonGenerator.ORDER_ATOMIC];
     };
 
     pythonGenerator.forBlock['node_messages_type_float64'] = function (block) {
         addImport('from std_msgs.msg import Float64');
-        return ['Float64', 0];
+        return ['Float64', pythonGenerator.ORDER_ATOMIC];
     };
 
     pythonGenerator.forBlock['node_messages_type_bool'] = function (block) {
         addImport('from std_msgs.msg import Bool');
-        return ['Bool', 0];
+        return ['Bool', pythonGenerator.ORDER_ATOMIC];
     };
 
     pythonGenerator.forBlock['node_messages_type_twist'] = function (block) {
         addImport('from geometry_msgs.msg import Twist');
-        return ['Twist', 0];
+        return ['Twist', pythonGenerator.ORDER_ATOMIC];
     };
 
     pythonGenerator.forBlock['node_messages_type_pose'] = function (block) {
         addImport('from geometry_msgs.msg import Pose');
-        return ['Pose', 0];
+        return ['Pose', pythonGenerator.ORDER_ATOMIC];
     };
 
     pythonGenerator.forBlock['node_messages_type_laserscan'] = function (block) {
         addImport('from sensor_msgs.msg import LaserScan');
-        return ['LaserScan', 0];
+        return ['LaserScan', pythonGenerator.ORDER_ATOMIC];
     };
 
-    // === Message Data Generators ===
+    // === Message Instance Generators ===
     pythonGenerator.forBlock['node_messages_string'] = function (block) {
-        const data = block.getFieldValue('DATA') || 'Hello';
+        const data = pythonGenerator.valueToCode(block, 'DATA', pythonGenerator.ORDER_NONE);
         addImport('from std_msgs.msg import String');
-        return [`String(data='${data}')`, pythonGenerator.ORDER_ATOMIC];
+        // If data provided, use it; otherwise empty constructor
+        return [data ? `String(data=${data})` : 'String()', pythonGenerator.ORDER_ATOMIC];
     };
 
     pythonGenerator.forBlock['node_messages_int32'] = function (block) {
-        const data = block.getFieldValue('DATA') || 0;
+        const data = pythonGenerator.valueToCode(block, 'DATA', pythonGenerator.ORDER_NONE);
         addImport('from std_msgs.msg import Int32');
-        return [`Int32(data=${data})`, pythonGenerator.ORDER_ATOMIC];
+        return [data ? `Int32(data=${data})` : 'Int32()', pythonGenerator.ORDER_ATOMIC];
     };
 
     pythonGenerator.forBlock['node_messages_float64'] = function (block) {
-        const data = block.getFieldValue('DATA') || 0.0;
+        const data = pythonGenerator.valueToCode(block, 'DATA', pythonGenerator.ORDER_NONE);
         addImport('from std_msgs.msg import Float64');
-        return [`Float64(data=${data})`, pythonGenerator.ORDER_ATOMIC];
+        return [data ? `Float64(data=${data})` : 'Float64()', pythonGenerator.ORDER_ATOMIC];
     };
 
     pythonGenerator.forBlock['node_messages_bool'] = function (block) {
-        const data = block.getFieldValue('DATA') || 'True';
+        const data = pythonGenerator.valueToCode(block, 'DATA', pythonGenerator.ORDER_NONE);
         addImport('from std_msgs.msg import Bool');
-        return [`Bool(data=${data})`, pythonGenerator.ORDER_ATOMIC];
+        return [data ? `Bool(data=${data})` : 'Bool()', pythonGenerator.ORDER_ATOMIC];
     };
 
     pythonGenerator.forBlock['node_messages_twist'] = function (block) {
@@ -452,7 +521,7 @@ export function initNodeGenerator(Blockly) {
 
         const code = `Twist(linear=Vector3(x=${linX}, y=${linY}, z=${linZ}), angular=Vector3(x=${angX}, y=${angY}, z=${angZ}))`;
         addImport('from geometry_msgs.msg import Vector3');
-        return [code, pythonGenerator.ORDER_ATOMIC];
+        return [code, pythonGenerator.ORDER_ATOMIC];  // 0 = ATOMIC
     };
 
     pythonGenerator.forBlock['node_messages_pose'] = function (block) {
@@ -467,7 +536,7 @@ export function initNodeGenerator(Blockly) {
         addImport('from geometry_msgs.msg import Pose, Point, Quaternion');
 
         const code = `Pose(position=Point(x=${posX}, y=${posY}, z=${posZ}), orientation=Quaternion(x=${oriX}, y=${oriY}, z=${oriZ}, w=${oriW}))`;
-        return [code, pythonGenerator.ORDER_ATOMIC];
+        return [code, pythonGenerator.ORDER_ATOMIC];  // 0 = ATOMIC
     };
 
     pythonGenerator.forBlock['node_messages_point'] = function (block) {
@@ -476,26 +545,26 @@ export function initNodeGenerator(Blockly) {
         const z = block.getFieldValue('Z') || 0;
 
         addImport('from geometry_msgs.msg import Point');
-        return [`Point(x=${x}, y=${y}, z=${z})`, pythonGenerator.ORDER_ATOMIC];
+        return [`Point(x=${x}, y=${y}, z=${z})`, pythonGenerator.ORDER_ATOMIC];  // 0 = ATOMIC
     };
 
     pythonGenerator.forBlock['node_messages_laserscan'] = function (block) {
         const field = block.getFieldValue('FIELD') || 'ranges';
         addImport('from sensor_msgs.msg import LaserScan');
-        return [`msg.${field}`, pythonGenerator.ORDER_ATOMIC];
+        return [`msg.${field}`, pythonGenerator.ORDER_ATOMIC];  // 0 = ATOMIC
     };
 
     pythonGenerator.forBlock['node_messages_set_field'] = function (block) {
         const msg = block.getFieldValue('MSG') || 'msg';
         const field = block.getFieldValue('FIELD') || 'data';
-        const value = block.getFieldValue('VALUE') || 'value';
+        const value = pythonGenerator.valueToCode(block, 'VALUE', pythonGenerator.ORDER_NONE) || '0';
         return `${msg}.${field} = ${value}\n`;
     };
 
     pythonGenerator.forBlock['node_messages_get_field'] = function (block) {
         const msg = block.getFieldValue('MSG') || 'msg';
         const field = block.getFieldValue('FIELD') || 'data';
-        return [`${msg}.${field}`, pythonGenerator.ORDER_ATOMIC];
+        return [`${msg}.${field}`, pythonGenerator.ORDER_ATOMIC];  // 0 = ATOMIC (highest precedence)
     };
 
     // ========================================
@@ -510,7 +579,7 @@ export function initNodeGenerator(Blockly) {
 
     pythonGenerator.forBlock['node_parameters_get'] = function (block) {
         const name = block.getFieldValue('NAME') || 'my_param';
-        return [`self.get_parameter('${name}').value`, pythonGenerator.ORDER_ATOMIC];
+        return [`self.get_parameter('${name}').value`, pythonGenerator.ORDER_ATOMIC];  // 0 = ATOMIC
     };
 
     pythonGenerator.forBlock['node_parameters_set'] = function (block) {
@@ -527,37 +596,26 @@ export function initNodeGenerator(Blockly) {
     // Text value generator
     pythonGenerator.forBlock['node_logging_text'] = function (block) {
         const text = block.getFieldValue('TEXT') || '';
-        return [`'${text.replace(/'/g, "\\'")}'`, 0];
-    };
-
-    // Msg variable generator
-    pythonGenerator.forBlock['node_logging_msg'] = function (block) {
-        return ['msg', 0];
-    };
-
-    // Msg.field generator
-    pythonGenerator.forBlock['node_logging_msg_data'] = function (block) {
-        const field = block.getFieldValue('FIELD') || 'data';
-        return [`msg.${field}`, 0];
+        return [`'${text.replace(/'/g, "\\'")}'`, pythonGenerator.ORDER_ATOMIC];
     };
 
     pythonGenerator.forBlock['node_logging_info'] = function (block) {
-        const message = pythonGenerator.valueToCode(block, 'MESSAGE', 0) || "'Message'";
+        const message = pythonGenerator.valueToCode(block, 'MESSAGE', pythonGenerator.ORDER_NONE) || "'Message'";
         return `self.get_logger().info(str(${message}))\n`;
     };
 
     pythonGenerator.forBlock['node_logging_warn'] = function (block) {
-        const message = pythonGenerator.valueToCode(block, 'MESSAGE', 0) || "'Warning'";
+        const message = pythonGenerator.valueToCode(block, 'MESSAGE', pythonGenerator.ORDER_NONE) || "'Warning'";
         return `self.get_logger().warning(str(${message}))\n`;
     };
 
     pythonGenerator.forBlock['node_logging_error'] = function (block) {
-        const message = pythonGenerator.valueToCode(block, 'MESSAGE', 0) || "'Error'";
+        const message = pythonGenerator.valueToCode(block, 'MESSAGE', pythonGenerator.ORDER_NONE) || "'Error'";
         return `self.get_logger().error(str(${message}))\n`;
     };
 
     pythonGenerator.forBlock['node_logging_debug'] = function (block) {
-        const message = pythonGenerator.valueToCode(block, 'MESSAGE', 0) || "'Debug'";
+        const message = pythonGenerator.valueToCode(block, 'MESSAGE', pythonGenerator.ORDER_NONE) || "'Debug'";
         return `self.get_logger().debug(str(${message}))\n`;
     };
 
@@ -637,9 +695,9 @@ export function initNodeGenerator(Blockly) {
     // ========================================
 
     pythonGenerator.forBlock['node_math_arithmetic'] = function (block) {
-        const left = block.getFieldValue('LEFT') || 'a';
+        const left = pythonGenerator.valueToCode(block, 'A', pythonGenerator.ORDER_NONE) || '0';
         const op = block.getFieldValue('OP') || '+';
-        const right = block.getFieldValue('RIGHT') || 'b';
+        const right = pythonGenerator.valueToCode(block, 'B', pythonGenerator.ORDER_NONE) || '0';
         return [`${left} ${op} ${right}`, pythonGenerator.ORDER_ATOMIC];
     };
 
@@ -659,7 +717,7 @@ export function initNodeGenerator(Blockly) {
 
     pythonGenerator.forBlock['node_math_function'] = function (block) {
         const func = block.getFieldValue('FUNC') || 'abs';
-        const arg = block.getFieldValue('ARG') || 'x';
+        const arg = pythonGenerator.valueToCode(block, 'ARG', pythonGenerator.ORDER_NONE) || '0';
 
         if (func.startsWith('math.')) {
             addImport('import math');
@@ -694,55 +752,111 @@ export function initNodeGenerator(Blockly) {
     };
 
     // ========================================
-    // TURTLESIM BLOCKS
+    // ========================================
+    // PROCEDURES BLOCKS
     // ========================================
 
-    pythonGenerator.forBlock['node_turtlesim_teleport'] = function (block) {
-        const turtle = block.getFieldValue('TURTLE') || 'turtle1';
-        const x = block.getFieldValue('X') || 5.5;
-        const y = block.getFieldValue('Y') || 5.5;
-        const theta = block.getFieldValue('THETA') || 0;
-
-        addImport('from turtlesim.srv import TeleportAbsolute');
-
-        return `# Teleport ${turtle} to (${x}, ${y}, ${theta})\n# Note: Requires service client setup\n`;
+    pythonGenerator.forBlock['node_procedures_define'] = function (block) {
+        const name = block.getFieldValue('NAME') || 'my_function';
+        let body = pythonGenerator.statementToCode(block, 'BODY') || '';
+        if (!body.trim()) {
+            body = '        pass\n';
+        } else {
+            // Add 8 spaces base indentation, preserving relative indentation
+            body = body.split('\n').map(line => {
+                if (!line.trim()) return '';
+                // Add base 8 spaces, keep any existing leading spaces
+                return '        ' + line;
+            }).join('\n');
+        }
+        return `\n    def ${name}(self):\n${body}`;
     };
 
-    pythonGenerator.forBlock['node_turtlesim_set_pen'] = function (block) {
-        const turtle = block.getFieldValue('TURTLE') || 'turtle1';
-        const r = block.getFieldValue('R') || 255;
-        const g = block.getFieldValue('G') || 255;
-        const b = block.getFieldValue('B') || 255;
-        const width = block.getFieldValue('WIDTH') || 3;
-        const off = block.getFieldValue('OFF') || 0;
-
-        addImport('from turtlesim.srv import SetPen');
-
-        return `# Set pen for ${turtle}: RGB(${r},${g},${b}), width=${width}, off=${off}\n# Note: Requires service client setup\n`;
+    pythonGenerator.forBlock['node_procedures_call'] = function (block) {
+        const name = block.getFieldValue('NAME') || 'my_function';
+        return `self.${name}()\n`;
     };
 
-    pythonGenerator.forBlock['node_turtlesim_clear'] = function (block) {
-        addImport('from std_srvs.srv import Empty');
-        return `# Clear turtlesim background\n# Note: Requires service client for /clear\n`;
+    pythonGenerator.forBlock['node_procedures_return'] = function (block) {
+        const value = pythonGenerator.valueToCode(block, 'VALUE', pythonGenerator.ORDER_NONE);
+        return value ? `return ${value}\n` : 'return\n';
     };
 
-    pythonGenerator.forBlock['node_turtlesim_spawn'] = function (block) {
-        const name = block.getFieldValue('NAME') || 'turtle2';
-        const x = block.getFieldValue('X') || 5.5;
-        const y = block.getFieldValue('Y') || 5.5;
-        const theta = block.getFieldValue('THETA') || 0;
+    // ========================================
+    // CONTROL FLOW BLOCKS
+    // ========================================
 
-        addImport('from turtlesim.srv import Spawn');
+    // Helper to add indentation to statement code
+    function indentStatementCode(code) {
+        if (!code || code.trim() === '') return '    pass\n';
+        // Split by newlines, add 4 spaces to each non-empty line
+        const lines = code.split('\n');
+        const indentedLines = lines.map(line => {
+            // Trim the line first, then add 4 spaces if not empty
+            const trimmed = line.trimStart();
+            return trimmed ? '    ' + trimmed : '';
+        });
+        // Join and ensure ends with newline
+        let result = indentedLines.join('\n');
+        if (!result.endsWith('\n')) result += '\n';
+        return result;
+    }
 
-        return `# Spawn ${name} at (${x}, ${y}, ${theta})\n# Note: Requires service client setup\n`;
+    pythonGenerator.forBlock['node_controlflow_if'] = function (block) {
+        const condition = pythonGenerator.valueToCode(block, 'CONDITION', pythonGenerator.ORDER_NONE) || 'True';
+        let doCode = pythonGenerator.statementToCode(block, 'DO');
+        doCode = indentStatementCode(doCode);
+        return `if ${condition}:\n${doCode}`;
     };
 
-    pythonGenerator.forBlock['node_turtlesim_kill'] = function (block) {
-        const name = block.getFieldValue('NAME') || 'turtle1';
+    pythonGenerator.forBlock['node_controlflow_ifelse'] = function (block) {
+        const condition = pythonGenerator.valueToCode(block, 'CONDITION', pythonGenerator.ORDER_NONE) || 'True';
+        let doCode = pythonGenerator.statementToCode(block, 'DO');
+        let elseCode = pythonGenerator.statementToCode(block, 'ELSE');
+        doCode = indentStatementCode(doCode);
+        elseCode = indentStatementCode(elseCode);
+        return `if ${condition}:\n${doCode}else:\n${elseCode}`;
+    };
 
-        addImport('from turtlesim.srv import Kill');
+    pythonGenerator.forBlock['node_controlflow_for'] = function (block) {
+        const times = block.getFieldValue('TIMES') || 10;
+        let doCode = pythonGenerator.statementToCode(block, 'DO');
+        doCode = indentStatementCode(doCode);
+        return `for _ in range(${times}):\n${doCode}`;
+    };
 
-        return `# Kill ${name}\n# Note: Requires service client setup\n`;
+    pythonGenerator.forBlock['node_controlflow_while'] = function (block) {
+        const condition = pythonGenerator.valueToCode(block, 'CONDITION', pythonGenerator.ORDER_NONE) || 'True';
+        let doCode = pythonGenerator.statementToCode(block, 'DO');
+        doCode = indentStatementCode(doCode);
+        return `while ${condition}:\n${doCode}`;
+    };
+
+    pythonGenerator.forBlock['node_controlflow_break'] = function (block) {
+        return 'break\n';
+    };
+
+    pythonGenerator.forBlock['node_controlflow_continue'] = function (block) {
+        return 'continue\n';
+    };
+
+    pythonGenerator.forBlock['node_controlflow_compare'] = function (block) {
+        const a = pythonGenerator.valueToCode(block, 'A', pythonGenerator.ORDER_NONE) || '0';
+        const op = block.getFieldValue('OP') || '==';
+        const b = pythonGenerator.valueToCode(block, 'B', pythonGenerator.ORDER_NONE) || '0';
+        return [`(${a} ${op} ${b})`, pythonGenerator.ORDER_ATOMIC];
+    };
+
+    pythonGenerator.forBlock['node_controlflow_logic'] = function (block) {
+        const a = pythonGenerator.valueToCode(block, 'A', pythonGenerator.ORDER_NONE) || 'True';
+        const op = block.getFieldValue('OP') || 'and';
+        const b = pythonGenerator.valueToCode(block, 'B', pythonGenerator.ORDER_NONE) || 'True';
+        return [`(${a} ${op} ${b})`, pythonGenerator.ORDER_ATOMIC];
+    };
+
+    pythonGenerator.forBlock['node_controlflow_not'] = function (block) {
+        const value = pythonGenerator.valueToCode(block, 'VALUE', pythonGenerator.ORDER_NONE) || 'True';
+        return [`not ${value}`, pythonGenerator.ORDER_ATOMIC];
     };
 
     console.log('[Node Generator] Initialized');
@@ -811,18 +925,33 @@ export function generateNodeCode(workspace, pythonGenerator) {
     // Get all top-level blocks
     const topBlocks = workspace.getTopBlocks(true);
     let nodeCode = '';
+    let procedureCode = '';
 
-    // Process blocks - only look for the Node hat block
+    // Process blocks - look for Node hat block and procedure definitions
     for (const block of topBlocks) {
         if (block.type === 'node_structure_node') {
             const code = pythonGenerator.blockToCode(block);
             if (code) {
                 nodeCode += typeof code === 'string' ? code : code[0];
             }
+        } else if (block.type === 'node_procedures_define') {
+            // Process procedure definitions separately
+            const code = pythonGenerator.blockToCode(block);
+            if (code) {
+                procedureCode += typeof code === 'string' ? code : code[0];
+            }
         } else {
             // Track orphan blocks (not connected to Node block)
             lastSkippedBlocks.push(block.type);
         }
+    }
+
+    // Insert procedure code into the node class (before the closing of __init__)
+    // Find where to insert procedures - after __init__ but inside class
+    if (procedureCode && nodeCode) {
+        // Replace the pattern to insert procedures after __init__
+        const initEndPattern = /(class \w+\(Node\):[\s\S]*?def __init__\(self\):[\s\S]*?)(\n\ndef main)/;
+        nodeCode = nodeCode.replace(initEndPattern, `$1${procedureCode}$2`);
     }
 
     // Build final code

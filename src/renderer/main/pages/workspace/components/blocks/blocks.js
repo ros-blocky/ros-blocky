@@ -26,6 +26,8 @@ import { t, onLanguageChange } from '../../../../../i18n/index.js';
 let initialized = false;
 let mainWorkspace = null;
 let openFiles = [];
+// In-memory cache for unsaved workspace states (keyed by packageName/fileName)
+const workspaceCache = new Map();
 let activeFile = null;
 
 // File type icons for tabs
@@ -197,6 +199,22 @@ export function initBlocks() {
 
         // Check if the file being run is the active file
         if (activeFile && activeFile.fileName === fileName && activeFile.packageName === packageName) {
+            // For Node files, validate before allowing run
+            if (activeFile.type === 'node' && mainWorkspace) {
+                const validation = validateNode(mainWorkspace);
+
+                if (validation.errors.length > 0) {
+                    console.error('[Blocks] Validation errors:', validation.errors);
+                    showErrorToast(`Cannot run: ${validation.errors[0]}`);
+
+                    // Dispatch failure - this will prevent the run
+                    window.dispatchEvent(new CustomEvent('saveComplete', {
+                        detail: { success: false, fileName, error: validation.errors[0] }
+                    }));
+                    return;
+                }
+            }
+
             await saveCurrentFile();
         }
 
@@ -269,9 +287,20 @@ export function initBlocks() {
 
             if (!nodeName) return;
 
+            // Detect log type from ROS log level in message (not from stderr/stdout)
+            let logType = 'info';
+            if (data.message) {
+                if (data.message.includes('[ERROR]')) {
+                    logType = 'error';
+                } else if (data.message.includes('[WARN]')) {
+                    logType = 'warn';
+                } else if (data.message.includes('[DEBUG]')) {
+                    logType = 'debug';
+                }
+                // [INFO] stays as 'info' (default)
+            }
+
             // Add to global log store (this also updates any visible log panel)
-            const logType = data.type === 'error' ? 'error' :
-                data.message && data.message.includes('[WARN]') ? 'warn' : 'info';
             addNodeLog(nodeName, data.message, logType);
         });
     }
@@ -412,12 +441,39 @@ async function saveCurrentFile() {
 
         // Handle based on file type
         if (activeFile.type === 'node') {
-            // SAVE NODE FILE - No validation for now
+            // Always save block state first (even with errors)
+            const blockXml = Blockly.Xml.domToText(
+                Blockly.Xml.workspaceToDom(mainWorkspace)
+            );
+
+            const blockResult = await window.electronAPI.saveNodeBlockState(
+                activeFile.packageName,
+                activeFile.fileName,
+                blockXml
+            );
+
+            if (!blockResult.success) {
+                console.error('[Blocks] Failed to save block state:', blockResult.message);
+            }
+
+            // Validate blocks before generating Python
+            const validation = validateNode(mainWorkspace);
+
+            if (validation.errors.length > 0) {
+                // Save blocks succeeded, but can't generate Python
+                console.warn('[Blocks] Blocks saved with errors:', validation.errors);
+                showWarningToast(`Blocks saved. Fix errors to generate Python: ${validation.errors[0]}`);
+                clearWorkspaceCache(activeFile);
+                showSaveIndicator();
+                return;
+            }
+
+            // Generate Python only if valid
             const pythonCode = generateNodeCode(mainWorkspace);
 
             if (!pythonCode) {
                 console.warn('[Blocks] No code generated - workspace may be empty');
-                showWarningToast('No Node block found - nothing to save');
+                showWarningToast('No code generated');
                 return;
             }
 
@@ -428,29 +484,13 @@ async function saveCurrentFile() {
                 pythonCode
             );
 
-            // Serialize block state to XML
-            const blockXml = Blockly.Xml.domToText(
-                Blockly.Xml.workspaceToDom(mainWorkspace)
-            );
-
-            // Save block state sidecar file
-            const blockResult = await window.electronAPI.saveNodeBlockState(
-                activeFile.packageName,
-                activeFile.fileName,
-                blockXml
-            );
-
-            if (nodeResult.success && blockResult.success) {
+            if (nodeResult.success) {
                 console.log('[Blocks] Node file and block state saved successfully');
+                clearWorkspaceCache(activeFile);
                 showSaveIndicator();
             } else {
-                if (!nodeResult.success) {
-                    console.error('[Blocks] Failed to save Node:', nodeResult.message);
-                    showErrorToast('Failed to save Node file');
-                }
-                if (!blockResult.success) {
-                    console.error('[Blocks] Failed to save block state:', blockResult.message);
-                }
+                console.error('[Blocks] Failed to save Node:', nodeResult.message);
+                showErrorToast('Failed to save Node file');
             }
         } else {
             // SAVE URDF FILE
@@ -499,6 +539,7 @@ async function saveCurrentFile() {
 
             if (urdfResult.success && blockResult.success) {
                 console.log('[Blocks] File and block state saved successfully');
+                clearWorkspaceCache(activeFile);  // Clear cache after successful save
                 showSaveIndicator();
             } else {
                 if (!urdfResult.success) {
@@ -797,6 +838,9 @@ function handleFileSelected(event) {
 
     console.log('[Blocks] File selected:', type, fileName);
 
+    // Save current workspace state to cache before switching
+    saveWorkspaceToCache();
+
     // Create file info object
     const fileInfo = {
         fileName: sanitizeText(fileName),
@@ -815,6 +859,9 @@ function handleFileSelected(event) {
         openFiles.push(fileInfo);
         activeFile = fileInfo;
     }
+
+    // Expose active file to window for Node blocks to access
+    window.blocksActiveFile = activeFile;
 
     // Update editor state (triggers icon sidebar and block palette updates)
     setActiveFile({
@@ -862,6 +909,76 @@ function sanitizeText(text) {
         .replace(/'/g, '&#039;');
 }
 
+/**
+ * Get cache key for a file
+ * @param {Object} file - File info object
+ * @returns {string} Cache key
+ */
+function getWorkspaceCacheKey(file) {
+    if (!file) return null;
+    return `${file.packageName}/${file.fileName}`;
+}
+
+/**
+ * Save current workspace state to in-memory cache
+ * Called before switching to a different file
+ */
+function saveWorkspaceToCache() {
+    if (!activeFile || !mainWorkspace) {
+        return;
+    }
+
+    try {
+        const cacheKey = getWorkspaceCacheKey(activeFile);
+        if (!cacheKey) return;
+
+        // Serialize workspace to XML
+        const xmlDom = Blockly.Xml.workspaceToDom(mainWorkspace);
+        const xmlText = Blockly.Xml.domToText(xmlDom);
+
+        // Store in cache
+        workspaceCache.set(cacheKey, {
+            xml: xmlText,
+            type: activeFile.type,
+            timestamp: Date.now()
+        });
+
+        console.log('[Blocks] Saved workspace to cache:', cacheKey);
+    } catch (error) {
+        console.error('[Blocks] Error saving workspace to cache:', error);
+    }
+}
+
+/**
+ * Check if we have a cached workspace for the current file
+ * @returns {string|null} Cached XML or null
+ */
+function getCachedWorkspace() {
+    if (!activeFile) return null;
+
+    const cacheKey = getWorkspaceCacheKey(activeFile);
+    if (!cacheKey) return null;
+
+    const cached = workspaceCache.get(cacheKey);
+    if (cached && cached.xml) {
+        console.log('[Blocks] Found cached workspace for:', cacheKey);
+        return cached.xml;
+    }
+
+    return null;
+}
+
+/**
+ * Clear cache entry for a file (called after saving)
+ */
+function clearWorkspaceCache(file) {
+    if (!file) return;
+    const cacheKey = getWorkspaceCacheKey(file);
+    if (cacheKey) {
+        workspaceCache.delete(cacheKey);
+        console.log('[Blocks] Cleared workspace cache for:', cacheKey);
+    }
+}
 /**
  * Setup sidebar resize functionality
  */
@@ -1173,7 +1290,9 @@ function createBlocklyWorkspace(fileType) {
         media: './pages/workspace/components/blocks/blockly-media/',  // Local media for offline use
         plugins: {
             // Use our custom flyout that maintains fixed scale
-            flyoutsVerticalToolbox: 'fixedScaleFlyout'
+            flyoutsVerticalToolbox: 'fixedScaleFlyout',
+            // Use custom connection checker for MsgType blocks (only for node editor)
+            connectionChecker: 'msgtype_checker'
         },
         grid: {
             spacing: 20,
@@ -1230,11 +1349,9 @@ function createBlocklyWorkspace(fileType) {
                 // Enable real-time visual validation based on file type
                 if (fileType === 'urdf' || fileType === 'xacro') {
                     enableRealtimeValidation(mainWorkspace);
+                } else if (fileType === 'node') {
+                    enableNodeValidation(mainWorkspace);
                 }
-                // Node validation DISABLED FOR TESTING
-                // else if (fileType === 'node') {
-                //     enableNodeValidation(mainWorkspace);
-                // }
 
                 // Force resize
                 Blockly.svgResize(mainWorkspace);
@@ -1265,6 +1382,7 @@ function createBlocklyWorkspace(fileType) {
 
 /**
  * Load blocks from sidecar file if it exists
+ * First checks in-memory cache for unsaved changes
  */
 async function loadBlocksFromFile() {
     if (!activeFile || !mainWorkspace) {
@@ -1274,6 +1392,26 @@ async function loadBlocksFromFile() {
     try {
         console.log('[Blocks] Checking for saved block state...', activeFile.type);
 
+        // First check in-memory cache for unsaved changes
+        const cachedXml = getCachedWorkspace();
+        if (cachedXml) {
+            console.log('[Blocks] Loading from in-memory cache (unsaved changes)...');
+
+            // Clear current workspace
+            mainWorkspace.clear();
+
+            // Parse and load the cached XML
+            const dom = Blockly.utils.xml.textToDom(cachedXml);
+            Blockly.Xml.domToWorkspace(dom, mainWorkspace);
+
+            // Clear undo stack
+            mainWorkspace.clearUndo();
+
+            console.log('[Blocks] Cached workspace restored successfully');
+            return;
+        }
+
+        // No cache - load from file
         let result;
 
         // Use appropriate loader based on file type
@@ -1290,7 +1428,7 @@ async function loadBlocksFromFile() {
         }
 
         if (result.success && result.blockXml) {
-            console.log('[Blocks] Loading saved block state...');
+            console.log('[Blocks] Loading saved block state from file...');
 
             // Clear current workspace
             mainWorkspace.clear();

@@ -19,10 +19,7 @@ export const NODE_CATEGORIES = [
             'node_structure_node',
             'node_publishers_create',
             'node_publishers_publish',
-            'node_publishers_create_message',
-            'node_publishers_set_field',
-            'node_subscribers_create',
-            'node_subscribers_get_data'
+            'node_subscribers_create'
         ]
     },
     {
@@ -33,14 +30,14 @@ export const NODE_CATEGORIES = [
         color: '#16a085',
         description: 'Variables, lists, and dictionaries',
         blocks: [
-            'node_variables_create',
             'node_variables_set',
             'node_variables_get',
-            'node_variables_create_list',
-            'node_variables_append',
-            'node_variables_create_dict',
-            'node_variables_dict_set',
-            'node_variables_dict_get'
+            'node_variables_number',
+            'node_variables_string',
+            'node_variables_boolean',
+            'node_variables_property',
+            'node_variables_scope',
+            'node_variables_name'
         ]
     },
     {
@@ -69,30 +66,25 @@ export const NODE_CATEGORIES = [
             'node_messages_type_bool',
             'node_messages_type_twist',
             'node_messages_type_pose',
-            'node_messages_type_laserscan',
             'node_messages_string',
             'node_messages_int32',
             'node_messages_float64',
             'node_messages_bool',
             'node_messages_twist',
             'node_messages_pose',
-            'node_messages_point',
-            'node_messages_laserscan',
-            'node_messages_set_field',
-            'node_messages_get_field'
+            'node_messages_point'
         ]
     },
     {
-        id: 'parameters',
+        id: 'procedures',
         icon: 'assets/icons/node-parameters.svg',
         iconType: 'image',
-        label: 'Parameters',
-        color: '#00bcd4',
-        description: 'ROS 2 node parameters',
+        label: 'Procedures',
+        color: '#9b59b6',
+        description: 'Define and call functions',
         blocks: [
-            'node_parameters_declare',
-            'node_parameters_get',
-            'node_parameters_set'
+            'node_procedures_define',
+            'node_procedures_call'
         ]
     },
     {
@@ -103,9 +95,6 @@ export const NODE_CATEGORIES = [
         color: '#7f8c8d',
         description: 'Node logging functions',
         blocks: [
-            'node_logging_text',
-            'node_logging_msg',
-            'node_logging_msg_data',
             'node_logging_info',
             'node_logging_warn',
             'node_logging_error',
@@ -117,7 +106,7 @@ export const NODE_CATEGORIES = [
         icon: 'assets/icons/node-controlflow.svg',
         iconType: 'image',
         label: 'Control Flow',
-        color: '#9966FF',
+        color: '#E9A23B',
         description: 'Conditionals and loops',
         blocks: [
             'node_controlflow_if',
@@ -125,8 +114,7 @@ export const NODE_CATEGORIES = [
             'node_controlflow_for',
             'node_controlflow_while',
             'node_controlflow_break',
-            'node_controlflow_continue',
-            'node_controlflow_try'
+            'node_controlflow_continue'
         ]
     },
     {
@@ -137,27 +125,11 @@ export const NODE_CATEGORIES = [
         color: '#e74c3c',
         description: 'Arithmetic, comparison, and logic operations',
         blocks: [
+            'node_controlflow_compare',
+            'node_controlflow_logic',
+            'node_controlflow_not',
             'node_math_arithmetic',
-            'node_math_compare',
-            'node_math_logic',
-            'node_math_function',
-            'node_math_random',
-            'node_math_clamp'
-        ]
-    },
-    {
-        id: 'turtlesim',
-        icon: 'assets/icons/node-turtlesim.svg',
-        iconType: 'image',
-        label: 'TurtleSim',
-        color: '#1abc9c',
-        description: 'TurtleSim specific blocks',
-        blocks: [
-            'node_turtlesim_teleport',
-            'node_turtlesim_set_pen',
-            'node_turtlesim_clear',
-            'node_turtlesim_spawn',
-            'node_turtlesim_kill'
+            'node_math_function'
         ]
     }
 ];
