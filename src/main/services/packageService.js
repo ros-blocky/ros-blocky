@@ -243,7 +243,9 @@ class PackageService {
                 webPreferences: {
                     preload: path.join(__dirname, '../../preload/dialogPreload.js'),
                     nodeIntegration: false,
-                    contextIsolation: true
+                    contextIsolation: true,
+                    webSecurity: true,
+                    sandbox: true
                 }
             });
             loadingWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/packageCreationLoading.html'));

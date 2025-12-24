@@ -22,12 +22,19 @@ import { getCategoryById as getNodeCategoryById } from './editors/nodes/node-cat
 // Import i18n for translations
 import { t, onLanguageChange } from '../../../../../i18n/index.js';
 
+// Import HTML utilities for XSS prevention
+import { escapeHtml } from '../../../../utils/html-utils.js';
+
 // State
 let initialized = false;
 let mainWorkspace = null;
 let openFiles = [];
 // In-memory cache for unsaved workspace states (keyed by packageName/fileName)
 const workspaceCache = new Map();
+// Track files with unsaved changes (dirty state)
+const dirtyFiles = new Set();
+// Flag to prevent marking dirty during block loading
+let isLoadingBlocks = false;
 let activeFile = null;
 
 // File type icons for tabs
@@ -305,6 +312,14 @@ export function initBlocks() {
         });
     }
 
+    // Listen for file deletions to auto-close tabs
+    if (window.electronAPI && window.electronAPI.onFileDeleted) {
+        window.electronAPI.onFileDeleted((data) => {
+            console.log('[Blocks] File deleted notification:', data);
+            closeTabByFile(data.packageName, data.fileName);
+        });
+    }
+
     // Set initial state (no file open)
     updateUIState(false);
 
@@ -487,6 +502,7 @@ async function saveCurrentFile() {
             if (nodeResult.success) {
                 console.log('[Blocks] Node file and block state saved successfully');
                 clearWorkspaceCache(activeFile);
+                markClean(activeFile); // Clear dirty indicator
                 showSaveIndicator();
             } else {
                 console.error('[Blocks] Failed to save Node:', nodeResult.message);
@@ -540,6 +556,7 @@ async function saveCurrentFile() {
             if (urdfResult.success && blockResult.success) {
                 console.log('[Blocks] File and block state saved successfully');
                 clearWorkspaceCache(activeFile);  // Clear cache after successful save
+                markClean(activeFile); // Clear dirty indicator
                 showSaveIndicator();
             } else {
                 if (!urdfResult.success) {
@@ -571,7 +588,7 @@ function showWarningToast(message) {
     toast.className = 'warning-toast';
     toast.innerHTML = `
         <span class="warning-icon">⚠️</span>
-        <span class="warning-message">${message}</span>
+        <span class="warning-message">${escapeHtml(message)}</span>
     `;
     document.body.appendChild(toast);
 
@@ -598,7 +615,7 @@ function showErrorToast(message) {
     toast.className = 'warning-toast error-toast'; // Re-use class + modifier
     toast.innerHTML = `
         <span class="warning-icon">❌</span>
-        <span class="warning-message">${message}</span>
+        <span class="warning-message">${escapeHtml(message)}</span>
     `;
     document.body.appendChild(toast);
 
@@ -625,7 +642,7 @@ function showSuccessToast(message) {
     toast.className = 'warning-toast success-toast';
     toast.innerHTML = `
         <span class="warning-icon">✓</span>
-        <span class="warning-message">${message}</span>
+        <span class="warning-message">${escapeHtml(message)}</span>
     `;
     document.body.appendChild(toast);
 
@@ -979,6 +996,56 @@ function clearWorkspaceCache(file) {
         console.log('[Blocks] Cleared workspace cache for:', cacheKey);
     }
 }
+
+/**
+ * Get dirty key for a file
+ * @param {Object} file - File info object
+ * @returns {string} Dirty key
+ */
+function getDirtyKey(file) {
+    if (!file) return null;
+    return `${file.packageName}/${file.fileName}`;
+}
+
+/**
+ * Mark a file as dirty (has unsaved changes)
+ * @param {Object} file - File info object
+ */
+function markDirty(file) {
+    if (!file) return;
+    const key = getDirtyKey(file);
+    if (key && !dirtyFiles.has(key)) {
+        dirtyFiles.add(key);
+        console.log('[Blocks] File marked as dirty:', key);
+        renderTabs(); // Update tab to show dot
+    }
+}
+
+/**
+ * Mark a file as clean (saved)
+ * @param {Object} file - File info object
+ */
+function markClean(file) {
+    if (!file) return;
+    const key = getDirtyKey(file);
+    if (key && dirtyFiles.has(key)) {
+        dirtyFiles.delete(key);
+        console.log('[Blocks] File marked as clean:', key);
+        renderTabs(); // Update tab to remove dot
+    }
+}
+
+/**
+ * Check if a file is dirty
+ * @param {Object} file - File info object
+ * @returns {boolean} True if file has unsaved changes
+ */
+function isDirty(file) {
+    if (!file) return false;
+    const key = getDirtyKey(file);
+    return key ? dirtyFiles.has(key) : false;
+}
+
 /**
  * Setup sidebar resize functionality
  */
@@ -1066,12 +1133,14 @@ function renderTabs() {
 
         const ext = file.fileName.split('.').pop().toLowerCase();
         const icon = FILE_ICONS[ext] || FILE_ICONS.default;
+        const fileDirty = isDirty(file);
 
         return `
-            <div class="editor-tab ${isActive ? 'active' : ''}" data-index="${index}">
+            <div class="editor-tab ${isActive ? 'active' : ''} ${fileDirty ? 'dirty' : ''}" data-index="${index}">
                 <span class="tab-icon">${icon}</span>
-                <span class="tab-name">${file.fileName}</span>
-                <span class="tab-close" data-index="${index}">×</span>
+                <span class="tab-name">${escapeHtml(file.fileName)}</span>
+                <span class="tab-dirty-indicator" style="display: ${fileDirty ? 'flex' : 'none'}">●</span>
+                <span class="tab-close" data-index="${index}" style="display: ${fileDirty ? 'none' : 'flex'}">×</span>
             </div>
         `;
     }).join('');
@@ -1108,12 +1177,12 @@ function renderTabs() {
         });
     });
 
-    // Attach close handlers
-    tabsContainer.querySelectorAll('.tab-close').forEach(closeBtn => {
-        closeBtn.addEventListener('click', (e) => {
+    // Attach close handlers (both close button and dirty indicator)
+    tabsContainer.querySelectorAll('.tab-close, .tab-dirty-indicator').forEach(closeBtn => {
+        closeBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            const index = parseInt(closeBtn.dataset.index);
-            closeTab(index);
+            const index = parseInt(closeBtn.dataset.index || closeBtn.parentElement.dataset.index);
+            await closeTab(index);
         });
     });
 }
@@ -1122,10 +1191,36 @@ function renderTabs() {
  * Close a tab
  * @param {number} index - Tab index to close
  */
-function closeTab(index) {
+async function closeTab(index) {
+    const file = openFiles[index];
+
+    // Check if file has unsaved changes
+    if (isDirty(file)) {
+        // Show save prompt dialog
+        const result = await showSavePrompt(file.fileName);
+
+        if (result === 'cancel') {
+            return; // Don't close
+        }
+
+        if (result === 'save') {
+            // Trigger save and wait for it
+            await saveCurrentFile();
+        }
+        // result === 'dontsave' - just close without saving
+
+        // Clear dirty state
+        const key = getDirtyKey(file);
+        if (key) dirtyFiles.delete(key);
+    }
+
     const wasActive = activeFile &&
-        openFiles[index].fileName === activeFile.fileName &&
-        openFiles[index].packageName === activeFile.packageName;
+        file.fileName === activeFile.fileName &&
+        file.packageName === activeFile.packageName;
+
+    // Clear cache for this file
+    const cacheKey = getWorkspaceCacheKey(file);
+    if (cacheKey) workspaceCache.delete(cacheKey);
 
     openFiles.splice(index, 1);
 
@@ -1147,6 +1242,113 @@ function closeTab(index) {
 
     renderTabs();
     renderBreadcrumb();
+}
+
+/**
+ * Close a tab by package name and file name (used when files are deleted externally)
+ * @param {string} packageName - Package name
+ * @param {string} fileName - File name
+ */
+function closeTabByFile(packageName, fileName) {
+    // Find the index of the file in openFiles
+    const index = openFiles.findIndex(f =>
+        f.packageName === packageName && f.fileName === fileName
+    );
+
+    if (index === -1) {
+        console.log('[Blocks] File not found in open tabs:', packageName, fileName);
+        return;
+    }
+
+    console.log('[Blocks] Closing tab for deleted file:', packageName, fileName);
+
+    const file = openFiles[index];
+
+    // Clear dirty state if any
+    const dirtyKey = getDirtyKey(file);
+    if (dirtyKey) dirtyFiles.delete(dirtyKey);
+
+    // Clear cache
+    const cacheKey = getWorkspaceCacheKey(file);
+    if (cacheKey) workspaceCache.delete(cacheKey);
+
+    const wasActive = activeFile &&
+        file.fileName === activeFile.fileName &&
+        file.packageName === activeFile.packageName;
+
+    openFiles.splice(index, 1);
+
+    if (wasActive) {
+        if (openFiles.length > 0) {
+            const newIndex = Math.min(index, openFiles.length - 1);
+            activeFile = openFiles[newIndex];
+            setActiveFile({
+                type: activeFile.type,
+                path: activeFile.fileName,
+                package: activeFile.packageName
+            });
+        } else {
+            activeFile = null;
+            clearActiveFile();
+            updateUIState(false);
+        }
+    }
+
+    renderTabs();
+    renderBreadcrumb();
+}
+
+/**
+ * Show save prompt dialog
+ * @param {string} fileName - Name of the file
+ * @returns {Promise<string>} 'save', 'dontsave', or 'cancel'
+ */
+async function showSavePrompt(fileName) {
+    return new Promise((resolve) => {
+        // Create modal overlay
+        const overlay = document.createElement('div');
+        overlay.className = 'save-prompt-overlay';
+        overlay.innerHTML = `
+            <div class="save-prompt-dialog">
+                <div class="save-prompt-icon">💾</div>
+                <div class="save-prompt-title">Save changes?</div>
+                <div class="save-prompt-message">Do you want to save the changes you made to <strong>${fileName}</strong>?</div>
+                <div class="save-prompt-buttons">
+                    <button class="save-prompt-btn btn-dontsave">Don't Save</button>
+                    <button class="save-prompt-btn btn-cancel">Cancel</button>
+                    <button class="save-prompt-btn btn-save">Save</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        // Button handlers
+        overlay.querySelector('.btn-save').addEventListener('click', () => {
+            overlay.remove();
+            resolve('save');
+        });
+
+        overlay.querySelector('.btn-dontsave').addEventListener('click', () => {
+            overlay.remove();
+            resolve('dontsave');
+        });
+
+        overlay.querySelector('.btn-cancel').addEventListener('click', () => {
+            overlay.remove();
+            resolve('cancel');
+        });
+
+        // ESC key to cancel
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                overlay.remove();
+                document.removeEventListener('keydown', escHandler);
+                resolve('cancel');
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    });
 }
 
 /**
@@ -1175,17 +1377,17 @@ function renderBreadcrumb() {
     breadcrumbContainer.innerHTML = `
         <span class="breadcrumb-item">
             <span class="breadcrumb-icon">📦</span>
-            ${activeFile.packageName}
+            ${escapeHtml(activeFile.packageName)}
         </span>
         <span class="breadcrumb-separator">›</span>
         <span class="breadcrumb-item">
             <span class="breadcrumb-icon">📁</span>
-            ${folder}
+            ${escapeHtml(folder)}
         </span>
         <span class="breadcrumb-separator">›</span>
         <span class="breadcrumb-item">
             <span class="breadcrumb-icon">${icon}</span>
-            ${activeFile.fileName}
+            ${escapeHtml(activeFile.fileName)}
         </span>
     `;
 }
@@ -1256,9 +1458,13 @@ function registerFixedScaleFlyout() {
  * @param {string} fileType - Type of file being edited
  */
 function createBlocklyWorkspace(fileType) {
+    // Set loading flag immediately to prevent dirty marking during workspace setup
+    isLoadingBlocks = true;
+
     const container = document.getElementById('blockly-workspace');
     if (!container) {
         console.error('[Blocks] Workspace container not found');
+        isLoadingBlocks = false;
         return;
     }
 
@@ -1271,6 +1477,7 @@ function createBlocklyWorkspace(fileType) {
     // Check if Blockly is available
     if (typeof Blockly === 'undefined') {
         console.error('[Blocks] Blockly not loaded');
+        isLoadingBlocks = false;
         return;
     }
 
@@ -1374,6 +1581,21 @@ function createBlocklyWorkspace(fileType) {
         Blockly.svgResize(mainWorkspace);
     }, 50);
 
+    // Add change listener to track unsaved changes
+    mainWorkspace.addChangeListener((event) => {
+        // Skip dirty marking if we're loading blocks
+        if (isLoadingBlocks) return;
+
+        // Only mark dirty for actual content changes, not UI events
+        if (event.type !== Blockly.Events.UI &&
+            event.type !== Blockly.Events.VIEWPORT_CHANGE &&
+            event.type !== Blockly.Events.CLICK &&
+            event.type !== Blockly.Events.SELECTED &&
+            event.type !== Blockly.Events.TOOLBOX_ITEM_SELECT) {
+            markDirty(activeFile);
+        }
+    });
+
     // Load saved block state if it exists
     loadBlocksFromFile();
 
@@ -1388,6 +1610,9 @@ async function loadBlocksFromFile() {
     if (!activeFile || !mainWorkspace) {
         return;
     }
+
+    // Set flag to prevent dirty marking during load
+    isLoadingBlocks = true;
 
     try {
         console.log('[Blocks] Checking for saved block state...', activeFile.type);
@@ -1408,6 +1633,7 @@ async function loadBlocksFromFile() {
             mainWorkspace.clearUndo();
 
             console.log('[Blocks] Cached workspace restored successfully');
+            setTimeout(() => { isLoadingBlocks = false; }, 200);
             return;
         }
 
@@ -1446,8 +1672,15 @@ async function loadBlocksFromFile() {
         }
     } catch (error) {
         console.error('[Blocks] Error loading block state:', error);
+    } finally {
+        // Clear loading flag after a short delay to allow pending events to be ignored
+        setTimeout(() => {
+            isLoadingBlocks = false;
+            console.log('[Blocks] Loading complete, dirty tracking enabled');
+        }, 200);
     }
 }
+
 
 
 /**

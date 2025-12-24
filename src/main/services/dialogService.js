@@ -12,6 +12,8 @@ const path = require('path');
  */
 function promptPackageName() {
     return new Promise((resolve) => {
+        let resolved = false;
+
         const promptWindow = new BrowserWindow({
             width: 450,
             height: 220,
@@ -23,7 +25,9 @@ function promptPackageName() {
             webPreferences: {
                 preload: path.join(__dirname, '../../preload/dialogPreload.js'),
                 nodeIntegration: false,
-                contextIsolation: true
+                contextIsolation: true,
+                webSecurity: true,
+                sandbox: true
             }
         });
 
@@ -34,8 +38,10 @@ function promptPackageName() {
         });
 
         const handler = (event, name) => {
-            promptWindow.close();
+            if (resolved) return;
+            resolved = true;
             ipcMain.removeListener('package-name-result', handler);
+            promptWindow.close();
             resolve(name);
         };
 
@@ -43,7 +49,10 @@ function promptPackageName() {
 
         promptWindow.on('closed', () => {
             ipcMain.removeListener('package-name-result', handler);
-            resolve(null);
+            if (!resolved) {
+                resolved = true;
+                resolve(null);
+            }
         });
     });
 }
@@ -55,6 +64,8 @@ function promptPackageName() {
  */
 function showConfirmDialog(message) {
     return new Promise((resolve) => {
+        let resolved = false;
+
         const confirmWindow = new BrowserWindow({
             width: 400,
             height: 180,
@@ -66,7 +77,9 @@ function showConfirmDialog(message) {
             webPreferences: {
                 preload: path.join(__dirname, '../../preload/dialogPreload.js'),
                 nodeIntegration: false,
-                contextIsolation: true
+                contextIsolation: true,
+                webSecurity: true,
+                sandbox: true
             }
         });
 
@@ -81,8 +94,10 @@ function showConfirmDialog(message) {
         });
 
         const handler = (event, confirmed) => {
-            confirmWindow.close();
+            if (resolved) return;
+            resolved = true;
             ipcMain.removeListener('confirm-result', handler);
+            confirmWindow.close();
             resolve(confirmed);
         };
 
@@ -90,7 +105,10 @@ function showConfirmDialog(message) {
 
         confirmWindow.on('closed', () => {
             ipcMain.removeListener('confirm-result', handler);
-            resolve(false);
+            if (!resolved) {
+                resolved = true;
+                resolve(false);
+            }
         });
     });
 }
@@ -113,7 +131,9 @@ function showLoadingDialog(config) {
             webPreferences: {
                 preload: path.join(__dirname, '../../preload/dialogPreload.js'),
                 nodeIntegration: false,
-                contextIsolation: true
+                contextIsolation: true,
+                webSecurity: true,
+                sandbox: true
             }
         });
 
@@ -138,6 +158,8 @@ function showLoadingDialog(config) {
  */
 function promptDeletePackage(packageName) {
     return new Promise((resolve) => {
+        let resolved = false;
+
         const confirmWindow = new BrowserWindow({
             width: 450,
             height: 380,
@@ -149,7 +171,9 @@ function promptDeletePackage(packageName) {
             webPreferences: {
                 preload: path.join(__dirname, '../../preload/dialogPreload.js'),
                 nodeIntegration: false,
-                contextIsolation: true
+                contextIsolation: true,
+                webSecurity: true,
+                sandbox: true
             }
         });
 
@@ -167,8 +191,10 @@ function promptDeletePackage(packageName) {
         });
 
         const handler = (event, confirmedName) => {
-            confirmWindow.close();
+            if (resolved) return;
+            resolved = true;
             ipcMain.removeListener('delete-package-confirmed', handler);
+            confirmWindow.close();
             resolve(confirmedName === packageName);
         };
 
@@ -176,7 +202,10 @@ function promptDeletePackage(packageName) {
 
         confirmWindow.on('closed', () => {
             ipcMain.removeListener('delete-package-confirmed', handler);
-            resolve(false);
+            if (!resolved) {
+                resolved = true;
+                resolve(false);
+            }
         });
     });
 }
@@ -189,6 +218,8 @@ function promptDeletePackage(packageName) {
  */
 function promptItemName(itemType, packageName) {
     return new Promise((resolve) => {
+        let resolved = false;
+
         const promptWindow = new BrowserWindow({
             width: 450,
             height: 300,
@@ -200,7 +231,9 @@ function promptItemName(itemType, packageName) {
             webPreferences: {
                 preload: path.join(__dirname, '../../preload/dialogPreload.js'),
                 nodeIntegration: false,
-                contextIsolation: true
+                contextIsolation: true,
+                webSecurity: true,
+                sandbox: true
             }
         });
 
@@ -218,8 +251,10 @@ function promptItemName(itemType, packageName) {
         });
 
         const handler = (event, result) => {
-            promptWindow.close();
+            if (resolved) return;
+            resolved = true;
             ipcMain.removeListener('item-name-result', handler);
+            promptWindow.close();
             resolve(result);
         };
 
@@ -227,7 +262,10 @@ function promptItemName(itemType, packageName) {
 
         promptWindow.on('closed', () => {
             ipcMain.removeListener('item-name-result', handler);
-            resolve(null);
+            if (!resolved) {
+                resolved = true;
+                resolve(null);
+            }
         });
     });
 }

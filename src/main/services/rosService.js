@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { BrowserWindow } = require('electron');
+const { isValidName, isValidTopicName, createValidationError } = require('../helpers/validationUtil');
 
 // Reference to packageService (set during initialization)
 let packageService = null;
@@ -35,6 +36,14 @@ function init(pkgService) {
  * @returns {Promise<Object>} Result with success status and PID
  */
 async function runNode(packageName, nodeName) {
+    // Validate inputs to prevent command injection
+    if (!isValidName(packageName)) {
+        return createValidationError('package name', packageName);
+    }
+    if (!isValidName(nodeName.replace(/\.py$/, ''))) {
+        return createValidationError('node name', nodeName);
+    }
+
     const nodeNameWithoutExt = nodeName.replace(/\.py$/, '');
     const commands = [
         `ros2 run ${packageName} ${nodeNameWithoutExt}`
@@ -51,6 +60,14 @@ async function runNode(packageName, nodeName) {
  * @returns {Promise<Object>} Result with success status and PID
  */
 async function runRobotPublisher(packageName, fileName) {
+    // Validate inputs to prevent command injection
+    if (!isValidName(packageName)) {
+        return createValidationError('package name', packageName);
+    }
+    if (!isValidName(fileName)) {
+        return createValidationError('file name', fileName);
+    }
+
     const projectPath = getProjectPath();
     if (!projectPath) {
         return { success: false, error: 'No project loaded' };
@@ -73,6 +90,14 @@ async function runRobotPublisher(packageName, fileName) {
  * @returns {Promise<Object>} Result with success status and PID
  */
 async function runLaunch(packageName, fileName) {
+    // Validate inputs to prevent command injection
+    if (!isValidName(packageName)) {
+        return createValidationError('package name', packageName);
+    }
+    if (!isValidName(fileName)) {
+        return createValidationError('file name', fileName);
+    }
+
     const commands = [
         `ros2 launch ${packageName} ${fileName}`
     ];
@@ -192,6 +217,11 @@ type "${commandsFile}" | pixi shell
  * @returns {Promise<Object>} Result with topic info (type, publishers, subscribers)
  */
 async function getTopicInfo(topicName) {
+    // Validate topic name to prevent command injection
+    if (!isValidTopicName(topicName)) {
+        return { success: false, error: `Invalid topic name: "${topicName}". Topic names must start with / and contain only alphanumeric characters, underscores, and forward slashes.` };
+    }
+
     return new Promise((resolve) => {
         const tempDir = os.tmpdir();
         const commandsFile = path.join(tempDir, `topic_info_${Date.now()}.txt`);
@@ -299,6 +329,11 @@ type "${commandsFile}" | pixi shell
  * @returns {Promise<Object>} Result with success status and process key
  */
 async function startTopicEcho(topicName) {
+    // Validate topic name to prevent command injection
+    if (!isValidTopicName(topicName)) {
+        return { success: false, error: `Invalid topic name: "${topicName}". Topic names must start with / and contain only alphanumeric characters, underscores, and forward slashes.` };
+    }
+
     const processKey = `echo:${topicName}`;
 
     // Stop existing echo for this topic if running
@@ -408,6 +443,11 @@ async function buildAllPackages(onStatus) {
  * @returns {Promise<Object>} Result with success status
  */
 async function buildPackage(packageName, onStatus) {
+    // Validate package name to prevent command injection
+    if (!isValidName(packageName)) {
+        return createValidationError('package name', packageName);
+    }
+
     const projectPath = getProjectPath();
     if (!projectPath) {
         return { success: false, error: 'No project loaded' };

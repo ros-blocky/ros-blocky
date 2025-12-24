@@ -97,5 +97,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Build operations
   buildAllPackages: () => ipcRenderer.invoke('build-all-packages'),
   buildPackage: (packageName) => ipcRenderer.invoke('build-package', packageName),
-  onBuildResult: (callback) => ipcRenderer.on('build-result', (event, data) => callback(data))
+  onBuildResult: (callback) => ipcRenderer.on('build-result', (event, data) => callback(data)),
+
+  // File deletion notification (for auto-closing tabs)
+  onFileDeleted: (callback) => ipcRenderer.on('file-deleted', (event, data) => callback(data))
 });

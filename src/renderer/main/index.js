@@ -5,6 +5,7 @@
 // Import i18n module
 import { initI18n, t, updatePageTranslations } from '../i18n/index.js';
 import { createLanguageSwitcher, getLanguageSwitcherStyles } from '../i18n/language-switcher.js';
+import { escapeHtml, escapeAttribute } from './utils/html-utils.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('Main window loaded');
@@ -53,8 +54,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (welcomeScreen) welcomeScreen.classList.add('hidden');
         if (loadingScreen) {
             loadingScreen.classList.add('hidden');
-            // Double-check: also set display none directly as failsafe
+            // Double-check: also set display none and pointer-events as failsafe
             loadingScreen.style.display = 'none';
+            loadingScreen.style.pointerEvents = 'none';
+            console.log('[showIDE] Loading screen hidden, display:', loadingScreen.style.display);
         }
         if (workspace) workspace.classList.remove('hidden');
 
@@ -103,19 +106,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (welcomeScreen) welcomeScreen.classList.add('hidden');
         if (loadingScreen) {
             loadingScreen.classList.remove('hidden');
-            // Reset inline style that may have been set by showIDE
+            // Reset inline styles that may have been set by showIDE
             loadingScreen.style.display = '';
+            loadingScreen.style.pointerEvents = '';
         }
         if (workspace) workspace.classList.add('hidden');
     }
 
     // Helper function to show welcome screen
     async function showWelcome() {
+        console.log('[showWelcome] Showing welcome screen, hiding loading and workspace');
+
         // Reset the project loaded flag when returning to welcome
         isProjectLoaded = false;
 
         if (welcomeScreen) welcomeScreen.classList.remove('hidden');
-        if (loadingScreen) loadingScreen.classList.add('hidden');
+        if (loadingScreen) {
+            loadingScreen.classList.add('hidden');
+            // Also reset inline styles as failsafe
+            loadingScreen.style.display = 'none';
+            loadingScreen.style.pointerEvents = 'none';
+        }
         if (workspace) workspace.classList.add('hidden');
 
         // Hide toolbar buttons on welcome screen
@@ -339,8 +350,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const packages = await window.electronAPI.listPackages();
             if (packages && packages.length > 0) {
                 buildPackagesList.innerHTML = packages.map(pkg => `
-                    <div class="build-menu-item build-menu-package" data-package="${pkg}">
-                        ${pkg}
+                    <div class="build-menu-item build-menu-package" data-package="${escapeAttribute(pkg)}">
+                        ${escapeHtml(pkg)}
                     </div>
                 `).join('');
 
@@ -462,9 +473,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (result.success && result.topics.length > 0) {
                 content.innerHTML = result.topics.map(topic => `
                     <div class="topic-wrapper">
-                        <div class="topic-item" data-topic="${topic}">
+                        <div class="topic-item" data-topic="${escapeAttribute(topic)}">
                             <span class="topic-expand">▶</span>
-                            <span class="topic-name">${topic}</span>
+                            <span class="topic-name">${escapeHtml(topic)}</span>
                         </div>
                         <div class="topic-details hidden"></div>
                     </div>
@@ -552,7 +563,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         echoPanel.className = 'echo-panel';
         echoPanel.innerHTML = `
             <div class="echo-panel-header">
-                <span class="echo-title">📡 ${topicName}</span>
+                <span class="echo-title">📡 ${escapeHtml(topicName)}</span>
                 <div class="echo-header-actions">
                     <button class="echo-stop-btn" title="Stop">■</button>
                     <button class="echo-close-btn" title="Close">×</button>

@@ -3,7 +3,7 @@
  * Extracted from packageService.js for better separation of concerns
  */
 
-const { dialog } = require('electron');
+const { dialog, BrowserWindow } = require('electron');
 const fs = require('fs').promises;
 const path = require('path');
 const setupPyService = require('./setupPyService');
@@ -26,6 +26,23 @@ function init(getProjectPath) {
  */
 function getProjectPath() {
     return getProjectPathFn ? getProjectPathFn() : null;
+}
+
+/**
+ * Notify renderer that a file was deleted so it can close any open tabs
+ * @param {string} packageName - Package name
+ * @param {string} fileName - File name that was deleted
+ */
+function notifyFileDeleted(packageName, fileName) {
+    try {
+        const mainWindow = BrowserWindow.getAllWindows().find(w => !w.isDestroyed());
+        if (mainWindow) {
+            mainWindow.webContents.send('file-deleted', { packageName, fileName });
+            console.log(`[FileService] Notified renderer of file deletion: ${packageName}/${fileName}`);
+        }
+    } catch (error) {
+        console.error('[FileService] Error notifying file deletion:', error);
+    }
 }
 
 // ============== URDF Operations ==============
@@ -589,6 +606,14 @@ async function deleteSectionFiles(packageName, sectionType) {
                 await fs.unlink(path.join(sectionPath, file));
                 const nodeName = file.replace('.py', '');
                 await setupPyService.removeNodeEntryPoint(packageName, nodeName);
+
+                // Also delete the .nodeblocks sidecar file if it exists
+                try {
+                    await fs.unlink(path.join(sectionPath, `${file}.nodeblocks`));
+                } catch { /* sidecar doesn't exist */ }
+
+                // Notify renderer to close open tab
+                notifyFileDeleted(packageName, file);
             }
 
             return {
@@ -596,6 +621,18 @@ async function deleteSectionFiles(packageName, sectionType) {
                 message: `Deleted ${nodeFiles.length} node(s) from package "${packageName}".`
             };
         } else {
+            // For urdf, notify for each file before deleting the whole folder
+            if (sectionType === 'urdf') {
+                try {
+                    const urdfFiles = await fs.readdir(sectionPath);
+                    for (const file of urdfFiles) {
+                        if (file.endsWith('.xacro') || file.endsWith('.urdf')) {
+                            notifyFileDeleted(packageName, file);
+                        }
+                    }
+                } catch { /* folder might not exist */ }
+            }
+
             await fs.rm(sectionPath, { recursive: true, force: true });
             await setupPyService.removeDataFilesEntry(packageName, sectionType);
 
@@ -653,10 +690,24 @@ async function deleteSectionFile(packageName, sectionType, fileName) {
 
         await fs.unlink(filePath);
 
-        // For nodes, also remove entry point from setup.py
+        // For nodes, also remove entry point from setup.py and delete sidecar
         if (sectionType === 'nodes') {
             const nodeName = fileName.replace('.py', '');
             await setupPyService.removeNodeEntryPoint(packageName, nodeName);
+
+            // Delete the .nodeblocks sidecar file if it exists
+            try {
+                await fs.unlink(path.join(projectPath, 'src', packageName, packageName, `${fileName}.nodeblocks`));
+                console.log(`[FileService] Deleted sidecar: ${fileName}.nodeblocks`);
+            } catch { /* sidecar doesn't exist */ }
+        }
+
+        // For urdf, also delete the .blocks sidecar file
+        if (sectionType === 'urdf') {
+            try {
+                await fs.unlink(path.join(projectPath, 'src', packageName, 'urdf', `${fileName}.blocks`));
+                console.log(`[FileService] Deleted sidecar: ${fileName}.blocks`);
+            } catch { /* sidecar doesn't exist */ }
         }
 
         // For urdf/config/launch/meshes, check if folder is now empty and delete it
@@ -673,6 +724,9 @@ async function deleteSectionFile(packageName, sectionType, fileName) {
                 console.log('Could not check/delete folder:', err.message);
             }
         }
+
+        // Notify renderer to close any open tabs for this file
+        notifyFileDeleted(packageName, fileName);
 
         return { success: true, message: `File "${fileName}" deleted successfully.` };
 

@@ -6,6 +6,7 @@
 import { FILE_SECTIONS } from './config.js';
 import * as api from './api.js';
 import * as fileOps from './file-operations.js';
+import { escapeHtml, escapeAttribute } from '../../../../utils/html-utils.js';
 
 // ============================================
 // Panel Resize
@@ -148,7 +149,7 @@ async function createPackageElement(packageName, packagesList) {
         <div class="package-header">
             <img class="collapse-arrow ${hasContent ? '' : 'hidden'}" src="assets/icons/chevron-right.svg" alt="">
             <img class="package-icon" src="assets/icons/package.svg" alt="package">
-            <span class="package-name">${packageName}</span>
+            <span class="package-name">${escapeHtml(packageName)}</span>
         </div>
         <div class="package-content hidden">
             <!-- NODES Section -->
@@ -282,7 +283,7 @@ function setupNodesSection(packageItem, packageName, nodes) {
                     <svg viewBox="0 0 24 24" fill="currentColor" class="run-icon"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
                 <img class="node-icon" src="assets/icons/file-icon.svg" alt="file">
-                <span class="node-name">${nodeName}</span>
+                <span class="node-name">${escapeHtml(nodeName)}</span>
             `;
 
             // Run button click handler
@@ -425,7 +426,7 @@ function setupFileSection(packageItem, packageName, type, files) {
             fileItem.innerHTML = `
                 ${runBtnHtml}
                 <img class="file-icon" src="${fileIconPath}" alt="file">
-                <span class="file-name">${fileName}</span>
+                <span class="file-name">${escapeHtml(fileName)}</span>
             `;
 
             // Run button click handler (for URDF and launch files)
@@ -567,7 +568,7 @@ export function loadNodes(nodesList, nodes) {
         const displayName = nodeName.replace(/\.py$/, '');
         nodeItem.innerHTML = `
             <span class="node-icon">◉</span>
-            <span class="node-name">${displayName}</span>
+            <span class="node-name">${escapeHtml(displayName)}</span>
         `;
         nodesList.appendChild(nodeItem);
     });
@@ -593,7 +594,7 @@ export async function loadSectionFiles(fileListElement, packageName, folderName)
                 fileItem.className = 'file-item';
                 fileItem.innerHTML = `
                     <span class="file-icon">📄</span>
-                    <span class="file-name">${fileName}</span>
+                    <span class="file-name">${escapeHtml(fileName)}</span>
                 `;
                 fileListElement.appendChild(fileItem);
             });

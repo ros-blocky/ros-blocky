@@ -169,10 +169,10 @@ ${colorContent}</material>
     };
 
     Blockly.URDF['urdf_color'] = function (block) {
-        const r = block.getFieldValue('R') || 1;
-        const g = block.getFieldValue('G') || 0;
-        const b = block.getFieldValue('B') || 0;
-        const a = block.getFieldValue('A') || 1;
+        const r = block.getFieldValue('R') ?? 1;
+        const g = block.getFieldValue('G') ?? 0;
+        const b = block.getFieldValue('B') ?? 0;
+        const a = block.getFieldValue('A') ?? 1;
         return `<color rgba="${r} ${g} ${b} ${a}"/>
 `;
     };
@@ -195,31 +195,31 @@ ${content}</inertial>
     };
 
     Blockly.URDF['urdf_inertia'] = function (block) {
-        const ixx = block.getFieldValue('IXX') || 1;
-        const ixy = block.getFieldValue('IXY') || 0;
-        const ixz = block.getFieldValue('IXZ') || 0;
-        const iyy = block.getFieldValue('IYY') || 1;
-        const iyz = block.getFieldValue('IYZ') || 0;
-        const izz = block.getFieldValue('IZZ') || 1;
+        const ixx = block.getFieldValue('IXX') ?? 1;
+        const ixy = block.getFieldValue('IXY') ?? 0;
+        const ixz = block.getFieldValue('IXZ') ?? 0;
+        const iyy = block.getFieldValue('IYY') ?? 1;
+        const iyz = block.getFieldValue('IYZ') ?? 0;
+        const izz = block.getFieldValue('IZZ') ?? 1;
         return `<inertia ixx="${ixx}" ixy="${ixy}" ixz="${ixz}" iyy="${iyy}" iyz="${iyz}" izz="${izz}"/>
 `;
     };
 
     Blockly.URDF['urdf_origin'] = function (block) {
-        const x = block.getFieldValue('X') || 0;
-        const y = block.getFieldValue('Y') || 0;
-        const z = block.getFieldValue('Z') || 0;
-        const roll = block.getFieldValue('ROLL') || 0;
-        const pitch = block.getFieldValue('PITCH') || 0;
-        const yaw = block.getFieldValue('YAW') || 0;
+        const x = block.getFieldValue('X') ?? 0;
+        const y = block.getFieldValue('Y') ?? 0;
+        const z = block.getFieldValue('Z') ?? 0;
+        const roll = block.getFieldValue('ROLL') ?? 0;
+        const pitch = block.getFieldValue('PITCH') ?? 0;
+        const yaw = block.getFieldValue('YAW') ?? 0;
         return `<origin xyz="${x} ${y} ${z}" rpy="${roll} ${pitch} ${yaw}"/>
 `;
     };
 
     Blockly.URDF['urdf_axis'] = function (block) {
-        const x = block.getFieldValue('X') || 0;
-        const y = block.getFieldValue('Y') || 0;
-        const z = block.getFieldValue('Z') || 1;
+        const x = block.getFieldValue('X') ?? 0;
+        const y = block.getFieldValue('Y') ?? 0;
+        const z = block.getFieldValue('Z') ?? 1;
         return `<axis xyz="${x} ${y} ${z}"/>
 `;
     };
@@ -238,9 +238,9 @@ ${content}</inertial>
     // ========================================
 
     Blockly.URDF['urdf_box'] = function (block) {
-        const x = block.getFieldValue('X') || 1;
-        const y = block.getFieldValue('Y') || 1;
-        const z = block.getFieldValue('Z') || 1;
+        const x = block.getFieldValue('X') ?? 1;
+        const y = block.getFieldValue('Y') ?? 1;
+        const z = block.getFieldValue('Z') ?? 1;
         return `<box size="${x} ${y} ${z}"/>
 `;
     };

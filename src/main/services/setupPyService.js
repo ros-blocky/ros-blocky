@@ -170,8 +170,14 @@ async function addDataFilesEntry(packageName, folderName) {
         // Find data_files array and add entry
         const dataFilesMatch = content.match(/data_files=\[([\s\S]*?)\],/);
         if (dataFilesMatch) {
-            const existingContent = dataFilesMatch[1];
-            const newDataFiles = `data_files=[${existingContent}        ${entryToAdd},\n    ],`;
+            let existingContent = dataFilesMatch[1].trimEnd();
+
+            // Ensure the last existing entry ends with a comma
+            if (existingContent && !existingContent.endsWith(',')) {
+                existingContent += ',';
+            }
+
+            const newDataFiles = `data_files=[${existingContent}\n        ${entryToAdd},\n    ],`;
             content = content.replace(dataFilesMatch[0], newDataFiles);
         }
 

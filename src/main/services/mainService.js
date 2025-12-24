@@ -15,52 +15,64 @@ class MainService {
         try {
             // Step 1: Get project name from user
             const projectName = await this.promptProjectName();
+            console.log('[MainService] Project name received:', projectName);
 
             if (!projectName) {
+                console.log('[MainService] No project name, returning cancelled');
                 return { success: false, message: 'Project creation cancelled' };
             }
 
             // Step 2: Show folder picker to select parent location
-            // Pass focused window as parent to make dialog modal (blocks main window)
-            const focusedWindow = BrowserWindow.getFocusedWindow();
-            const result = await dialog.showOpenDialog(focusedWindow, {
+            // Get the main window - getFocusedWindow might return null after dialog closes
+            const allWindows = BrowserWindow.getAllWindows();
+            const mainWindow = allWindows.find(w => !w.isDestroyed() && w.webContents.getURL().includes('index.html')) || BrowserWindow.getFocusedWindow();
+            console.log('[MainService] Opening folder picker, mainWindow:', mainWindow ? 'found' : 'null');
+
+            const result = await dialog.showOpenDialog(mainWindow, {
                 title: `Select Location for "${projectName}"`,
                 buttonLabel: 'Create Project Here',
                 properties: ['openDirectory', 'createDirectory']
             });
+            console.log('[MainService] Folder picker result:', result);
 
             if (result.canceled) {
+                console.log('[MainService] Folder picker cancelled');
                 return { success: false, message: 'Project creation cancelled' };
             }
 
             const parentPath = result.filePaths[0];
             const projectPath = path.join(parentPath, projectName);
+            console.log('[MainService] Project path:', projectPath);
 
             // **Notify renderer that dialogs are done - show loading screen now!**
-            if (focusedWindow) {
-                focusedWindow.webContents.send('project-dialogs-complete', 'Creating');
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('project-dialogs-complete', 'Creating');
             }
 
             // Step 3: Check if folder already exists
             try {
                 await fs.access(projectPath);
+                console.log('[MainService] Folder already exists');
                 return {
                     success: false,
                     message: `A folder named "${projectName}" already exists in this location.\nPlease choose a different name or location.`
                 };
             } catch {
                 // Folder doesn't exist - good, continue
+                console.log('[MainService] Folder does not exist, proceeding');
             }
 
             // Step 4: Create project folder and src subfolder
+            console.log('[MainService] Creating project folders...');
             await fs.mkdir(projectPath, { recursive: true });
             await fs.mkdir(path.join(projectPath, 'src'), { recursive: true });
 
             // Step 5: Run colcon build
+            console.log('[MainService] Running colcon build...');
             return await this.runColconBuild(projectPath);
 
         } catch (error) {
-            console.error('Error creating project:', error);
+            console.error('[MainService] Error creating project:', error);
             return { success: false, message: error.message };
         }
     }
@@ -71,6 +83,9 @@ class MainService {
      */
     async promptProjectName() {
         return new Promise((resolve) => {
+            let resolved = false; // Flag to prevent double resolution
+            console.log('[MainService] Opening project name prompt dialog...');
+
             const promptWindow = new BrowserWindow({
                 width: 450,
                 height: 180,
@@ -82,29 +97,48 @@ class MainService {
                 webPreferences: {
                     preload: path.join(__dirname, '../../preload/dialogPreload.js'),
                     nodeIntegration: false,
-                    contextIsolation: true
+                    contextIsolation: true,
+                    webSecurity: true,
+                    sandbox: true
                 }
             });
 
             // Load HTML file
-            promptWindow.loadFile(path.join(__dirname, '../../renderer/dialogs/projectNamePrompt.html'));
+            const htmlPath = path.join(__dirname, '../../renderer/dialogs/projectNamePrompt.html');
+            console.log('[MainService] Loading dialog from:', htmlPath);
+            promptWindow.loadFile(htmlPath);
 
             // Show when ready to prevent white flash
             promptWindow.once('ready-to-show', () => {
+                console.log('[MainService] Dialog ready to show');
                 promptWindow.show();
             });
 
+            // Debug: Open DevTools for the dialog (disabled - was blocking interaction)
+            // promptWindow.webContents.openDevTools({ mode: 'detach' });
+
             const handler = (event, name) => {
-                promptWindow.close();
+                console.log('[MainService] Received project-name-result:', name);
+                if (resolved) {
+                    console.log('[MainService] Already resolved, ignoring');
+                    return;
+                }
+                resolved = true;
                 ipcMain.removeListener('project-name-result', handler);
+                promptWindow.close();
                 resolve(name);
             };
 
             ipcMain.on('project-name-result', handler);
 
             promptWindow.on('closed', () => {
+                console.log('[MainService] Dialog closed, resolved=', resolved);
                 ipcMain.removeListener('project-name-result', handler);
-                resolve(null);
+                if (!resolved) {
+                    console.log('[MainService] Resolving with null (cancelled)');
+                    resolved = true;
+                    resolve(null);
+                }
             });
         });
     }
@@ -227,10 +261,19 @@ class MainService {
                     const packageService = require('./packageService');
                     packageService.setProjectPath(projectPath);
 
-                    // Notify renderer that project is loaded
-                    const focusedWindow = BrowserWindow.getFocusedWindow();
-                    if (focusedWindow) {
-                        focusedWindow.webContents.send('project-loaded', projectPath);
+                    // Find main window explicitly - don't rely on getFocusedWindow
+                    // which can be null during fast transitions
+                    const allWindows = BrowserWindow.getAllWindows();
+                    const mainWindow = allWindows.find(w =>
+                        !w.isDestroyed() &&
+                        w.webContents.getURL().includes('index.html')
+                    );
+
+                    if (mainWindow && !mainWindow.isDestroyed()) {
+                        console.log('[MainService] Sending project-loaded event');
+                        mainWindow.webContents.send('project-loaded', projectPath);
+                    } else {
+                        console.warn('[MainService] Main window not found for project-loaded event');
                     }
 
                     resolve({

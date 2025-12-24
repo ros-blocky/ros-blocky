@@ -24,7 +24,8 @@ function createSetupWindow() {
             preload: path.join(__dirname, '../../preload/setupPreload.js'),
             contextIsolation: true,
             nodeIntegration: false,
-            sandbox: false
+            sandbox: true,
+            webSecurity: true
         }
     });
 
