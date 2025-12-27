@@ -42,7 +42,13 @@ export function initWelcomeScreen(parentFunctions) {
                     if (updateProjectNameFn) updateProjectNameFn(result.projectPath);
 
                     // Show the IDE (from parent)
-                    if (showIDEFn) showIDEFn();
+                    console.log('[welcome.js] Calling showIDEFn...');
+                    if (showIDEFn) {
+                        showIDEFn();
+                        console.log('[welcome.js] showIDEFn completed');
+                    } else {
+                        console.error('[welcome.js] showIDEFn is NOT defined!');
+                    }
                 } else {
                     console.error('Project creation failed:', result.message);
 

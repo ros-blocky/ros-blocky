@@ -8,6 +8,9 @@ import { setupPanelResize, setupCreatePackageButton, refreshPackageList } from '
 import { setupContextMenu } from './context-menu.js';
 import { setRefreshFunction } from './file-operations.js';
 
+// Track running processes globally so state persists across UI refreshes
+export const runningProcesses = new Set();
+
 /**
  * Initialize the packages panel
  */
@@ -36,25 +39,32 @@ export function initPackagesPanel() {
         window.electronAPI.onRosOutput((data) => {
             console.log('[ROS Output Listener] Received:', data);
 
-            // Find the run button for this process
-            const runBtn = document.querySelector(`.run-btn[data-process-key="${data.processKey}"]`);
-            console.log('[ROS Output Listener] Button found:', runBtn, 'for key:', data.processKey);
-
-            if (!runBtn) {
-                console.warn('[ROS Output Listener] Button not found for processKey:', data.processKey);
-                return;
-            }
-
             if (data.type === 'status') {
-                console.log('[ROS Output Listener] Status update:', data.message);
+                console.log('[ROS Output Listener] Status update:', data.message, 'for process:', data.processKey);
+
+                // Track running state globally (persists across refreshes)
+                if (data.message === 'running') {
+                    runningProcesses.add(data.processKey);
+                    console.log('[ROS Output Listener] Added to running:', data.processKey, 'Total:', runningProcesses.size);
+                } else if (data.message === 'stopped' || data.message === 'error') {
+                    runningProcesses.delete(data.processKey);
+                    console.log('[ROS Output Listener] Removed from running:', data.processKey, 'Total:', runningProcesses.size);
+                }
+
+                // Find the run button for this process (may not exist if UI was refreshed)
+                const runBtn = document.querySelector(`.run-btn[data-process-key="${data.processKey}"]`);
+
+                if (!runBtn) {
+                    // Button not in DOM - this is OK if UI was refreshed, state is tracked in runningProcesses
+                    console.log('[ROS Output Listener] Button not in DOM for:', data.processKey);
+                    return;
+                }
 
                 // Check process type
                 const isUrdf = data.processKey && data.processKey.startsWith('urdf:');
-                const isNode = data.processKey && data.processKey.startsWith('node:');
 
                 if (data.message === 'starting') {
                     // Just keep spinner showing - wait for 'running' status from backend
-                    // Backend will send 'running' when it detects [INFO] log output
                 } else if (data.message === 'running') {
                     // Process confirmed running - show stop button
                     runBtn.classList.remove('loading');

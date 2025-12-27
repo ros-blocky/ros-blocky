@@ -46,20 +46,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Helper function to show IDE
     function showIDE() {
-        console.log('[showIDE] Showing workspace, hiding loading and welcome screens');
+        console.log('[showIDE] === SHOWING IDE ===');
 
         // Set flag to prevent loading screen from showing after this
         isProjectLoaded = true;
 
-        if (welcomeScreen) welcomeScreen.classList.add('hidden');
+        // Hide welcome screen
+        if (welcomeScreen) {
+            welcomeScreen.classList.add('hidden');
+            welcomeScreen.style.display = 'none';
+            welcomeScreen.style.pointerEvents = 'none';
+            console.log('[showIDE] Welcome hidden, display:', welcomeScreen.style.display);
+        }
+
+        // Hide loading screen
         if (loadingScreen) {
             loadingScreen.classList.add('hidden');
-            // Double-check: also set display none and pointer-events as failsafe
             loadingScreen.style.display = 'none';
             loadingScreen.style.pointerEvents = 'none';
-            console.log('[showIDE] Loading screen hidden, display:', loadingScreen.style.display);
+            console.log('[showIDE] Loading hidden, display:', loadingScreen.style.display);
         }
-        if (workspace) workspace.classList.remove('hidden');
+
+        // Show workspace
+        if (workspace) {
+            workspace.classList.remove('hidden');
+            workspace.style.display = '';
+            workspace.style.pointerEvents = '';
+            console.log('[showIDE] Workspace shown, classList:', workspace.classList.toString());
+        }
 
         // Show RViz button in workspace
         const rvizBtn = document.getElementById('rviz-btn');
@@ -84,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Reapply translations when showing workspace
         updatePageTranslations();
 
-        console.log('[showIDE] Workspace visible, loading screen hidden');
+        console.log('[showIDE] === IDE SHOWN COMPLETE ===');
     }
 
     // Helper function to show loading screen

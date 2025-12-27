@@ -114,6 +114,9 @@ export async function refreshPackageList() {
                 console.log('Creating element for package:', packageName);
                 await createPackageElement(packageName, packagesList);
             }
+
+            // Restore running button states after rebuilding UI
+            restoreRunningButtonStates();
         } else {
             console.log('No packages found, showing empty state');
             emptyStateContainer.classList.remove('hidden');
@@ -122,6 +125,37 @@ export async function refreshPackageList() {
     } catch (error) {
         console.error('Error refreshing package list:', error);
     }
+}
+
+/**
+ * Restore running button states from the global runningProcesses Set
+ * This is called after refreshPackageList rebuilds the UI
+ */
+function restoreRunningButtonStates() {
+    // Import the runningProcesses Set dynamically to avoid circular imports
+    import('./index.js').then(({ runningProcesses }) => {
+        console.log('[panel-ui] Restoring running states for', runningProcesses.size, 'processes');
+
+        for (const processKey of runningProcesses) {
+            const runBtn = document.querySelector(`.run-btn[data-process-key="${processKey}"]`);
+            if (runBtn) {
+                console.log('[panel-ui] Restoring running state for:', processKey);
+                runBtn.classList.add('running');
+                runBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" class="stop-icon"><rect x="6" y="6" width="12" height="12"></rect></svg>`;
+
+                // Hide other URDF buttons if this is a URDF process
+                if (processKey.startsWith('urdf:')) {
+                    document.querySelectorAll('.run-btn[data-process-key^="urdf:"]').forEach(btn => {
+                        if (btn !== runBtn) {
+                            btn.classList.add('hidden-while-running');
+                        }
+                    });
+                }
+            }
+        }
+    }).catch(err => {
+        console.error('[panel-ui] Error importing runningProcesses:', err);
+    });
 }
 
 /**

@@ -28,6 +28,9 @@ class MainService {
             const mainWindow = allWindows.find(w => !w.isDestroyed() && w.webContents.getURL().includes('index.html')) || BrowserWindow.getFocusedWindow();
             console.log('[MainService] Opening folder picker, mainWindow:', mainWindow ? 'found' : 'null');
 
+            // IMPORTANT: Close any orphaned child windows that might be lingering
+            this.closeOrphanedChildWindows(mainWindow);
+
             const result = await dialog.showOpenDialog(mainWindow, {
                 title: `Select Location for "${projectName}"`,
                 buttonLabel: 'Create Project Here',
@@ -74,6 +77,24 @@ class MainService {
         } catch (error) {
             console.error('[MainService] Error creating project:', error);
             return { success: false, message: error.message };
+        }
+    }
+
+    /**
+     * Close any orphaned child windows of the main window
+     * This prevents modal windows from blocking interaction
+     */
+    closeOrphanedChildWindows(mainWindow) {
+        if (!mainWindow || mainWindow.isDestroyed()) return;
+
+        const childWindows = mainWindow.getChildWindows();
+        console.log('[MainService] Found', childWindows.length, 'child windows');
+
+        for (const child of childWindows) {
+            if (!child.isDestroyed()) {
+                console.log('[MainService] Closing orphaned child window');
+                child.destroy(); // Force destroy, don't just close
+            }
         }
     }
 
@@ -185,6 +206,16 @@ class MainService {
             // Notify renderer that project is loaded
             // Use parentWindow consistently to avoid race condition
             if (parentWindow && !parentWindow.isDestroyed()) {
+                // Close any orphaned child windows that might block interaction
+                const childWindows = parentWindow.getChildWindows();
+                console.log('[MainService] Cleaning up', childWindows.length, 'child windows in openProject');
+                for (const child of childWindows) {
+                    if (!child.isDestroyed()) {
+                        child.destroy();
+                    }
+                }
+
+                parentWindow.focus();
                 parentWindow.webContents.send('project-loaded', projectPath);
             }
 
@@ -269,7 +300,21 @@ class MainService {
                         w.webContents.getURL().includes('index.html')
                     );
 
+                    // CRITICAL: Close any orphaned child windows before continuing
+                    // This fixes the frozen workspace issue caused by lingering modal windows
                     if (mainWindow && !mainWindow.isDestroyed()) {
+                        const childWindows = mainWindow.getChildWindows();
+                        console.log('[MainService] Cleaning up', childWindows.length, 'child windows before project-loaded');
+                        for (const child of childWindows) {
+                            if (!child.isDestroyed()) {
+                                console.log('[MainService] Force destroying orphaned child window');
+                                child.destroy();
+                            }
+                        }
+
+                        // Focus main window to ensure it's active
+                        mainWindow.focus();
+
                         console.log('[MainService] Sending project-loaded event');
                         mainWindow.webContents.send('project-loaded', projectPath);
                     } else {
