@@ -1,7 +1,6 @@
 const { dialog, BrowserWindow, ipcMain } = require('electron');
 const fs = require('fs').promises;
 const path = require('path');
-const { spawn } = require('child_process');
 
 /**
  * Main Service - Handles business logic for project operations
@@ -72,7 +71,7 @@ class MainService {
 
             // Step 5: Run colcon build
             console.log('[MainService] Running colcon build...');
-            return await this.runColconBuild(projectPath);
+            return await this.buildAndShowWorkspace(projectPath);
 
         } catch (error) {
             console.error('[MainService] Error creating project:', error);
@@ -255,107 +254,49 @@ class MainService {
     }
 
     /**
-     * Run colcon build
+     * Build workspace and transition to workspace UI
      */
-    runColconBuild(projectPath) {
-        return new Promise((resolve) => {
-            console.log('Starting colcon build for project:', projectPath);
+    async buildAndShowWorkspace(projectPath) {
+        console.log('[MainService] Starting colcon build for:', projectPath);
 
-            const shell = spawn('cmd.exe', [], {
-                cwd: 'c:\\pixi_ws',
-                windowsHide: true
-            });
+        // Set project path FIRST so rosService knows where to build
+        const packageService = require('./packageService');
+        packageService.setProjectPath(projectPath);
 
-            let output = '';
-            let errorOutput = '';
-            let buildCompleted = false;
+        // Use the single buildAllPackages function from rosService
+        const rosService = require('./rosService');
+        const result = await rosService.buildAllPackages(null, projectPath);
 
-            shell.stdout.on('data', (data) => {
-                const text = data.toString();
-                output += text;
-                console.log('Output:', text);
-                if (text.includes('Summary:') || text.includes('Finished')) {
-                    buildCompleted = true;
+        // Handle the result
+        if (result.success) {
+            const allWindows = BrowserWindow.getAllWindows();
+            const mainWindow = allWindows.find(w =>
+                !w.isDestroyed() &&
+                w.webContents.getURL().includes('index.html')
+            );
+
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                const childWindows = mainWindow.getChildWindows();
+                console.log('[MainService] Cleaning up', childWindows.length, 'child windows');
+                for (const child of childWindows) {
+                    if (!child.isDestroyed()) child.destroy();
                 }
-            });
+                mainWindow.focus();
+                console.log('[MainService] Sending project-loaded event');
+                mainWindow.webContents.send('project-loaded', projectPath);
+            }
 
-            shell.stderr.on('data', (data) => {
-                const text = data.toString();
-                errorOutput += text;
-                console.error('Error:', text);
-            });
-
-            shell.on('close', (code) => {
-                console.log('Shell closed with code:', code);
-                if (buildCompleted || code === 0) {
-                    // Set project path in package service
-                    const packageService = require('./packageService');
-                    packageService.setProjectPath(projectPath);
-
-                    // Find main window explicitly - don't rely on getFocusedWindow
-                    // which can be null during fast transitions
-                    const allWindows = BrowserWindow.getAllWindows();
-                    const mainWindow = allWindows.find(w =>
-                        !w.isDestroyed() &&
-                        w.webContents.getURL().includes('index.html')
-                    );
-
-                    // CRITICAL: Close any orphaned child windows before continuing
-                    // This fixes the frozen workspace issue caused by lingering modal windows
-                    if (mainWindow && !mainWindow.isDestroyed()) {
-                        const childWindows = mainWindow.getChildWindows();
-                        console.log('[MainService] Cleaning up', childWindows.length, 'child windows before project-loaded');
-                        for (const child of childWindows) {
-                            if (!child.isDestroyed()) {
-                                console.log('[MainService] Force destroying orphaned child window');
-                                child.destroy();
-                            }
-                        }
-
-                        // Focus main window to ensure it's active
-                        mainWindow.focus();
-
-                        console.log('[MainService] Sending project-loaded event');
-                        mainWindow.webContents.send('project-loaded', projectPath);
-                    } else {
-                        console.warn('[MainService] Main window not found for project-loaded event');
-                    }
-
-                    resolve({
-                        success: true,
-                        message: 'Project created successfully',
-                        projectPath: projectPath
-                    });
-                } else {
-                    resolve({
-                        success: false,
-                        message: `colcon build failed: ${errorOutput || 'Unknown error'}`
-                    });
-                }
-            });
-
-            shell.on('error', (error) => {
-                console.error('Shell error:', error);
-                resolve({
-                    success: false,
-                    message: `Failed to execute commands: ${error.message}`
-                });
-            });
-
-            setTimeout(() => {
-                console.log('Sending commands to shell...');
-                shell.stdin.write('cd c:\\pixi_ws\n');
-                shell.stdin.write('pixi shell\n');
-                setTimeout(() => {
-                    shell.stdin.write(`cd /d "${projectPath}"\n`);
-                    shell.stdin.write('colcon build\n');
-                    setTimeout(() => {
-                        shell.stdin.write('exit\n');
-                        shell.stdin.write('exit\n');
-                    }, 10000);
-                }, 2000);
-            }, 500);
-        });
+            return {
+                success: true,
+                message: 'Project created successfully',
+                projectPath: projectPath
+            };
+        } else {
+            return {
+                success: false,
+                message: `colcon build failed: ${result.error || 'Unknown error'}`
+            };
+        }
     }
 }
 

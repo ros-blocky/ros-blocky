@@ -6,7 +6,6 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
 const { BrowserWindow } = require('electron');
 const { isValidName, isValidTopicName, createValidationError } = require('../helpers/validationUtil');
 
@@ -16,9 +15,6 @@ let packageService = null;
 // Track running processes
 const runningProcesses = new Map();
 
-// Pixi workspace path (where pixi.toml is located)
-const PIXI_WS_PATH = 'C:\\pixi_ws';
-
 /**
  * Initialize the ROS service with dependencies
  * @param {Object} pkgService - The package service instance
@@ -26,7 +22,6 @@ const PIXI_WS_PATH = 'C:\\pixi_ws';
 function init(pkgService) {
     packageService = pkgService;
     console.log('[ROS Service] Initialized');
-    console.log('[ROS Service] Pixi workspace:', PIXI_WS_PATH);
 }
 
 /**
@@ -416,10 +411,11 @@ type "${commandsFile}" | pixi shell
 /**
  * Build all packages in the workspace using colcon build
  * @param {Function} onStatus - Callback for status updates
+ * @param {string} projectPathOverride - Optional project path (for new projects not yet in packageService)
  * @returns {Promise<Object>} Result with success status
  */
-async function buildAllPackages(onStatus) {
-    const projectPath = getProjectPath();
+async function buildAllPackages(onStatus, projectPathOverride) {
+    const projectPath = projectPathOverride || getProjectPath();
     if (!projectPath) {
         return { success: false, error: 'No project loaded' };
     }
@@ -474,85 +470,67 @@ async function buildPackage(packageName, onStatus) {
  */
 async function runColconBuild(projectPath, packageName, onStatus) {
     return new Promise((resolve) => {
-        // Build the colcon command
-        // Use --symlink-install for single package builds (faster for Python)
-        let colconCmd = 'colcon build';
+        console.log(`[ROS Service] Running colcon build in ${projectPath}${packageName ? ` for package ${packageName}` : ''}`);
+
+        // Call colcon.exe directly with pixi environment PATH
+        const colconPath = 'C:\\pixi_ws\\.pixi\\envs\\default\\Scripts\\colcon.exe';
+        const pixiEnvPath = 'C:\\pixi_ws\\.pixi\\envs\\default;C:\\pixi_ws\\.pixi\\envs\\default\\Scripts;C:\\pixi_ws\\.pixi\\envs\\default\\Library\\bin';
+
+        const args = [
+            'build',
+            '--base-paths', projectPath,
+            '--symlink-install',
+            '--parallel-workers', '16',
+            '--cmake-args', '-G', 'Ninja', '-DCMAKE_BUILD_TYPE=Release'
+        ];
+
         if (packageName) {
-            colconCmd += ` --symlink-install --packages-select ${packageName}`;
+            args.push('--packages-select', packageName);
         }
 
-        console.log(`[ROS Service] Running: ${colconCmd} in ${projectPath}`);
-
-        // Create temp files for commands - run colcon in project directory
-        const tempDir = os.tmpdir();
-        const commandsFile = path.join(tempDir, `build_cmds_${Date.now()}.txt`);
-        const commandsContent = [
-            `cd /d "${projectPath}"`,
-            colconCmd
-        ].join('\n') + '\n';
-
-        fs.writeFileSync(commandsFile, commandsContent, { encoding: 'utf8' });
-
-        // Create batch file that pipes commands to pixi shell
-        const tempBatch = path.join(tempDir, `build_run_${Date.now()}.bat`);
-        const batchContent = `@echo off
-cd /d ${PIXI_WS_PATH}
-type "${commandsFile}" | pixi shell
-`;
-        fs.writeFileSync(tempBatch, batchContent, { encoding: 'utf8' });
-
-        // Spawn the build process
-        const child = spawn('cmd', ['/c', tempBatch], {
-            cwd: PIXI_WS_PATH,
+        const child = spawn(colconPath, args, {
+            cwd: projectPath,
             windowsHide: true,
-            stdio: ['ignore', 'pipe', 'pipe']
+            env: {
+                ...process.env,
+                PATH: `${pixiEnvPath};${process.env.PATH}`,
+                // Disable notifications and progress bars
+                COLCON_LOG_LEVEL: 'error',
+                PYTHONUNBUFFERED: '1',
+                NO_COLOR: '1'
+            }
         });
 
         let output = '';
-        let hasError = false;
+        let resolved = false;
 
         child.stdout.on('data', (data) => {
             const text = data.toString();
             output += text;
             console.log('[Build Output]', text);
 
-            // Update status with meaningful lines
-            const lines = text.split('\n').filter(l => l.trim());
-            if (lines.length > 0 && onStatus) {
-                const lastLine = lines[lines.length - 1].trim();
-                if (lastLine) {
-                    onStatus(lastLine);
-                }
+            // Resolve IMMEDIATELY when we see Summary: (build is done)
+            if (!resolved && text.includes('Summary:')) {
+                resolved = true;
+                console.log('[ROS Service] Summary detected - resolving immediately!');
+                resolve({ success: true, output });
+            }
+
+            if (onStatus) {
+                const lines = text.split('\n').filter(l => l.trim());
+                if (lines.length > 0) onStatus(lines[lines.length - 1].trim());
             }
         });
 
         child.stderr.on('data', (data) => {
-            const text = data.toString();
-            output += text;
-            console.error('[Build Error]', text);
-
-            // Only flag as error for actual build failures, not warnings
-            // Check for specific failure patterns that indicate real errors
-            const lowerText = text.toLowerCase();
-            if (lowerText.includes('fatal error') ||
-                lowerText.includes('cmake error') ||
-                lowerText.includes('failed to build') ||
-                lowerText.includes('colcon build failed')) {
-                hasError = true;
-            }
+            output += data.toString();
+            console.error('[Build Error]', data.toString());
         });
 
-        child.on('close', (code) => {
-            console.log(`[ROS Service] Build completed with code: ${code}`);
-
-            // Clean up temp files
-            try {
-                fs.unlinkSync(commandsFile);
-                fs.unlinkSync(tempBatch);
-            } catch (e) { /* ignore */ }
-
-            // Success is based primarily on exit code (0 = success)
-            // hasError is only for critical build failures
+        // Fallback for builds without Summary output
+        child.on('exit', (code) => {
+            if (resolved) return; // Already resolved
+            console.log(`[ROS Service] Build exited with code: ${code}`);
             if (code === 0) {
                 resolve({ success: true, output });
             } else {
@@ -561,7 +539,8 @@ type "${commandsFile}" | pixi shell
         });
 
         child.on('error', (error) => {
-            console.error('[ROS Service] Build process error:', error);
+            if (resolved) return;
+            console.error('[ROS Service] Build error:', error);
             resolve({ success: false, error: error.message });
         });
     });
