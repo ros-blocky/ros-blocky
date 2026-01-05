@@ -6,8 +6,10 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const { BrowserWindow } = require('electron');
 const { isValidName, isValidTopicName, createValidationError } = require('../helpers/validationUtil');
+const { PIXI_PATHS } = require('../constants');
 
 // Reference to packageService (set during initialization)
 let packageService = null;
@@ -142,25 +144,21 @@ async function runTurtlesim() {
  */
 async function getTopicList() {
     return new Promise((resolve) => {
-        const tempDir = os.tmpdir();
-        const commandsFile = path.join(tempDir, `topics_cmds_${Date.now()}.txt`);
-        const commandsContent = 'ros2 topic list\n';
-
-        fs.writeFileSync(commandsFile, commandsContent, { encoding: 'utf8' });
-
-        const tempBatch = path.join(tempDir, `topics_run_${Date.now()}.bat`);
-        const batchContent = `@echo off
-cd /d ${PIXI_WS_PATH}
-type "${commandsFile}" | pixi shell
-`;
-        fs.writeFileSync(tempBatch, batchContent, { encoding: 'utf8' });
+        const ros2Path = PIXI_PATHS.ROS2_EXE;
+        const envPath = PIXI_PATHS.PIXI_ENV_PATH_STRING;
 
         let output = '';
         let errorOutput = '';
 
-        const child = spawn('cmd', ['/c', tempBatch], {
-            cwd: PIXI_WS_PATH,
-            windowsHide: true
+        console.log('[ROS Service] Getting topic list via direct ros2 execution');
+
+        const child = spawn(ros2Path, ['topic', 'list'], {
+            windowsHide: true,
+            env: {
+                ...process.env,
+                PATH: `${envPath};${process.env.PATH}`,
+                PYTHONUNBUFFERED: '1'
+            }
         });
 
         child.stdout.on('data', (data) => {
@@ -172,13 +170,8 @@ type "${commandsFile}" | pixi shell
         });
 
         child.on('close', (code) => {
-            // Clean up temp files
-            try {
-                fs.unlinkSync(commandsFile);
-                fs.unlinkSync(tempBatch);
-            } catch (e) { /* ignore cleanup errors */ }
-
             if (code !== 0 && errorOutput) {
+                console.error('[ROS Service] Error getting topic list:', errorOutput);
                 resolve({ success: false, error: errorOutput, topics: [] });
                 return;
             }
@@ -193,6 +186,7 @@ type "${commandsFile}" | pixi shell
         });
 
         child.on('error', (error) => {
+            console.error('[ROS Service] Spawn error getting topic list:', error);
             resolve({ success: false, error: error.message, topics: [] });
         });
 
@@ -218,25 +212,19 @@ async function getTopicInfo(topicName) {
     }
 
     return new Promise((resolve) => {
-        const tempDir = os.tmpdir();
-        const commandsFile = path.join(tempDir, `topic_info_${Date.now()}.txt`);
-        const commandsContent = `ros2 topic info ${topicName} -v\n`;
-
-        fs.writeFileSync(commandsFile, commandsContent, { encoding: 'utf8' });
-
-        const tempBatch = path.join(tempDir, `topic_info_run_${Date.now()}.bat`);
-        const batchContent = `@echo off
-cd /d ${PIXI_WS_PATH}
-type "${commandsFile}" | pixi shell
-`;
-        fs.writeFileSync(tempBatch, batchContent, { encoding: 'utf8' });
+        const ros2Path = PIXI_PATHS.ROS2_EXE;
+        const envPath = PIXI_PATHS.PIXI_ENV_PATH_STRING;
 
         let output = '';
         let errorOutput = '';
 
-        const child = spawn('cmd', ['/c', tempBatch], {
-            cwd: PIXI_WS_PATH,
-            windowsHide: true
+        const child = spawn(ros2Path, ['topic', 'info', topicName, '-v'], {
+            windowsHide: true,
+            env: {
+                ...process.env,
+                PATH: `${envPath};${process.env.PATH}`,
+                PYTHONUNBUFFERED: '1'
+            }
         });
 
         child.stdout.on('data', (data) => {
@@ -248,12 +236,6 @@ type "${commandsFile}" | pixi shell
         });
 
         child.on('close', (code) => {
-            // Clean up temp files
-            try {
-                fs.unlinkSync(commandsFile);
-                fs.unlinkSync(tempBatch);
-            } catch (e) { /* ignore cleanup errors */ }
-
             if (code !== 0 && errorOutput) {
                 resolve({ success: false, error: errorOutput });
                 return;
@@ -337,22 +319,16 @@ async function startTopicEcho(topicName) {
     }
 
     return new Promise((resolve) => {
-        const tempDir = os.tmpdir();
-        const commandsFile = path.join(tempDir, `echo_cmds_${Date.now()}.txt`);
-        const commandsContent = `ros2 topic echo ${topicName}\n`;
+        const ros2Path = PIXI_PATHS.ROS2_EXE;
+        const envPath = PIXI_PATHS.PIXI_ENV_PATH_STRING;
 
-        fs.writeFileSync(commandsFile, commandsContent, { encoding: 'utf8' });
-
-        const tempBatch = path.join(tempDir, `echo_run_${Date.now()}.bat`);
-        const batchContent = `@echo off
-cd /d ${PIXI_WS_PATH}
-type "${commandsFile}" | pixi shell
-`;
-        fs.writeFileSync(tempBatch, batchContent, { encoding: 'utf8' });
-
-        const child = spawn('cmd', ['/c', tempBatch], {
-            cwd: PIXI_WS_PATH,
-            windowsHide: true
+        const child = spawn(ros2Path, ['topic', 'echo', topicName], {
+            windowsHide: true,
+            env: {
+                ...process.env,
+                PATH: `${envPath};${process.env.PATH}`,
+                PYTHONUNBUFFERED: '1'
+            }
         });
 
         runningProcesses.set(processKey, child);
@@ -382,12 +358,6 @@ type "${commandsFile}" | pixi shell
             if (mainWindow) {
                 mainWindow.webContents.send('echo-stopped', { code }, processKey);
             }
-
-            // Clean up temp files
-            try {
-                fs.unlinkSync(commandsFile);
-                fs.unlinkSync(tempBatch);
-            } catch (e) { /* ignore */ }
         });
 
         child.on('error', (error) => {
@@ -473,8 +443,8 @@ async function runColconBuild(projectPath, packageName, onStatus) {
         console.log(`[ROS Service] Running colcon build in ${projectPath}${packageName ? ` for package ${packageName}` : ''}`);
 
         // Call colcon.exe directly with pixi environment PATH
-        const colconPath = 'C:\\pixi_ws\\.pixi\\envs\\default\\Scripts\\colcon.exe';
-        const pixiEnvPath = 'C:\\pixi_ws\\.pixi\\envs\\default;C:\\pixi_ws\\.pixi\\envs\\default\\Scripts;C:\\pixi_ws\\.pixi\\envs\\default\\Library\\bin';
+        const colconPath = PIXI_PATHS.COLCON_EXE;
+        const pixiEnvPath = PIXI_PATHS.PIXI_ENV_PATH_STRING;
 
         const args = [
             'build',
@@ -686,10 +656,16 @@ function sendToRenderer(type, message, processKey) {
  * @param {string} processKey - Unique key for this process
  * @returns {Promise<Object>} Result with success status and PID
  */
+/**
+ * Execute commands directly using PIXI environment variables
+ * Captures output and sends to renderer
+ * @param {string[]} commands - Array of commands (e.g., ["ros2 run pkg node"])
+ * @param {string} processKey - Unique key for this process
+ * @returns {Promise<Object>} Result with success status and PID
+ */
 async function executeInPixiShell(commands, processKey) {
     try {
         const projectPath = getProjectPath();
-
         if (!projectPath) {
             return { success: false, error: 'No project loaded' };
         }
@@ -702,42 +678,47 @@ async function executeInPixiShell(commands, processKey) {
         console.log(`[ROS Runner] Commands:`, commands);
         console.log(`[ROS Runner] Process key: ${processKey}`);
 
-        // Build the full command list with workspace sourcing
-        const installDir = path.join(projectPath, 'install');
-        const localSetupScript = path.join(installDir, 'local_setup.bat');
+        // Parse command: e.g. "ros2 run pkg node" -> "ros2", ["run", "pkg", "node"]
+        const fullCommand = commands[0]; // We assume single line commands for now as per usage
+        const parts = fullCommand.split(' ');
 
-        // Prepare commands - add workspace sourcing if install directory exists
-        let fullCommands = [...commands];
-        if (fs.existsSync(localSetupScript)) {
-            // Add workspace sourcing at the beginning, before the actual command
-            fullCommands.splice(0, 0, `call "${localSetupScript}"`);
-            console.log(`[ROS Runner] Added workspace sourcing: ${localSetupScript}`);
-        } else {
-            console.log(`[ROS Runner] No workspace install found, skipping sourcing`);
+        let executable = parts[0];
+        let args = parts.slice(1);
+        let cwd = projectPath;
+
+        // If command is python -c, handle it specially
+        if (executable === 'python') {
+            // Python is in Scripts too, or we use `python` from env
+            // Let's just use `python` and rely on PATH
+        }
+        // If command is ros2, use full path for safety
+        else if (executable === 'ros2') {
+            executable = PIXI_PATHS.ROS2_EXE;
         }
 
-        // Create temp files for commands
-        const tempDir = os.tmpdir();
-        const commandsFile = path.join(tempDir, `ros_cmds_${Date.now()}.txt`);
-        const commandsContent = fullCommands.join('\n') + '\n';
-        fs.writeFileSync(commandsFile, commandsContent, { encoding: 'utf8' });
-
-        // Create batch file that pipes commands to pixi shell
-        const tempBatch = path.join(tempDir, `ros_run_${Date.now()}.bat`);
-        const batchContent = `@echo off
-cd /d ${PIXI_WS_PATH}
-type "${commandsFile}" | pixi shell
-`;
-        fs.writeFileSync(tempBatch, batchContent, { encoding: 'utf8' });
+        // Setup Environment with Pixi Paths
+        const env = {
+            ...process.env,
+            PATH: `${PIXI_PATHS.PIXI_ENV_PATH_STRING};${process.env.PATH}`,
+            PYTHONUNBUFFERED: '1',
+            NO_COLOR: '1'
+        };
 
         // Notify renderer that process is starting
         sendToRenderer('status', 'starting', processKey);
 
-        // Spawn hidden process with output capture
-        const child = spawn('cmd', ['/c', tempBatch], {
-            cwd: PIXI_WS_PATH,
-            windowsHide: true,  // Hide the window
-            stdio: ['ignore', 'pipe', 'pipe']
+        // Spawn process
+        // Shell: true is needed for some complex args parsing or if we want to chain commands, 
+        // but direct spawn is better for signal handling. 
+        // However, some usages like runRobotPublisher use complex python one-liners.
+        // For those, we might need shell: true or careful parsing.
+
+        // Let's us shell: true for maximum compatibility with the complex strings passed in
+        const child = spawn(executable, args, {
+            cwd: cwd,
+            windowsHide: true,
+            shell: true,
+            env: env
         });
 
         // Store the process
@@ -766,7 +747,7 @@ type "${commandsFile}" | pixi shell
         // Capture stderr (ROS often logs to stderr)
         child.stderr.on('data', (data) => {
             const output = data.toString();
-            console.error(`[ROS Error] ${output}`);
+            // console.error(`[ROS Error] ${output}`); // Optional: reduce noise
             sendToRenderer('error', output, processKey);
 
             // Check for "Robot initialized" in stderr too (ROS logs go to stderr)
@@ -784,12 +765,6 @@ type "${commandsFile}" | pixi shell
             console.log(`[ROS Runner] Process exited with code: ${code}`);
             runningProcesses.delete(processKey);
             sendToRenderer('status', 'stopped', processKey);
-
-            // Clean up temp files
-            try {
-                fs.unlinkSync(commandsFile);
-                fs.unlinkSync(tempBatch);
-            } catch (e) { /* ignore cleanup errors */ }
         });
 
         child.on('error', (error) => {

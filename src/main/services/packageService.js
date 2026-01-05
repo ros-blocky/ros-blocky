@@ -13,6 +13,7 @@ const dialogService = require('./dialogService');
 const setupPyService = require('./setupPyService');
 const nodeService = require('./nodeService');
 const fileService = require('./fileService');
+const { PIXI_PATHS } = require('../constants');
 
 class PackageService {
     constructor() {
@@ -261,18 +262,15 @@ class PackageService {
             // Ensure src directory exists
             await fs.mkdir(srcPath, { recursive: true });
 
-            // Create package: source ROS2 setup then use pixi run
-            const result = await this.runPixiCommand(
-                `ros2 pkg create ${packageName} --build-type ament_python`,
-                srcPath
-            );
+            // Create package: call ros2.exe directly with pixi environment PATH (fast!)
+            const result = await this.runRos2PkgCreate(packageName, srcPath);
 
             // Close loading dialog
             if (loadingWindow && !loadingWindow.isDestroyed()) {
                 loadingWindow.close();
             }
 
-            if (result.success || result.output?.includes('going to create')) {
+            if (result.success) {
                 return {
                     success: true,
                     message: `Package "${packageName}" created successfully!`,
@@ -381,14 +379,68 @@ class PackageService {
     }
 
     /**
-     * Run a command in the pixi environment using pixi shell
-     * @param {string} command - Command to run
-     * @param {string} targetDir - Target directory for the command
+     * Create a ROS2 package using ros2.exe directly (fast, no pixi shell overhead)
+     * @param {string} packageName - Name of the package to create
+     * @param {string} srcPath - Path to the src directory
      * @returns {Promise<{success: boolean, output?: string, error?: string}>}
      */
-    runPixiCommand(command, targetDir) {
-        const pixiUtil = require('./pixiUtil');
-        return pixiUtil.executeInPixiShell([command], { targetDir });
+    runRos2PkgCreate(packageName, srcPath) {
+        return new Promise((resolve) => {
+            const ros2Path = PIXI_PATHS.ROS2_EXE;
+            const pixiEnvPath = PIXI_PATHS.PIXI_ENV_PATH_STRING;
+
+            const args = ['pkg', 'create', packageName, '--build-type', 'ament_python'];
+
+            console.log('[PackageService] Running ros2.exe directly:', args.join(' '));
+
+            const child = spawn(ros2Path, args, {
+                cwd: srcPath,
+                windowsHide: true,
+                env: {
+                    ...process.env,
+                    PATH: `${pixiEnvPath};${process.env.PATH}`,
+                    PYTHONUNBUFFERED: '1'
+                }
+            });
+
+            let output = '';
+            let resolved = false;
+
+            child.stdout.on('data', (data) => {
+                const text = data.toString();
+                output += text;
+                console.log('[PackageService] ros2 output:', text);
+
+                // Resolve immediately when we see success indicator
+                if (!resolved && text.includes('going to create')) {
+                    resolved = true;
+                    console.log('[PackageService] Package creation detected - resolving immediately!');
+                    resolve({ success: true, output });
+                }
+            });
+
+            child.stderr.on('data', (data) => {
+                output += data.toString();
+                console.log('[PackageService] ros2 stderr:', data.toString());
+            });
+
+            child.on('exit', (code) => {
+                if (resolved) return;
+                console.log('[PackageService] ros2 exited with code:', code);
+
+                if (code === 0 || output.includes('going to create')) {
+                    resolve({ success: true, output });
+                } else {
+                    resolve({ success: false, error: output || `Exit code: ${code}` });
+                }
+            });
+
+            child.on('error', (error) => {
+                if (resolved) return;
+                console.error('[PackageService] ros2 error:', error);
+                resolve({ success: false, error: error.message });
+            });
+        });
     }
 }
 
