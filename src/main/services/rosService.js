@@ -42,11 +42,8 @@ async function runNode(packageName, nodeName) {
     }
 
     const nodeNameWithoutExt = nodeName.replace(/\.py$/, '');
-    const commands = [
-        `ros2 run ${packageName} ${nodeNameWithoutExt}`
-    ];
-
-    return await executeInPixiShell(commands, `node:${packageName}/${nodeName}`);
+    const args = ['run', packageName, nodeNameWithoutExt];
+    return await spawnRosProcess(PIXI_PATHS.ROS2_EXE, args, `node:${packageName}/${nodeName}`);
 }
 
 /**
@@ -72,12 +69,37 @@ async function runRobotPublisher(packageName, fileName) {
 
     const xacroPath = path.join(projectPath, 'src', packageName, 'urdf', fileName);
 
-    // Commands to run inside pixi shell
-    const commands = [
-        `python -c "import subprocess; result=subprocess.run(['ros2', 'run', 'xacro', 'xacro', r'${xacroPath}'], capture_output=True, text=True); subprocess.run(['ros2', 'run', 'robot_state_publisher', 'robot_state_publisher', '--ros-args', '-p', f'robot_description:={result.stdout}'])"`
-    ];
+    // For URDF, we use python to run a script that runs xacro and then robot_state_publisher
+    // This is complex because we need to capture xacro output.
+    // We'll run python directly from the environment.
 
-    return await executeInPixiShell(commands, `urdf:${packageName}/${fileName}`);
+    // Construct the python script to run
+    const pythonScript = `
+import subprocess
+import os
+import sys
+
+# Add PIXI paths to environment for subprocesses
+env = os.environ.copy()
+env["PATH"] = r"${PIXI_PATHS.PIXI_ENV_PATH_STRING}" + env["PATH"]
+
+try:
+    # Run xacro
+    result = subprocess.run([r"${PIXI_PATHS.ROS2_EXE}", "run", "xacro", "xacro", r"${xacroPath}"], capture_output=True, text=True, env=env)
+    
+    if result.returncode != 0:
+        print(f"Xacro Error: {result.stderr}", file=sys.stderr)
+        sys.exit(1)
+
+    # Run robot_state_publisher
+    subprocess.run([r"${PIXI_PATHS.ROS2_EXE}", "run", "robot_state_publisher", "robot_state_publisher", "--ros-args", "-p", f"robot_description:={result.stdout}"], env=env)
+
+except Exception as e:
+    print(f"Error: {e}", file=sys.stderr)
+    sys.exit(1)
+`;
+
+    return await spawnRosProcess('python', ['-c', pythonScript], `urdf:${packageName}/${fileName}`);
 }
 
 /**
@@ -95,11 +117,8 @@ async function runLaunch(packageName, fileName) {
         return createValidationError('file name', fileName);
     }
 
-    const commands = [
-        `ros2 launch ${packageName} ${fileName}`
-    ];
-
-    return await executeInPixiShell(commands, `launch:${packageName}/${fileName}`);
+    const args = ['launch', packageName, fileName];
+    return await spawnRosProcess(PIXI_PATHS.ROS2_EXE, args, `launch:${packageName}/${fileName}`);
 }
 
 /**
@@ -107,11 +126,7 @@ async function runLaunch(packageName, fileName) {
  * @returns {Promise<Object>} Result with success status and PID
  */
 async function runRviz() {
-    const commands = [
-        `ros2 run rviz2 rviz2`
-    ];
-
-    return await executeInPixiShell(commands, 'rviz2');
+    return await spawnRosProcess(PIXI_PATHS.ROS2_EXE, ['run', 'rviz2', 'rviz2'], 'rviz2');
 }
 
 /**
@@ -119,11 +134,7 @@ async function runRviz() {
  * @returns {Promise<Object>} Result with success status and PID
  */
 async function runJointStatePublisherGui() {
-    const commands = [
-        `ros2 run joint_state_publisher_gui joint_state_publisher_gui`
-    ];
-
-    return await executeInPixiShell(commands, 'joint_state_publisher_gui');
+    return await spawnRosProcess(PIXI_PATHS.ROS2_EXE, ['run', 'joint_state_publisher_gui', 'joint_state_publisher_gui'], 'joint_state_publisher_gui');
 }
 
 /**
@@ -131,11 +142,7 @@ async function runJointStatePublisherGui() {
  * @returns {Promise<Object>} Result with success status and PID
  */
 async function runTurtlesim() {
-    const commands = [
-        `ros2 run turtlesim turtlesim_node`
-    ];
-
-    return await executeInPixiShell(commands, 'turtlesim');
+    return await spawnRosProcess(PIXI_PATHS.ROS2_EXE, ['run', 'turtlesim', 'turtlesim_node'], 'turtlesim');
 }
 
 /**
@@ -657,133 +664,115 @@ function sendToRenderer(type, message, processKey) {
  * @returns {Promise<Object>} Result with success status and PID
  */
 /**
- * Execute commands directly using PIXI environment variables
- * Captures output and sends to renderer
- * @param {string[]} commands - Array of commands (e.g., ["ros2 run pkg node"])
- * @param {string} processKey - Unique key for this process
+ * Spawn a ROS process directly (replacing executeInPixiShell)
+ * @param {string} executable - Path to executable (or command name if in PATH)
+ * @param {string[]} args - Arguments for the command
+ * @param {string} processKey - Unique key for tracking
  * @returns {Promise<Object>} Result with success status and PID
  */
-async function executeInPixiShell(commands, processKey) {
+async function spawnRosProcess(executable, args, processKey) {
     try {
         const projectPath = getProjectPath();
         if (!projectPath) {
             return { success: false, error: 'No project loaded' };
         }
 
-        // Check if already running
         if (runningProcesses.has(processKey)) {
             return { success: false, error: 'Process already running', isRunning: true };
         }
 
-        console.log(`[ROS Runner] Commands:`, commands);
-        console.log(`[ROS Runner] Process key: ${processKey}`);
+        console.log(`[ROS Runner] Spawning: ${executable} ${args.join(' ')}`);
 
-        // Parse command: e.g. "ros2 run pkg node" -> "ros2", ["run", "pkg", "node"]
-        const fullCommand = commands[0]; // We assume single line commands for now as per usage
-        const parts = fullCommand.split(' ');
+        // Construct Pixi environment paths
+        const pixiHome = path.join(PIXI_PATHS.PIXI_WS_PATH, '.pixi', 'envs', 'default');
+        const pixiLibrary = path.join(pixiHome, 'Library'); // ROS 2 packages are installed here
+        const installDir = path.join(projectPath, 'install');
 
-        let executable = parts[0];
-        let args = parts.slice(1);
-        let cwd = projectPath;
-
-        // If command is python -c, handle it specially
-        if (executable === 'python') {
-            // Python is in Scripts too, or we use `python` from env
-            // Let's just use `python` and rely on PATH
-        }
-        // If command is ros2, use full path for safety
-        else if (executable === 'ros2') {
-            executable = PIXI_PATHS.ROS2_EXE;
-        }
-
-        // Setup Environment with Pixi Paths
+        // Setup Environment with Pixi Paths and ROS variables
         const env = {
             ...process.env,
-            PATH: `${PIXI_PATHS.PIXI_ENV_PATH_STRING};${process.env.PATH}`,
+            // Full pixi environment PATH (includes rviz_ogre_vendor, mingw, etc.)
+            PATH: `${PIXI_PATHS.PIXI_ENV_PATH_STRING}${process.env.PATH}`,
+
+            // Critical: AMENT_PREFIX_PATH tells ROS 2 where to find packages/plugins
+            // For conda-forge ROS 2 on Windows, packages are in Library folder
+            AMENT_PREFIX_PATH: `${pixiLibrary};${installDir}`,
+
+            // Critical: PYTHONPATH for Python nodes
+            PYTHONPATH: `${path.join(pixiHome, 'Lib', 'site-packages')};${path.join(installDir, 'Lib', 'site-packages')}`,
+
+            // Required by python_qt_binding and other conda packages
+            CONDA_PREFIX: pixiHome,
+
+            // Qt plugins path for RViz2 and other Qt-based apps
+            QT_PLUGIN_PATH: path.join(pixiLibrary, 'plugins'),
+
+            // OGRE plugins for RViz2's 3D rendering
+            OGRE_PLUGIN_PATH: path.join(pixiLibrary, 'bin', 'OGRE'),
+
+            // Other useful vars
             PYTHONUNBUFFERED: '1',
             NO_COLOR: '1'
         };
 
-        // Notify renderer that process is starting
-        sendToRenderer('status', 'starting', processKey);
-
-        // Spawn process
-        // Shell: true is needed for some complex args parsing or if we want to chain commands, 
-        // but direct spawn is better for signal handling. 
-        // However, some usages like runRobotPublisher use complex python one-liners.
-        // For those, we might need shell: true or careful parsing.
-
-        // Let's us shell: true for maximum compatibility with the complex strings passed in
         const child = spawn(executable, args, {
-            cwd: cwd,
+            cwd: projectPath,
             windowsHide: true,
-            shell: true,
             env: env
         });
 
-        // Store the process
+        // Store process
         runningProcesses.set(processKey, {
             pid: child.pid,
             process: child,
             startTime: Date.now()
         });
 
+        // Notify renderer
+        sendToRenderer('status', 'starting', processKey);
+
         // Capture stdout
         child.stdout.on('data', (data) => {
             const output = data.toString();
-            console.log(`[ROS Output] ${output}`);
+            console.log(`[ROS Output ${processKey}] ${output}`);
             sendToRenderer('log', output, processKey);
 
-            // Check for "Robot initialized" to notify UI (for URDF)
-            if (output.includes('Robot initialized')) {
-                sendToRenderer('status', 'running', processKey);
-            }
-            // For nodes, detect when ros2 run command is executed or when they start logging
-            if (processKey.startsWith('node:') && (output.includes('[INFO]') || output.includes('ros2 run'))) {
+            if (output.includes('Robot initialized') ||
+                (processKey.startsWith('node:') && output.includes('[INFO]'))) {
                 sendToRenderer('status', 'running', processKey);
             }
         });
 
-        // Capture stderr (ROS often logs to stderr)
+        // Capture stderr
         child.stderr.on('data', (data) => {
             const output = data.toString();
-            // console.error(`[ROS Error] ${output}`); // Optional: reduce noise
+            console.error(`[ROS Error ${processKey}] ${output}`); // Uncommented for debugging
             sendToRenderer('error', output, processKey);
 
-            // Check for "Robot initialized" in stderr too (ROS logs go to stderr)
-            if (output.includes('Robot initialized')) {
-                sendToRenderer('status', 'running', processKey);
-            }
-            // For nodes, detect when they start logging (ROS INFO pattern)
-            if (processKey.startsWith('node:') && output.includes('[INFO]')) {
+            if (output.includes('Robot initialized') ||
+                (processKey.startsWith('node:') && output.includes('[INFO]'))) {
                 sendToRenderer('status', 'running', processKey);
             }
         });
 
-        // Handle process exit
+        // Handle exit
         child.on('close', (code) => {
-            console.log(`[ROS Runner] Process exited with code: ${code}`);
+            console.log(`[ROS Runner] ${processKey} exited with code: ${code}`);
             runningProcesses.delete(processKey);
             sendToRenderer('status', 'stopped', processKey);
         });
 
         child.on('error', (error) => {
-            console.error(`[ROS Runner] Process error:`, error);
+            console.error(`[ROS Runner] ${processKey} error:`, error);
             runningProcesses.delete(processKey);
             sendToRenderer('error', error.message, processKey);
             sendToRenderer('status', 'error', processKey);
         });
 
-        console.log(`[ROS Runner] Started process with PID: ${child.pid}`);
-
-        return {
-            success: true,
-            pid: child.pid,
-            processKey: processKey
-        };
+        return { success: true, pid: child.pid, processKey };
 
     } catch (error) {
-        console.error(`[ROS Runner] Error:`, error);
+        console.error(`[ROS Runner] Spawn error:`, error);
         return { success: false, error: error.message };
     }
 }
