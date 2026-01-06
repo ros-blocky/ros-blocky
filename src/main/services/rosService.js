@@ -134,7 +134,7 @@ async function runRviz() {
  * @returns {Promise<Object>} Result with success status and PID
  */
 async function runJointStatePublisherGui() {
-    return await spawnRosProcess(PIXI_PATHS.ROS2_EXE, ['run', 'joint_state_publisher_gui', 'joint_state_publisher_gui'], 'joint_state_publisher_gui');
+    return await spawnWorkspaceProcess('ros2 run joint_state_publisher_gui joint_state_publisher_gui', 'joint_state_publisher_gui');
 }
 
 /**
@@ -142,7 +142,7 @@ async function runJointStatePublisherGui() {
  * @returns {Promise<Object>} Result with success status and PID
  */
 async function runTurtlesim() {
-    return await spawnRosProcess(PIXI_PATHS.ROS2_EXE, ['run', 'turtlesim', 'turtlesim_node'], 'turtlesim');
+    return await spawnWorkspaceProcess('ros2 run turtlesim turtlesim_node', 'turtlesim');
 }
 
 /**
@@ -657,25 +657,11 @@ function sendToRenderer(type, message, processKey) {
 }
 
 /**
- * Execute commands inside pixi shell in background
- * Captures output and sends to renderer
- * @param {string[]} commands - Array of commands to run inside pixi shell
- * @param {string} processKey - Unique key for this process
- * @returns {Promise<Object>} Result with success status and PID
- */
-/**
- * Spawn a ROS process directly (replacing executeInPixiShell)
+ * Spawn a ROS process directly (for global tools that don't need workspace sourcing)
  * @param {string} executable - Path to executable (or command name if in PATH)
  * @param {string[]} args - Arguments for the command
  * @param {string} processKey - Unique key for tracking
- * @returns {Promise<Object>} Result with success status and PID
- */
-/**
- * Spawn a ROS process directly (replacing executeInPixiShell)
- * @param {string} executable - Path to executable (or command name if in PATH)
- * @param {string[]} args - Arguments for the command
- * @param {string} processKey - Unique key for tracking
- * @param {string} [logMessage] - Optional custom log message to display instead of raw command
+ * @param {string} [logMessage] - Optional custom log message
  * @returns {Promise<Object>} Result with success status and PID
  */
 async function spawnRosProcess(executable, args, processKey, logMessage = null) {
