@@ -42,8 +42,8 @@ async function runNode(packageName, nodeName) {
     }
 
     const nodeNameWithoutExt = nodeName.replace(/\.py$/, '');
-    const args = ['run', packageName, nodeNameWithoutExt];
-    return await spawnRosProcess(PIXI_PATHS.ROS2_EXE, args, `node:${packageName}/${nodeName}`);
+    const command = `ros2 run ${packageName} ${nodeNameWithoutExt}`;
+    return await spawnWorkspaceProcess(command, `node:${packageName}/${nodeName}`);
 }
 
 /**
@@ -74,14 +74,14 @@ async function runRobotPublisher(packageName, fileName) {
     // We'll run python directly from the environment.
 
     // Construct the python script to run
+    // We inherit the environment from spawnRosProcess (which includes PIXI paths, AMENT_PREFIX_PATH, etc.)
     const pythonScript = `
 import subprocess
 import os
 import sys
 
-# Add PIXI paths to environment for subprocesses
+# Inherit current environment (which is already set up correctly by spawnRosProcess)
 env = os.environ.copy()
-env["PATH"] = r"${PIXI_PATHS.PIXI_ENV_PATH_STRING}" + env["PATH"]
 
 try:
     # Run xacro
@@ -99,7 +99,7 @@ except Exception as e:
     sys.exit(1)
 `;
 
-    return await spawnRosProcess('python', ['-c', pythonScript], `urdf:${packageName}/${fileName}`);
+    return await spawnRosProcess('python', ['-c', pythonScript], `urdf:${packageName}/${fileName}`, `Running URDF Processor for ${fileName}`);
 }
 
 /**
@@ -117,8 +117,8 @@ async function runLaunch(packageName, fileName) {
         return createValidationError('file name', fileName);
     }
 
-    const args = ['launch', packageName, fileName];
-    return await spawnRosProcess(PIXI_PATHS.ROS2_EXE, args, `launch:${packageName}/${fileName}`);
+    const command = `ros2 launch ${packageName} ${fileName}`;
+    return await spawnWorkspaceProcess(command, `launch:${packageName}/${fileName}`);
 }
 
 /**
@@ -126,7 +126,7 @@ async function runLaunch(packageName, fileName) {
  * @returns {Promise<Object>} Result with success status and PID
  */
 async function runRviz() {
-    return await spawnRosProcess(PIXI_PATHS.ROS2_EXE, ['run', 'rviz2', 'rviz2'], 'rviz2');
+    return await spawnWorkspaceProcess('ros2 run rviz2 rviz2', 'rviz2');
 }
 
 /**
@@ -670,7 +670,15 @@ function sendToRenderer(type, message, processKey) {
  * @param {string} processKey - Unique key for tracking
  * @returns {Promise<Object>} Result with success status and PID
  */
-async function spawnRosProcess(executable, args, processKey) {
+/**
+ * Spawn a ROS process directly (replacing executeInPixiShell)
+ * @param {string} executable - Path to executable (or command name if in PATH)
+ * @param {string[]} args - Arguments for the command
+ * @param {string} processKey - Unique key for tracking
+ * @param {string} [logMessage] - Optional custom log message to display instead of raw command
+ * @returns {Promise<Object>} Result with success status and PID
+ */
+async function spawnRosProcess(executable, args, processKey, logMessage = null) {
     try {
         const projectPath = getProjectPath();
         if (!projectPath) {
@@ -681,36 +689,26 @@ async function spawnRosProcess(executable, args, processKey) {
             return { success: false, error: 'Process already running', isRunning: true };
         }
 
-        console.log(`[ROS Runner] Spawning: ${executable} ${args.join(' ')}`);
+        // Log the custom message if provided, otherwise log the command (truncated)
+        if (logMessage) {
+            console.log(`[ROS Runner] ${logMessage}`);
+        } else {
+            const logArgs = args.map(arg => arg.length > 50 ? arg.substring(0, 50) + '...' : arg);
+            console.log(`[ROS Runner] Spawning: ${executable} ${logArgs.join(' ')}`);
+        }
 
-        // Construct Pixi environment paths
+        // Setup Pixi environment paths (for global tools like rviz2, turtlesim, topic commands)
         const pixiHome = path.join(PIXI_PATHS.PIXI_WS_PATH, '.pixi', 'envs', 'default');
-        const pixiLibrary = path.join(pixiHome, 'Library'); // ROS 2 packages are installed here
-        const installDir = path.join(projectPath, 'install');
+        const pixiLibrary = path.join(pixiHome, 'Library');
 
-        // Setup Environment with Pixi Paths and ROS variables
         const env = {
             ...process.env,
-            // Full pixi environment PATH (includes rviz_ogre_vendor, mingw, etc.)
             PATH: `${PIXI_PATHS.PIXI_ENV_PATH_STRING}${process.env.PATH}`,
-
-            // Critical: AMENT_PREFIX_PATH tells ROS 2 where to find packages/plugins
-            // For conda-forge ROS 2 on Windows, packages are in Library folder
-            AMENT_PREFIX_PATH: `${pixiLibrary};${installDir}`,
-
-            // Critical: PYTHONPATH for Python nodes
-            PYTHONPATH: `${path.join(pixiHome, 'Lib', 'site-packages')};${path.join(installDir, 'Lib', 'site-packages')}`,
-
-            // Required by python_qt_binding and other conda packages
+            AMENT_PREFIX_PATH: pixiLibrary,
+            PYTHONPATH: path.join(pixiHome, 'Lib', 'site-packages'),
             CONDA_PREFIX: pixiHome,
-
-            // Qt plugins path for RViz2 and other Qt-based apps
             QT_PLUGIN_PATH: path.join(pixiLibrary, 'plugins'),
-
-            // OGRE plugins for RViz2's 3D rendering
             OGRE_PLUGIN_PATH: path.join(pixiLibrary, 'bin', 'OGRE'),
-
-            // Other useful vars
             PYTHONUNBUFFERED: '1',
             NO_COLOR: '1'
         };
@@ -753,6 +751,121 @@ async function spawnRosProcess(executable, args, processKey) {
                 (processKey.startsWith('node:') && output.includes('[INFO]'))) {
                 sendToRenderer('status', 'running', processKey);
             }
+        });
+
+        // Handle exit
+        child.on('close', (code) => {
+            console.log(`[ROS Runner] ${processKey} exited with code: ${code}`);
+            runningProcesses.delete(processKey);
+            sendToRenderer('status', 'stopped', processKey);
+        });
+
+        child.on('error', (error) => {
+            console.error(`[ROS Runner] ${processKey} error:`, error);
+            runningProcesses.delete(processKey);
+            sendToRenderer('error', error.message, processKey);
+            sendToRenderer('status', 'error', processKey);
+        });
+
+        return { success: true, pid: child.pid, processKey };
+
+    } catch (error) {
+        console.error(`[ROS Runner] Spawn error:`, error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Spawn a command in the workspace environment (sources local_setup.bat first)
+ * Use this for commands that need the local workspace (runNode, runLaunch)
+ * @param {string} command - The ROS command to run (e.g., "ros2 run pkg node")
+ * @param {string} processKey - Unique key for tracking
+ * @param {string} [logMessage] - Optional custom log message
+ * @returns {Promise<Object>} Result with success status and PID
+ */
+async function spawnWorkspaceProcess(command, processKey, logMessage = null) {
+    try {
+        const projectPath = getProjectPath();
+        if (!projectPath) {
+            return { success: false, error: 'No project loaded' };
+        }
+
+        if (runningProcesses.has(processKey)) {
+            return { success: false, error: 'Process already running', isRunning: true };
+        }
+
+        const installDir = path.join(projectPath, 'install');
+        const localSetupBat = path.join(installDir, 'local_setup.bat');
+
+        // Check if local_setup.bat exists
+        if (!fs.existsSync(localSetupBat)) {
+            const warning = `Workspace not built. Run 'colcon build' first.`;
+            console.warn(`[ROS Runner] ${warning}`);
+            return { success: false, error: warning };
+        }
+
+        // Log the command
+        console.log(`[ROS Runner] ${logMessage || command}`);
+
+        // Build the full command: source workspace, then run
+        // Use relative path from cwd to avoid quoting issues with spaces
+        const fullCommand = `call install\\local_setup.bat && ${command}`;
+
+        // Setup base environment with Pixi paths
+        const pixiHome = path.join(PIXI_PATHS.PIXI_WS_PATH, '.pixi', 'envs', 'default');
+        const pixiLibrary = path.join(pixiHome, 'Library');
+        const env = {
+            ...process.env,
+            PATH: `${PIXI_PATHS.PIXI_ENV_PATH_STRING}${process.env.PATH}`,
+            AMENT_PREFIX_PATH: pixiLibrary,
+            CONDA_PREFIX: pixiHome,
+            QT_PLUGIN_PATH: path.join(pixiLibrary, 'plugins'),
+            PYTHONUNBUFFERED: '1',
+            NO_COLOR: '1'
+        };
+
+        // Write command to temp batch file for workspace sourcing
+        const tempBatch = path.join(os.tmpdir(), `ros_run_${Date.now()}.bat`);
+        const batchContent = `@echo off
+set PYTHONUNBUFFERED=1
+call install\\local_setup.bat
+${command}
+`;
+        fs.writeFileSync(tempBatch, batchContent);
+
+        const child = spawn('cmd', ['/c', tempBatch], {
+            cwd: projectPath,
+            windowsHide: true,
+            env: env
+        });
+
+        // Clean up temp file after process starts
+        setTimeout(() => {
+            try { fs.unlinkSync(tempBatch); } catch (e) { }
+        }, 5000);
+
+        // Store process
+        runningProcesses.set(processKey, {
+            pid: child.pid,
+            process: child,
+            startTime: Date.now()
+        });
+
+        // Notify renderer - set to running immediately since workspace sourcing is reliable
+        sendToRenderer('status', 'running', processKey);
+
+        // Capture stdout
+        child.stdout.on('data', (data) => {
+            const output = data.toString();
+            console.log(`[ROS Output ${processKey}] ${output}`);
+            sendToRenderer('log', output, processKey);
+        });
+
+        // Capture stderr
+        child.stderr.on('data', (data) => {
+            const output = data.toString();
+            console.error(`[ROS Error ${processKey}] ${output}`);
+            sendToRenderer('error', output, processKey);
         });
 
         // Handle exit
