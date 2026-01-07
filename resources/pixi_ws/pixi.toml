@@ -1,0 +1,31 @@
+[workspace]
+name = "robostack"
+description = "Development environment for RoboStack ROS packages"
+channels = ["https://prefix.dev/robostack-jazzy", "https://prefix.dev/conda-forge"]
+platforms = ["win-64"]
+
+
+
+# To build you can use - `pixi run -e <ros distro> build <Any other temporary args>`
+[target.win-64.tasks]
+build = "colcon build --merge-install --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DPython_FIND_VIRTUALENV=ONLY -DPython3_FIND_VIRTUALENV=ONLY"
+
+[target.win-64.activation]
+env = { GZ_PARTITION = "robostack" }
+
+# Dependencies used by all environments
+[dependencies]
+python = "*"
+# Build tools
+compilers = "*"
+cmake = "*"
+pkg-config = "*"
+make = "*"
+ninja = "*"
+# ROS specific tools
+rosdep = "*"
+colcon-common-extensions = "*"
+
+ros-jazzy-desktop = "*"
+ros-jazzy-xacro = "*"
+ros-jazzy-joint-state-publisher-gui = "*"

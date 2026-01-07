@@ -1,0 +1,62 @@
+{
+  "name": "ros block code",
+  "version": "0.1.0-alpha",
+  "description": "Visual block-based programming for ROS2 robotics",
+  "main": "src\\main\\main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64",
+    "dist": "electron-builder"
+  },
+  "keywords": [
+    "ROS2",
+    "robotics",
+    "blockly",
+    "visual-programming",
+    "URDF",
+    "Electron"
+  ],
+  "author": "Yacin Hamdi",
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.ros.blocky",
+    "productName": "ROS Blocky",
+    "win": {
+      "target": "nsis",
+      "requestedExecutionLevel": "requireAdministrator"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "include": "build/installer.nsh"
+    },
+    "files": [
+      "**/*",
+      "!resources/pixi_ws"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/pixi_ws",
+        "to": "pixi_ws"
+      },
+      {
+        "from": "resources/pixi.msi",
+        "to": "pixi.msi"
+      }
+    ],
+    "directories": {
+      "buildResources": "build"
+    }
+  },
+  "dependencies": {
+    "blockly": "^10.4.0",
+    "i18next": "^25.7.2"
+  }
+}
