@@ -134,14 +134,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Reset the project loaded flag when returning to welcome
         isProjectLoaded = false;
 
-        if (welcomeScreen) welcomeScreen.classList.remove('hidden');
+        if (welcomeScreen) {
+            welcomeScreen.classList.remove('hidden');
+            // Reset inline styles that were set by showIDE()
+            welcomeScreen.style.display = '';
+            welcomeScreen.style.pointerEvents = '';
+        }
         if (loadingScreen) {
             loadingScreen.classList.add('hidden');
             // Also reset inline styles as failsafe
             loadingScreen.style.display = 'none';
             loadingScreen.style.pointerEvents = 'none';
         }
-        if (workspace) workspace.classList.add('hidden');
+        if (workspace) {
+            workspace.classList.add('hidden');
+            // Reset inline styles that may have been set
+            workspace.style.display = 'none';
+            workspace.style.pointerEvents = 'none';
+        }
 
         // Hide toolbar buttons on welcome screen
         const saveBtn = document.getElementById('editor-save-btn');
