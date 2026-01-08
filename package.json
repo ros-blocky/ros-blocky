@@ -1,6 +1,6 @@
 {
-  "name": "ros block code",
-  "version": "0.1.0-alpha",
+  "name": "ros blocky",
+  "version": "0.1.1-alpha",
   "description": "Visual block-based programming for ROS2 robotics",
   "main": "src\\main\\main.js",
   "scripts": {
@@ -17,7 +17,11 @@
     "Electron"
   ],
   "author": "Yacin Hamdi",
-  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ros-blocky/ros-blocky.git"
+  },
+  "license": "MIT",
   "private": true,
   "devDependencies": {
     "electron": "^39.0.0",
