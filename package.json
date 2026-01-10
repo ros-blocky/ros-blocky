@@ -1,5 +1,5 @@
 {
-  "name": "ros blocky",
+  "name": "ros-blocky",
   "version": "0.1.1-alpha",
   "description": "Visual block-based programming for ROS2 robotics",
   "main": "src\\main\\main.js",
